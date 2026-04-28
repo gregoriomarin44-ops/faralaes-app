@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Faralaes design system — cream, ink black, coral accent */
+
+@layer base {
+  :root {
+    --background: 36 38% 96%;        /* crema cálida */
+    --foreground: 20 14% 12%;        /* negro tinta */
+
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 12%;
+
+    --primary: 4 72% 52%;            /* coral / rojo flamenco */
+    --primary-foreground: 36 38% 98%;
+    --primary-glow: 8 82% 62%;
+    --primary-deep: 358 68% 38%;
+
+    --secondary: 36 30% 90%;
+    --secondary-foreground: 20 14% 12%;
+
+    --muted: 36 24% 92%;
+    --muted-foreground: 20 8% 38%;
+
+    --accent: 36 50% 88%;
+    --accent-foreground: 20 14% 12%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 36 38% 98%;
+
+    --border: 30 18% 86%;
+    --input: 30 18% 88%;
+    --ring: 4 72% 52%;
+
+    --radius: 0.85rem;
+
+    --gradient-coral: linear-gradient(135deg, hsl(4 72% 52%), hsl(8 82% 62%));
+    --gradient-cream: linear-gradient(180deg, hsl(36 38% 96%), hsl(36 44% 92%));
+    --shadow-soft: 0 8px 30px -12px hsl(20 14% 12% / 0.12);
+    --shadow-coral: 0 14px 40px -16px hsl(4 72% 52% / 0.45);
+    --transition-smooth: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 20 14% 8%;
+    --foreground: 36 38% 96%;
+    --card: 20 14% 10%;
+    --card-foreground: 36 38% 96%;
+    --popover: 20 14% 10%;
+    --popover-foreground: 36 38% 96%;
+    --primary: 4 72% 56%;
+    --primary-foreground: 36 38% 98%;
+    --secondary: 20 10% 16%;
+    --secondary-foreground: 36 38% 96%;
+    --muted: 20 10% 14%;
+    --muted-foreground: 36 10% 65%;
+    --accent: 20 10% 16%;
+    --accent-foreground: 36 38% 96%;
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 36 38% 98%;
+    --border: 20 10% 18%;
+    --input: 20 10% 18%;
+    --ring: 4 72% 56%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .font-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
+  .font-sans { font-family: 'Inter', system-ui, sans-serif; }
+  .bg-gradient-coral { background: var(--gradient-coral); }
+  .bg-gradient-cream { background: var(--gradient-cream); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-coral { box-shadow: var(--shadow-coral); }
+  .transition-smooth { transition: var(--transition-smooth); }
+  .text-balance { text-wrap: balance; }
+}
