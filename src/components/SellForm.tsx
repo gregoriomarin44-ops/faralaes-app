@@ -15,6 +15,7 @@ const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export const SellForm = () => {
   const [sent, setSent] = useState(false);
+  const [publishedListingId, setPublishedListingId] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -154,6 +155,7 @@ export const SellForm = () => {
     }
 
     setSent(true);
+    setPublishedListingId(listing.id);
     toast.success("Anuncio creado y publicado.");
   };
 
@@ -185,8 +187,18 @@ export const SellForm = () => {
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Check className="w-7 h-7 text-primary" />
               </div>
-              <h3 className="font-serif text-2xl mb-2">¡Gracias!</h3>
-              <p className="text-muted-foreground">Hemos recibido tu prenda. Te escribiremos en menos de 24 horas.</p>
+              <h3 className="font-serif text-2xl mb-2">¡Prenda publicada!</h3>
+              <p className="text-muted-foreground mb-6">Tu anuncio ya está visible en Faralaes. Puedes verlo, editarlo o gestionarlo desde Mis anuncios.</p>
+              <div className="flex flex-col sm:flex-row justify-center gap-3">
+                {publishedListingId && (
+                  <a href={`/producto/${publishedListingId}`} className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary-deep transition-smooth">
+                    Ver mi anuncio
+                  </a>
+                )}
+                <a href="/mis-anuncios" className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-foreground text-background font-medium hover:bg-primary transition-smooth">
+                  Ir a Mis anuncios
+                </a>
+              </div>
             </div>
           ) : (
             <form onSubmit={onSubmit} className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-soft space-y-4">
