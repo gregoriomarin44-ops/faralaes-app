@@ -547,7 +547,7 @@ Ubicación: ${listing.location || "Sin ubicación"}
                             event.stopPropagation();
                             startConversation(p);
                           }}
-                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-[#25D366] text-white text-sm font-semibold hover:bg-[#1DA851] transition-smooth shadow-sm"
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-[#2E7D32] text-white text-sm font-semibold hover:bg-[#1B5E20] transition-smooth shadow-sm"
                         >
                           <Mail className="w-4 h-4" /> Enviar mensaje
                         </button>
@@ -557,7 +557,7 @@ Ubicación: ${listing.location || "Sin ubicación"}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(event) => event.stopPropagation()}
-                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-background border border-[#25D366]/70 text-[#128C3A] text-sm font-medium hover:bg-[#25D366]/10 transition-smooth"
+                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-background border border-[#2E7D32]/70 text-[#2E7D32] text-sm font-medium hover:bg-[#E8F5E9] transition-smooth"
                           >
                             <MessageCircle className="w-4 h-4" /> WhatsApp
                           </a>
@@ -569,7 +569,7 @@ Ubicación: ${listing.location || "Sin ubicación"}
                               event.stopPropagation();
                               navigate("/auth");
                             }}
-                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-background border border-[#25D366]/70 text-[#128C3A] text-sm font-medium hover:bg-[#25D366]/10 transition-smooth"
+                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-background border border-[#2E7D32]/70 text-[#2E7D32] text-sm font-medium hover:bg-[#E8F5E9] transition-smooth"
                           >
                             <MessageCircle className="w-4 h-4" /> Inicia sesión para WhatsApp
                           </button>

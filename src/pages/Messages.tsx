@@ -561,7 +561,7 @@ const Messages = () => {
                             <div
                               className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
                                 own
-                                  ? "rounded-br-md bg-[#DCF8C6] text-[#1f2d1f]"
+                                  ? "rounded-br-md bg-[#E8F5E9] text-[#1f2d1f]"
                                   : "rounded-bl-md bg-muted/80 text-foreground"
                               }`}
                             >
@@ -600,7 +600,7 @@ const Messages = () => {
                           key={reply}
                           type="button"
                           onClick={() => applyQuickReply(reply)}
-                          className="rounded-full border border-[#22C55E] bg-background px-3 py-1.5 text-xs font-medium text-[#15803D] hover:bg-[#DCF8C6] transition-smooth"
+                          className="rounded-full border border-[#2E7D32] bg-background px-3 py-1.5 text-xs font-medium text-[#2E7D32] hover:bg-[#E8F5E9] transition-smooth"
                         >
                           {reply}
                         </button>
@@ -615,7 +615,7 @@ const Messages = () => {
                         maxLength={2000}
                         className="flex-1 rounded-full border border-input bg-background px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                       />
-                      <Button type="submit" disabled={sending} className="rounded-full bg-[#22C55E] text-white hover:bg-[#16A34A]">
+                      <Button type="submit" disabled={sending} className="rounded-full bg-[#2E7D32] text-white hover:bg-[#1B5E20]">
                         <Send className="w-4 h-4" />
                         Enviar
                       </Button>
