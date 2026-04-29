@@ -24,6 +24,7 @@ type ProductListing = {
   color: string | null;
   location: string | null;
   shipping_available: boolean;
+  whatsapp_contact_allowed: boolean;
   condition: "new" | "like_new" | "good";
   seller_id: string;
   published_at: string | null;
@@ -135,7 +136,7 @@ const ProductDetail = () => {
       const { data, error } = await (supabase as any)
         .from("listings")
         .select(
-          "id,title,description,price_cents,original_price_cents,category,size,color,location,shipping_available,condition,seller_id,published_at,updated_at,listing_images(storage_path,alt_text,sort_order)"
+          "id,title,description,price_cents,original_price_cents,category,size,color,location,shipping_available,whatsapp_contact_allowed,condition,seller_id,published_at,updated_at,listing_images(storage_path,alt_text,sort_order)"
         )
         .eq("id", id)
         .eq("status", "published")
@@ -703,15 +704,26 @@ const ProductDetail = () => {
 
             {!isOwner && (
               <>
-                <a
-                  href={wa(listing)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-coral hover:bg-primary-deep transition-smooth"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Me interesa por WhatsApp
-                </a>
+                {listing.whatsapp_contact_allowed && currentUserId && (
+                  <a
+                    href={wa(listing)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-coral hover:bg-primary-deep transition-smooth"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Me interesa por WhatsApp
+                  </a>
+                )}
+                {listing.whatsapp_contact_allowed && !currentUserId && (
+                  <Link
+                    to="/auth"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-coral hover:bg-primary-deep transition-smooth"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Inicia sesión para contactar por WhatsApp
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={startConversation}

@@ -24,6 +24,7 @@ type MyListing = {
   size: string | null;
   color: string | null;
   location: string | null;
+  whatsapp_contact_allowed: boolean;
   condition: "new" | "like_new" | "good";
   status: ListingStatus;
   listing_images: ListingImage[];
@@ -78,7 +79,7 @@ const MyListings = () => {
 
     const { data, error } = await db
       .from("listings")
-      .select("id,title,description,price_cents,original_price_cents,category,size,color,location,condition,status,created_at,listing_images(storage_path,alt_text,sort_order)")
+      .select("id,title,description,price_cents,original_price_cents,category,size,color,location,whatsapp_contact_allowed,condition,status,created_at,listing_images(storage_path,alt_text,sort_order)")
       .eq("seller_id", userData.user.id)
       .order("created_at", { ascending: false });
 
@@ -180,6 +181,7 @@ const MyListings = () => {
     const color = String(formData.get("color") || "").trim();
     const condition = String(formData.get("condition") || "") as MyListing["condition"];
     const location = String(formData.get("location") || "").trim();
+    const whatsappContactAllowed = formData.get("whatsapp_contact_allowed") === "on";
 
     if (!title || title.length < 3) {
       toast.error("El título debe tener al menos 3 caracteres.");
@@ -223,6 +225,7 @@ const MyListings = () => {
         color: color || null,
         condition,
         location: location || null,
+        whatsapp_contact_allowed: whatsappContactAllowed,
       })
       .eq("id", listingId);
 
@@ -245,6 +248,7 @@ const MyListings = () => {
               color: color || null,
               condition,
               location: location || null,
+              whatsapp_contact_allowed: whatsappContactAllowed,
             }
           : listing
       )
@@ -380,6 +384,15 @@ const MyListings = () => {
                           maxLength={120}
                           className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                         />
+                        <label className="flex gap-3 items-start rounded-xl border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="whatsapp_contact_allowed"
+                            defaultChecked={listing.whatsapp_contact_allowed}
+                            className="mt-0.5 accent-primary"
+                          />
+                          <span>Permitir que usuarios registrados me contacten por WhatsApp</span>
+                        </label>
                         <textarea
                           name="description"
                           defaultValue={listing.description}

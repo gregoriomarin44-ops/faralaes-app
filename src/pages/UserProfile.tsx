@@ -32,6 +32,7 @@ type Listing = {
   size: string | null;
   color: string | null;
   location: string | null;
+  whatsapp_contact_allowed: boolean;
   condition: "new" | "like_new" | "good";
   listing_images: ListingImage[];
   imageUrl?: string | null;
@@ -115,7 +116,7 @@ const UserProfile = () => {
 
       const { data: listingsData, error: listingsError } = await (supabase as any)
         .from("listings")
-        .select("id,seller_id,title,price_cents,category,size,color,location,condition,published_at,listing_images(storage_path,alt_text,sort_order)")
+        .select("id,seller_id,title,price_cents,category,size,color,location,whatsapp_contact_allowed,condition,published_at,listing_images(storage_path,alt_text,sort_order)")
         .eq("seller_id", id)
         .eq("status", "published")
         .order("published_at", { ascending: false });
@@ -224,17 +225,6 @@ const UserProfile = () => {
                   sellerBadge={profile.seller_badge}
                 />
               </div>
-              {profile.phone && (
-                <a
-                  href={`https://wa.me/${profile.phone.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-deep transition-smooth"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Contactar por WhatsApp
-                </a>
-              )}
             </div>
             <p className="text-muted-foreground text-sm md:max-w-xs">
               {listings.length} anuncio{listings.length === 1 ? "" : "s"} publicado{listings.length === 1 ? "" : "s"}.
@@ -291,7 +281,7 @@ const UserProfile = () => {
                       <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
                       <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location || "Sin ubicación"}</span>
                     </div>
-                    {listing.seller_id !== currentUserId && (
+                    {listing.seller_id !== currentUserId && listing.whatsapp_contact_allowed && currentUserId && (
                       <a
                         href={wa(listing)}
                         target="_blank"
@@ -301,6 +291,18 @@ const UserProfile = () => {
                       >
                         <MessageCircle className="w-4 h-4" /> Me interesa por WhatsApp
                       </a>
+                    )}
+                    {listing.seller_id !== currentUserId && listing.whatsapp_contact_allowed && !currentUserId && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate("/auth");
+                        }}
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-deep transition-smooth"
+                      >
+                        <MessageCircle className="w-4 h-4" /> Inicia sesión para WhatsApp
+                      </button>
                     )}
                   </div>
                 </article>

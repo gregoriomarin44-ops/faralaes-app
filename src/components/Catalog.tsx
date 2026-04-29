@@ -17,6 +17,7 @@ type Listing = {
   color: string | null;
   location: string | null;
   shipping_available: boolean;
+  whatsapp_contact_allowed: boolean;
   condition: "new" | "like_new" | "good";
   status: "published";
   published_at: string | null;
@@ -174,7 +175,7 @@ export const Catalog = () => {
 
       let query = (supabase as any)
         .from("listings")
-        .select("id,seller_id,title,price_cents,original_price_cents,category,size,color,location,shipping_available,condition,status,published_at,updated_at,listing_images(storage_path,alt_text,sort_order)")
+        .select("id,seller_id,title,price_cents,original_price_cents,category,size,color,location,shipping_available,whatsapp_contact_allowed,condition,status,published_at,updated_at,listing_images(storage_path,alt_text,sort_order)")
         .eq("status", "published");
 
       const articleTerm = articleSearch.trim().replace(/[%_,]/g, " ");
@@ -550,15 +551,29 @@ Ubicación: ${listing.location || "Sin ubicación"}
                         >
                           <Mail className="w-4 h-4" /> Enviar mensaje
                         </button>
-                        <a
-                          href={wa(p)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(event) => event.stopPropagation()}
-                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-background border border-[#25D366]/70 text-[#128C3A] text-sm font-medium hover:bg-[#25D366]/10 transition-smooth"
-                        >
-                          <MessageCircle className="w-4 h-4" /> WhatsApp
-                        </a>
+                        {p.whatsapp_contact_allowed && userId && (
+                          <a
+                            href={wa(p)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(event) => event.stopPropagation()}
+                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-background border border-[#25D366]/70 text-[#128C3A] text-sm font-medium hover:bg-[#25D366]/10 transition-smooth"
+                          >
+                            <MessageCircle className="w-4 h-4" /> WhatsApp
+                          </a>
+                        )}
+                        {p.whatsapp_contact_allowed && !userId && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigate("/auth");
+                            }}
+                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-background border border-[#25D366]/70 text-[#128C3A] text-sm font-medium hover:bg-[#25D366]/10 transition-smooth"
+                          >
+                            <MessageCircle className="w-4 h-4" /> Inicia sesión para WhatsApp
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

@@ -20,6 +20,7 @@ type FavoriteListing = {
   size: string | null;
   color: string | null;
   location: string | null;
+  whatsapp_contact_allowed: boolean;
   condition: "new" | "like_new" | "good";
   listing_images: ListingImage[];
   imageUrl?: string | null;
@@ -80,7 +81,7 @@ const Favorites = () => {
 
     const { data, error } = await (supabase as any)
       .from("favorites")
-      .select("listing_id,listings!inner(id,seller_id,title,price_cents,category,size,color,location,condition,status,listing_images(storage_path,alt_text,sort_order))")
+      .select("listing_id,listings!inner(id,seller_id,title,price_cents,category,size,color,location,whatsapp_contact_allowed,condition,status,listing_images(storage_path,alt_text,sort_order))")
       .eq("user_id", userData.user.id)
       .eq("listings.status", "published")
       .order("created_at", { ascending: false });
@@ -239,7 +240,7 @@ const Favorites = () => {
                       <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
                       <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location || "Sin ubicación"}</span>
                     </div>
-                    {listing.seller_id !== userId && (
+                    {listing.seller_id !== userId && listing.whatsapp_contact_allowed && (
                       <a
                         href={wa(listing)}
                         target="_blank"

@@ -106,6 +106,7 @@ export const SellForm = () => {
       currency: "EUR",
       location: String(data.get("ubicacion") || "").trim() || null,
       shipping_available: data.get("shipping_available") === "on",
+      whatsapp_contact_allowed: data.get("whatsapp_contact_allowed") === "on",
       status: "published",
     }).select("id").single();
 
@@ -205,6 +206,13 @@ export const SellForm = () => {
                 <span>
                   <span className="block font-medium text-foreground">Envío disponible</span>
                   Puedo enviar la prenda si lo acuerdo con la compradora.
+                </span>
+              </label>
+              <label className="flex gap-3 items-start rounded-xl border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground cursor-pointer">
+                <input type="checkbox" name="whatsapp_contact_allowed" className="mt-1 accent-primary" />
+                <span>
+                  <span className="block font-medium text-foreground">Permitir que usuarios registrados me contacten por WhatsApp</span>
+                  Si no lo marcas, el anuncio solo mostrará mensajería interna.
                 </span>
               </label>
               <div>
