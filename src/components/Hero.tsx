@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import heroImg from "@/assets/hero-flamenca.jpg";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
+const heroImg = "/hero-flamenca.webp";
 
 type LatestListing = {
   title: string;
