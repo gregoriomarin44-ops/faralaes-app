@@ -8,17 +8,17 @@ export const Hero = () => {
       <div className="container py-12 md:py-24 grid md:grid-cols-2 gap-10 md:gap-16 items-center">
         <div className="animate-fade-up order-2 md:order-1">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium mb-6">
-            <Sparkles className="w-3.5 h-3.5" /> El primer marketplace de moda flamenca
+            <Sparkles className="w-3.5 h-3.5" /> Publica tu traje de flamenca GRATIS
           </span>
           <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl leading-[1.05] text-foreground text-balance mb-6">
             Compra y vende ropa flamenca <em className="text-primary not-italic md:italic">sin complicarte</em>
           </h1>
           <p className="text-base md:text-lg text-muted-foreground mb-8 max-w-xl text-balance">
-            Trajes, faldas, blusas, mantones, flores, zapatos y complementos flamencos en un solo lugar. Hecho por y para flamencas.
+            Sube tu prenda en menos de 1 minuto y llega a miles de personas interesadas
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <a href="#vender" className="group inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-coral hover:bg-primary-deep transition-smooth">
-              Quiero vender mi traje
+            <a href="/auth" className="group inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-coral hover:bg-primary-deep transition-smooth">
+              Publicar prenda gratis
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-smooth" />
             </a>
             <a href="#catalogo" className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full bg-foreground text-background font-medium hover:bg-foreground/85 transition-smooth">
