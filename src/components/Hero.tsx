@@ -21,7 +21,7 @@ export const Hero = () => {
               Publicar prenda gratis
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-smooth" />
             </a>
-            <a href="#catalogo" className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full bg-foreground text-background font-medium hover:bg-foreground/85 transition-smooth">
+            <a href="/catalogo" className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full bg-foreground text-background font-medium hover:bg-foreground/85 transition-smooth">
               Quiero ver el catálogo
             </a>
           </div>
