@@ -1,69 +1,8 @@
-import { useEffect, useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 const heroImg = "/hero-flamenca.webp";
 
-type LatestListing = {
-  title: string;
-  location: string | null;
-  listing_images?: ListingImage[];
-};
-
-type ListingImage = {
-  storage_path: string;
-  alt_text: string | null;
-  sort_order: number;
-};
-
 export const Hero = () => {
-  const [latestListing, setLatestListing] = useState<LatestListing | null>(null);
-  const [heroImageUrl, setHeroImageUrl] = useState<string>(heroImg);
-
-  useEffect(() => {
-    const loadLatestListing = async () => {
-      const { data, error } = await (supabase as any)
-        .from("listings")
-        .select("title,location,listing_images(storage_path,alt_text,sort_order)")
-        .eq("status", "published")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error || !data) {
-        setLatestListing(null);
-        return;
-      }
-
-      const row = data as LatestListing;
-      if (!row.title) {
-        setLatestListing(null);
-        return;
-      }
-
-      setLatestListing(row);
-
-      const firstImage = [...(row.listing_images || [])].sort((a, b) => a.sort_order - b.sort_order)[0];
-      if (!firstImage?.storage_path) {
-        setHeroImageUrl(heroImg);
-        return;
-      }
-
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from("listing-images")
-        .createSignedUrl(firstImage.storage_path, 60 * 60);
-
-      if (signedError || !signedData?.signedUrl) {
-        setHeroImageUrl(heroImg);
-        return;
-      }
-
-      setHeroImageUrl(signedData.signedUrl);
-    };
-
-    loadLatestListing();
-  }, []);
-
   return (
     <section className="relative overflow-hidden bg-gradient-cream">
       <div className="container py-12 md:py-24 grid md:grid-cols-2 gap-10 md:gap-16 items-center">
@@ -99,16 +38,8 @@ export const Hero = () => {
         <div className="relative order-1 md:order-2">
           <div className="absolute -inset-4 bg-gradient-coral opacity-20 blur-3xl rounded-full" />
           <div className="relative aspect-[4/5] rounded-2xl overflow-hidden shadow-soft">
-            <img src={heroImageUrl} alt={latestListing?.title || "Traje de flamenca granate con lunares blancos"} width={1080} height={1350} className="w-full h-full object-cover" />
+            <img src={heroImg} alt="Traje de flamenca granate con lunares blancos" width={1080} height={1350} className="w-full h-full object-cover" />
           </div>
-          {latestListing && (
-            <div className="hidden md:block absolute -bottom-6 -left-6 bg-card rounded-2xl px-5 py-4 shadow-soft animate-float max-w-[260px]">
-              <div className="text-xs text-muted-foreground">Última publicada</div>
-              <div className="font-serif text-lg line-clamp-2">
-                {latestListing.title}{latestListing.location ? ` · ${latestListing.location}` : ""}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </section>
