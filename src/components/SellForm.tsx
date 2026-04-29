@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Upload, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +17,17 @@ export const SellForm = () => {
   const [sent, setSent] = useState(false);
   const [publishedListingId, setPublishedListingId] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const urls = files.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [files]);
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -236,10 +246,28 @@ export const SellForm = () => {
                 <label className="flex flex-col items-center justify-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed border-border bg-muted/30 cursor-pointer hover:border-primary/50 hover:bg-muted/60 transition-smooth">
                   <Upload className="w-5 h-5 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    {files.length ? `${files.length} archivo(s) seleccionado(s)` : "Toca para subir hasta 5 fotos"}
+                    {files.length === 1 ? files[0].name : files.length > 1 ? `${files.length} imágenes seleccionadas` : "Toca para subir hasta 5 fotos"}
                   </span>
                   <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => setFiles(Array.from(e.target.files || []).slice(0, MAX_IMAGES))} />
                 </label>
+                {files.length > 1 && (
+                  <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                    {files.map((file) => (
+                      <li key={`${file.name}-${file.lastModified}`} className="truncate">
+                        {file.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {files.length > 0 && (
+                  <div className="mt-3 grid grid-cols-5 gap-2">
+                    {files.map((file, index) => (
+                      <div key={`${file.name}-${file.lastModified}`} className="aspect-square overflow-hidden rounded-lg border border-border bg-muted">
+                        <img src={previewUrls[index]} alt={file.name} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <label className="flex gap-3 items-start text-sm text-muted-foreground cursor-pointer">
                 <input type="checkbox" name="privacidad" className="mt-1 accent-primary" />
