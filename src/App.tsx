@@ -16,6 +16,7 @@ import EditProfile from "./pages/EditProfile.tsx";
 import Messages from "./pages/Messages.tsx";
 import AdminReports from "./pages/AdminReports.tsx";
 import Admin from "./pages/Admin.tsx";
+import PublishListing from "./pages/PublishListing.tsx";
 import { AvisoLegal, Cookies, Privacidad, Terminos } from "./pages/LegalPage.tsx";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/catalogo" element={<CatalogPage />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/publicar" element={<PublishListing />} />
             <Route path="/producto/:id" element={<ProductDetail />} />
             <Route path="/usuario/:id" element={<UserProfile />} />
             <Route path="/perfil" element={<EditProfile />} />

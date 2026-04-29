@@ -17,7 +17,7 @@ export const Hero = () => {
             Sube tu prenda en menos de 1 minuto y llega a miles de personas interesadas
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <a href="/auth" className="group inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-coral hover:bg-primary-deep transition-smooth">
+            <a href="/publicar" className="group inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-coral hover:bg-primary-deep transition-smooth">
               Publicar prenda gratis
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-smooth" />
             </a>

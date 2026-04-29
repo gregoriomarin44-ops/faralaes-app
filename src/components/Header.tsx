@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const links = [
   { href: "/catalogo", label: "Catálogo" },
-  { href: "/#vender", label: "Vender" },
+  { href: "/publicar", label: "Vender" },
   { href: "/#como-funciona", label: "Cómo funciona" },
   { href: "/#tiendas", label: "Para tiendas" },
 ];
@@ -154,7 +154,7 @@ export const Header = () => {
               Entrar
             </Link>
           )}
-          <a href="/#vender" className="px-5 py-2 rounded-full bg-foreground text-background text-sm font-medium hover:bg-primary transition-smooth">
+          <a href="/publicar" className="px-5 py-2 rounded-full bg-foreground text-background text-sm font-medium hover:bg-primary transition-smooth">
             Vender prenda
           </a>
         </nav>
@@ -205,7 +205,7 @@ export const Header = () => {
                 Entrar
               </Link>
             )}
-            <a href="/#vender" onClick={() => setOpen(false)} className="px-5 py-3 rounded-full bg-foreground text-background text-center font-medium">
+            <a href="/publicar" onClick={() => setOpen(false)} className="px-5 py-3 rounded-full bg-foreground text-background text-center font-medium">
               Vender prenda
             </a>
           </nav>

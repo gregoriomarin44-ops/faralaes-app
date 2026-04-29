@@ -11,7 +11,7 @@ const Index = () => (
     <Hero />
     <section id="vender" className="py-16 md:py-28 bg-background">
       <div className="container text-center">
-        <a href="/auth" className="inline-flex items-center justify-center px-7 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-coral hover:bg-primary-deep transition-smooth">
+        <a href="/publicar" className="inline-flex items-center justify-center px-7 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-coral hover:bg-primary-deep transition-smooth">
           Publicar prenda gratis
         </a>
       </div>
