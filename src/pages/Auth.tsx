@@ -85,6 +85,19 @@ const Auth = () => {
     navigate(from);
   };
 
+  const continueWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      toast.error(error.message);
+    }
+  };
+
   const isLogin = mode === "login";
 
   return (
@@ -138,6 +151,20 @@ const Auth = () => {
             {isLogin ? "Entrar" : "Crear cuenta"}
           </Button>
         </form>
+
+        <button
+          type="button"
+          onClick={continueWithGoogle}
+          className="mt-3 w-full inline-flex items-center justify-center gap-3 rounded-full border border-border bg-white px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/40 transition-smooth"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#4285F4" d="M21.6 12.23c0-.76-.07-1.49-.2-2.19H12v4.14h5.37a4.59 4.59 0 0 1-1.99 3.01v2.5h3.22c1.88-1.73 3-4.28 3-7.46z" />
+            <path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.61-2.31l-3.22-2.5c-.9.6-2.04.95-3.39.95-2.6 0-4.8-1.75-5.59-4.11H3.08v2.58A10 10 0 0 0 12 22z" />
+            <path fill="#FBBC05" d="M6.41 14.03a6.01 6.01 0 0 1 0-3.86V7.59H3.08a10 10 0 0 0 0 8.82l3.33-2.38z" />
+            <path fill="#EA4335" d="M12 5.96c1.47 0 2.79.51 3.83 1.5l2.86-2.86C16.96 2.99 14.7 2 12 2a10 10 0 0 0-8.92 5.59l3.33 2.58C7.2 7.71 9.4 5.96 12 5.96z" />
+          </svg>
+          <span>Continuar con Google</span>
+        </button>
 
         <button
           type="button"
