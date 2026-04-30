@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { RequireVerifiedEmail } from "@/components/RequireVerifiedEmail";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
@@ -32,15 +33,17 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/catalogo" element={<CatalogPage />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/publicar" element={<PublishListing />} />
             <Route path="/producto/:id" element={<ProductDetail />} />
             <Route path="/usuario/:id" element={<UserProfile />} />
-            <Route path="/perfil" element={<EditProfile />} />
-            <Route path="/mensajes" element={<Messages />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/reports" element={<AdminReports />} />
-            <Route path="/mis-anuncios" element={<MyListings />} />
-            <Route path="/favoritos" element={<Favorites />} />
+            <Route element={<RequireVerifiedEmail />}>
+              <Route path="/publicar" element={<PublishListing />} />
+              <Route path="/perfil" element={<EditProfile />} />
+              <Route path="/mensajes" element={<Messages />} />
+              <Route path="/mis-anuncios" element={<MyListings />} />
+              <Route path="/favoritos" element={<Favorites />} />
+            </Route>
             <Route path="/aviso-legal" element={<AvisoLegal />} />
             <Route path="/privacidad" element={<Privacidad />} />
             <Route path="/terminos" element={<Terminos />} />

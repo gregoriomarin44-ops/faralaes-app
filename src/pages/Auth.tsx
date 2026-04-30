@@ -15,11 +15,14 @@ const Auth = () => {
   const from = (location.state as { from?: string } | null)?.from || "/";
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
+      if (data.session?.user.email_confirmed_at) {
         navigate(from);
+      } else if (data.session && !data.session.user.email_confirmed_at) {
+        setVerificationMessage("Revisa tu correo para verificar tu cuenta");
       }
     });
   }, [from, navigate]);
@@ -33,7 +36,9 @@ const Auth = () => {
     const password = String(formData.get("password") || "");
     const fullName = String(formData.get("fullName") || "").trim();
 
-    const { error } =
+    setVerificationMessage(null);
+
+    const { data: authData, error } =
       mode === "login"
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({
@@ -49,16 +54,34 @@ const Auth = () => {
     setLoading(false);
 
     if (error) {
+      if (error.message.toLowerCase().includes("email not confirmed") || error.message.toLowerCase().includes("not confirmed")) {
+        setVerificationMessage("Debes verificar tu email antes de continuar.");
+        toast.error("Debes verificar tu email antes de continuar.");
+        return;
+      }
+
       toast.error(error.message);
       return;
     }
 
     if (mode === "register") {
-      toast.success("Cuenta creada. Revisa tu email si Supabase pide confirmación.");
-    } else {
-      toast.success("Sesión iniciada.");
+      if (authData.session) {
+        await supabase.auth.signOut();
+      }
+
+      setVerificationMessage("Te hemos enviado un correo de verificación. Revisa tu email y confirma tu cuenta antes de entrar.");
+      toast.success("Te hemos enviado un correo de verificación. Revisa tu email y confirma tu cuenta antes de entrar.");
+      return;
     }
 
+    if (!authData.session?.user.email_confirmed_at) {
+      await supabase.auth.signOut();
+      setVerificationMessage("Debes verificar tu email antes de continuar.");
+      toast.error("Debes verificar tu email antes de continuar.");
+      return;
+    }
+
+    toast.success("Sesión iniciada.");
     navigate(from);
   };
 
@@ -78,6 +101,11 @@ const Auth = () => {
               ? "Accede para guardar favoritos, publicar prendas y hablar con vendedoras."
               : "Regístrate con email y contraseña para empezar a vender o comprar."}
           </p>
+          {verificationMessage && (
+            <p className="mt-4 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-foreground">
+              {verificationMessage}
+            </p>
+          )}
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
