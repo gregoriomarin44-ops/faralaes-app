@@ -1,0 +1,5 @@
+usuario  faralaes_user   x0awgfcvg2sxdhbd5dl5
+nombre de la base de datos:  faralaes 
+host interno:  grego_faralaes-db
+puerto interno  5432
+url de conexión interna: postgres://faralaes_user:x0awgfcvg2sxdhbd5dl5@grego_faralaes-db:5432/faralaes?sslmode=disable
