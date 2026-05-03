@@ -54,28 +54,28 @@ export default function Catalogo() {
               key={p.id}
               className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm"
             >
-              <div className="aspect-[4/5] bg-gray-200 flex items-center justify-center text-gray-400">
+              <div className="aspect-[4/5] overflow-hidden bg-gray-200">
                 {p.images?.[0]?.url ? (
                   <img
                     src={p.images[0].url}
                     alt={p.title}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  "Sin imagen"
+                  <div className="flex h-full items-center justify-center text-gray-400">
+                    Sin imagen
+                  </div>
                 )}
               </div>
 
               <div className="p-5">
                 <h2 className="font-serif text-xl mb-2">{p.title}</h2>
 
-                <p className="text-sm text-gray-600 mb-3">
-                  {p.description}
-                </p>
+                {p.description && (
+                  <p className="text-sm text-gray-600 mb-3">
+                    {p.description}
+                  </p>
+                )}
 
                 <p className="text-2xl font-semibold text-red-700 mb-3">
                   {(p.priceCents / 100).toFixed(2)} €
