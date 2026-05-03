@@ -1,4 +1,4 @@
-generator client {
+Dgenerator client {
   provider = "prisma-client-js"
 }
 
