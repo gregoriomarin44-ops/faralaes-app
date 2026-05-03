@@ -14,7 +14,12 @@ export default function Publicar() {
     const res = await fetch("/api/productos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sellerId: SELLER_ID }),
+      body: JSON.stringify({
+      sellerId: SELLER_ID,
+      title: titulo,
+      description: descripcion,
+      priceCents: parseInt(precio) * 100,
+}),
     });
 
     if (res.ok) {

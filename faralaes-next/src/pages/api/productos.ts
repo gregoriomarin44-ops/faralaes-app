@@ -15,9 +15,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "POST") {
     const producto = await prisma.listing.create({
       data: {
-        title: "Traje flamenca prueba",
-        description: "Anuncio de prueba creado desde API",
-        priceCents: 12000,
+        title: req.body.title,
+        description: req.body.description,
+        priceCents: req.body.priceCents,
         category: "traje",
         size: "M",
         color: "Rojo",
