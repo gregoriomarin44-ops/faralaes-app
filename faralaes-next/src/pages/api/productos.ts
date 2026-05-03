@@ -9,9 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         orderBy: { createdAt: "desc" },
         include: {
           images: {
-            orderBy: {
-              sortOrder: "asc",
-            },
+            orderBy: { sortOrder: "asc" },
           },
         },
       });
@@ -20,23 +18,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "POST") {
-      const { title, description, priceCents, sellerId, image } = req.body;
+      const {
+        title,
+        description,
+        priceCents,
+        sellerId,
+        category,
+        size,
+        color,
+        location,
+        condition,
+        image,
+      } = req.body;
 
-      if (!title || !priceCents || !sellerId) {
+      if (!title || !priceCents || !sellerId || !category) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
       const producto = await prisma.listing.create({
         data: {
           title,
-          description,
+          description: description || null,
           priceCents,
-          category: "traje",
-          size: "M",
-          color: "Rojo",
-          location: "Sevilla",
-          condition: "muy_bueno",
           sellerId,
+          category,
+          size: size || null,
+          color: color || null,
+          location: location || null,
+          condition: condition || null,
+          status: "published",
           images: image
             ? {
                 create: [

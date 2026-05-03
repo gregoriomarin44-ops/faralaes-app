@@ -6,16 +6,17 @@ export default function Publicar() {
   const [titulo, setTitulo] = useState("");
   const [precio, setPrecio] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [mensaje, setMensaje] = useState("");
+  const [categoria, setCategoria] = useState("traje");
+  const [talla, setTalla] = useState("");
+  const [color, setColor] = useState("");
+  const [ubicacion, setUbicacion] = useState("");
+  const [estado, setEstado] = useState("muy_bueno");
   const [imagen, setImagen] = useState<string | null>(null);
+  const [mensaje, setMensaje] = useState("");
 
   const convertirImagen = (file: File) => {
     const reader = new FileReader();
-
-    reader.onloadend = () => {
-      setImagen(reader.result as string);
-    };
-
+    reader.onloadend = () => setImagen(reader.result as string);
     reader.readAsDataURL(file);
   };
 
@@ -24,14 +25,17 @@ export default function Publicar() {
 
     const res = await fetch("/api/productos", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         sellerId: SELLER_ID,
         title: titulo,
         description: descripcion,
         priceCents: Number(precio) * 100,
+        category: categoria,
+        size: talla || null,
+        color: color || null,
+        location: ubicacion || null,
+        condition: estado,
         image: imagen,
       }),
     });
@@ -41,6 +45,11 @@ export default function Publicar() {
       setTitulo("");
       setPrecio("");
       setDescripcion("");
+      setCategoria("traje");
+      setTalla("");
+      setColor("");
+      setUbicacion("");
+      setEstado("muy_bueno");
       setImagen(null);
     } else {
       setMensaje("Error al publicar.");
@@ -48,48 +57,45 @@ export default function Publicar() {
   };
 
   return (
-    <main style={{ maxWidth: 600, margin: "40px auto", fontFamily: "Arial" }}>
-      <h1>Publicar anuncio</h1>
+    <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
+      <section className="max-w-xl mx-auto bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
+        <h1 className="font-serif text-4xl mb-6">Publicar anuncio</h1>
 
-      <form onSubmit={publicar}>
-        <input
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-          placeholder="Título"
-          style={{ width: "100%", padding: 12, marginBottom: 12 }}
-        />
+        <form onSubmit={publicar} className="space-y-4">
+          <input className="w-full border p-3 rounded" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título" required />
+          <input className="w-full border p-3 rounded" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" type="number" required />
+          <textarea className="w-full border p-3 rounded" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
 
-        <input
-          value={precio}
-          onChange={(e) => setPrecio(e.target.value)}
-          placeholder="Precio"
-          type="number"
-          style={{ width: "100%", padding: 12, marginBottom: 12 }}
-        />
+          <select className="w-full border p-3 rounded" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+            <option value="traje">Traje</option>
+            <option value="zapatos">Zapatos</option>
+            <option value="mantoncillo">Mantoncillo</option>
+            <option value="complementos">Complementos</option>
+          </select>
 
-        <textarea
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
-          placeholder="Descripción"
-          style={{ width: "100%", padding: 12, marginBottom: 12 }}
-        />
+          <input className="w-full border p-3 rounded" value={talla} onChange={(e) => setTalla(e.target.value)} placeholder="Talla" />
+          <input className="w-full border p-3 rounded" value={color} onChange={(e) => setColor(e.target.value)} placeholder="Color" />
+          <input className="w-full border p-3 rounded" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} placeholder="Ubicación" />
 
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
+          <select className="w-full border p-3 rounded" value={estado} onChange={(e) => setEstado(e.target.value)}>
+            <option value="nuevo">Nuevo</option>
+            <option value="muy_bueno">Muy bueno</option>
+            <option value="bueno">Bueno</option>
+            <option value="usado">Usado</option>
+          </select>
+
+          <input type="file" accept="image/*" onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) convertirImagen(file);
-          }}
-          style={{ width: "100%", padding: 12, marginBottom: 12 }}
-        />
+          }} />
 
-        <button type="submit" style={{ padding: 12 }}>
-          Publicar
-        </button>
-      </form>
+          <button className="w-full bg-green-700 text-white p-3 rounded font-semibold" type="submit">
+            Publicar
+          </button>
+        </form>
 
-      {mensaje && <p>{mensaje}</p>}
+        {mensaje && <p className="mt-4">{mensaje}</p>}
+      </section>
     </main>
   );
 }
