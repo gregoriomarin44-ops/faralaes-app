@@ -11,6 +11,9 @@ type Producto = {
   location: string | null;
   condition: string | null;
   shippingAvailable: boolean;
+  images?: {
+    url: string;
+  }[];
 };
 
 export default function Catalogo() {
@@ -52,7 +55,19 @@ export default function Catalogo() {
               className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm"
             >
               <div className="aspect-[4/5] bg-gray-200 flex items-center justify-center text-gray-400">
-                Sin imagen
+                {p.images?.[0]?.url ? (
+                  <img
+                    src={p.images[0].url}
+                    alt={p.title}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  "Sin imagen"
+                )}
               </div>
 
               <div className="p-5">
