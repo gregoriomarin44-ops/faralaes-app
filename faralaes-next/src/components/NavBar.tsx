@@ -48,6 +48,12 @@ export default function NavBar() {
 
           {userId ? (
             <>
+              <Link
+                href="/perfil"
+                className="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-[#f8f3ef] hover:text-green-700"
+              >
+                Perfil
+              </Link>
               {userEmail && (
                 <span className="whitespace-nowrap rounded-full bg-[#f8f3ef] px-4 py-2 text-sm font-semibold text-gray-600">
                   {userEmail}

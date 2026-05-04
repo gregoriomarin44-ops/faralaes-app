@@ -148,8 +148,12 @@ export default function ProductoDetalle() {
     : "Fecha no disponible";
   const images = producto.images || [];
   const esAnuncioPropio = Boolean(userId && producto.sellerId === userId);
+  const sellerPhone = producto.seller?.profile?.phone?.replace(/\D/g, "") || "";
   const puedeContactarPorWhatsapp =
-    Boolean(userId) && !esAnuncioPropio && producto.whatsappContactAllowed;
+    Boolean(userId) &&
+    !esAnuncioPropio &&
+    producto.whatsappContactAllowed &&
+    Boolean(sellerPhone);
 
   return (
     <>
@@ -271,7 +275,7 @@ export default function ProductoDetalle() {
               </button>
             ) : puedeContactarPorWhatsapp ? (
               <a
-                href={`https://wa.me/?text=${whatsappText}`}
+                href={`https://wa.me/${sellerPhone}?text=${whatsappText}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
@@ -280,7 +284,9 @@ export default function ProductoDetalle() {
               </a>
             ) : userId ? (
               <p className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-center font-semibold text-gray-700">
-                Este vendedor no acepta contacto por WhatsApp
+                {producto.whatsappContactAllowed
+                  ? "Este vendedor no tiene teléfono de WhatsApp configurado"
+                  : "Este vendedor no acepta contacto por WhatsApp"}
               </p>
             ) : (
               <button
