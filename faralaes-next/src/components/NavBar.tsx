@@ -8,6 +8,7 @@ const links = [
   { href: "/publicar", label: "Publicar" },
   { href: "/mis-anuncios", label: "Mis anuncios" },
   { href: "/favoritos", label: "Favoritos" },
+  { href: "/mensajes", label: "Mensajes" },
 ];
 
 export default function NavBar() {

@@ -83,6 +83,29 @@ export default function ProductoDetalle() {
     router.push("/catalogo");
   };
 
+  const enviarMensaje = async () => {
+    if (!producto || !userId) {
+      router.push("/login");
+      return;
+    }
+
+    const res = await fetch("/api/conversaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        listingId: producto.id,
+        buyerId: userId,
+      }),
+    });
+
+    if (!res.ok) {
+      return;
+    }
+
+    const conversacion = await res.json();
+    router.push(`/mensajes?conversationId=${conversacion.id}`);
+  };
+
   if (loading) {
     return (
       <>
@@ -299,6 +322,16 @@ export default function ProductoDetalle() {
                 Contactar por WhatsApp
               </a>
             ) : null}
+
+            {userId && !esPropio && (
+              <button
+                type="button"
+                onClick={enviarMensaje}
+                className="mt-3 w-full rounded-full border border-green-700 bg-white px-6 py-4 text-center font-bold text-green-700 shadow-sm transition hover:bg-green-50"
+              >
+                Enviar mensaje
+              </button>
+            )}
 
             <div className="mt-6 space-y-1 text-xs text-gray-400">
               <p>Publicado el {publishedDate}</p>

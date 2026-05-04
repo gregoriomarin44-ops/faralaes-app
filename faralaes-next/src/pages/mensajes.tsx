@@ -1,0 +1,230 @@
+import { useRouter } from "next/router";
+import { useEffect, useMemo, useState } from "react";
+import NavBar from "../components/NavBar";
+import { formatPrice } from "../lib/formatPrice";
+
+type Message = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+};
+
+type Conversation = {
+  id: string;
+  listingId: string;
+  buyerId: string;
+  sellerId: string;
+  listing: {
+    id: string;
+    title: string;
+    priceCents: number;
+  };
+  messages: Message[];
+};
+
+export default function Mensajes() {
+  const router = useRouter();
+  const [userId, setUserId] = useState("");
+  const [conversaciones, setConversaciones] = useState<Conversation[]>([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [body, setBody] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const storedUserId = localStorage.getItem("userId") || "";
+
+    if (!storedUserId) {
+      router.push("/login");
+      return;
+    }
+
+    setUserId(storedUserId);
+
+    fetch(`/api/conversaciones?userId=${encodeURIComponent(storedUserId)}`)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("No se han podido cargar tus mensajes.");
+        }
+
+        return res.json();
+      })
+      .then((data: Conversation[]) => {
+        setConversaciones(data);
+        const queryId =
+          typeof router.query.conversationId === "string"
+            ? router.query.conversationId
+            : "";
+        setSelectedId(queryId || data[0]?.id || "");
+        setError("");
+      })
+      .catch((err: Error) => {
+        setError(err.message || "No se han podido cargar tus mensajes.");
+      })
+      .finally(() => setLoading(false));
+  }, [router]);
+
+  const conversacionSeleccionada = useMemo(
+    () => conversaciones.find((conversacion) => conversacion.id === selectedId),
+    [conversaciones, selectedId]
+  );
+
+  const seleccionarConversacion = (id: string) => {
+    setSelectedId(id);
+    router.push(`/mensajes?conversationId=${id}`, undefined, {
+      shallow: true,
+    });
+  };
+
+  const enviarMensaje = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!body.trim() || !conversacionSeleccionada) {
+      return;
+    }
+
+    const res = await fetch("/api/mensajes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversationId: conversacionSeleccionada.id,
+        senderId: userId,
+        body: body.trim(),
+      }),
+    });
+
+    if (!res.ok) {
+      setError("No se ha podido enviar el mensaje.");
+      return;
+    }
+
+    const nuevoMensaje: Message = await res.json();
+    setConversaciones((prev) =>
+      prev.map((conversacion) =>
+        conversacion.id === nuevoMensaje.conversationId
+          ? {
+              ...conversacion,
+              messages: [...conversacion.messages, nuevoMensaje],
+            }
+          : conversacion
+      )
+    );
+    setBody("");
+    setError("");
+  };
+
+  return (
+    <>
+      <NavBar />
+      <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
+        <section className="mx-auto max-w-6xl">
+          <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
+            Mensajes
+          </p>
+          <h1 className="mb-8 mt-3 font-serif text-4xl md:text-5xl">
+            Conversaciones
+          </h1>
+
+          {loading && <p>Cargando mensajes...</p>}
+
+          {!loading && error && <p className="mb-4 text-red-700">{error}</p>}
+
+          {!loading && conversaciones.length === 0 && (
+            <p>No tienes conversaciones todavía.</p>
+          )}
+
+          {!loading && conversaciones.length > 0 && (
+            <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+              <aside className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                {conversaciones.map((conversacion) => (
+                  <button
+                    type="button"
+                    key={conversacion.id}
+                    onClick={() => seleccionarConversacion(conversacion.id)}
+                    className={`block w-full border-b border-gray-100 p-4 text-left transition last:border-b-0 ${
+                      selectedId === conversacion.id
+                        ? "bg-green-50"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <p className="font-semibold text-gray-950">
+                      {conversacion.listing.title}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-red-700">
+                      {formatPrice(conversacion.listing.priceCents)}
+                    </p>
+                    <p className="mt-2 text-xs text-gray-500">
+                      {conversacion.messages.length} mensajes
+                    </p>
+                  </button>
+                ))}
+              </aside>
+
+              <section className="flex min-h-[520px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
+                {conversacionSeleccionada && (
+                  <>
+                    <div className="border-b border-gray-100 p-5">
+                      <p className="text-sm text-gray-500">Anuncio</p>
+                      <h2 className="font-serif text-2xl text-gray-950">
+                        {conversacionSeleccionada.listing.title}
+                      </h2>
+                    </div>
+
+                    <div className="flex-1 space-y-3 overflow-y-auto p-5">
+                      {conversacionSeleccionada.messages.length === 0 && (
+                        <p className="text-gray-500">
+                          Todavía no hay mensajes en esta conversación.
+                        </p>
+                      )}
+
+                      {conversacionSeleccionada.messages.map((message) => {
+                        const propio = message.senderId === userId;
+
+                        return (
+                          <div
+                            key={message.id}
+                            className={`flex ${propio ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                                propio
+                                  ? "bg-green-700 text-white"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {message.body}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <form
+                      onSubmit={enviarMensaje}
+                      className="flex gap-3 border-t border-gray-100 p-5"
+                    >
+                      <input
+                        className="flex-1 rounded-full border border-gray-300 px-4 py-3 outline-none transition focus:border-green-700"
+                        value={body}
+                        onChange={(e) => setBody(e.target.value)}
+                        placeholder="Escribe un mensaje"
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-full bg-green-700 px-6 py-3 font-semibold text-white transition hover:bg-green-800"
+                      >
+                        Enviar
+                      </button>
+                    </form>
+                  </>
+                )}
+              </section>
+            </div>
+          )}
+        </section>
+      </main>
+    </>
+  );
+}
