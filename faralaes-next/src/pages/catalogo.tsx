@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import NavBar from "../components/NavBar";
+
 type Producto = {
   id: string;
   title: string;
@@ -29,8 +31,10 @@ export default function Catalogo() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
-      <section className="max-w-6xl mx-auto">
+    <>
+      <NavBar />
+      <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
+        <section className="max-w-6xl mx-auto">
         <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm uppercase tracking-widest text-red-700 font-semibold">
@@ -107,7 +111,8 @@ export default function Catalogo() {
             </article>
           ))}
         </div>
-      </section>
-    </main>
+        </section>
+      </main>
+    </>
   );
 }

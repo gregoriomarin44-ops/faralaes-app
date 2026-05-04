@@ -1,5 +1,6 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import NavBar from "../../components/NavBar";
 
 type Producto = {
   id: string;
@@ -78,45 +79,54 @@ export default function ProductoDetalle() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
-        <section className="mx-auto max-w-6xl">
-          <p className="text-center text-gray-600">Cargando anuncio...</p>
-        </section>
-      </main>
+      <>
+        <NavBar />
+        <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
+          <section className="mx-auto max-w-6xl">
+            <p className="text-center text-gray-600">Cargando anuncio...</p>
+          </section>
+        </main>
+      </>
     );
   }
 
   if (error) {
     return (
-      <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
-        <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-          <p className="mb-6 text-gray-700">{error}</p>
-          <button
-            type="button"
-            onClick={volverAlCatalogo}
-            className="rounded-full bg-green-700 px-6 py-3 font-semibold text-white transition hover:bg-green-800"
-          >
-            Volver al catálogo
-          </button>
-        </section>
-      </main>
+      <>
+        <NavBar />
+        <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
+          <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+            <p className="mb-6 text-gray-700">{error}</p>
+            <button
+              type="button"
+              onClick={volverAlCatalogo}
+              className="rounded-full bg-green-700 px-6 py-3 font-semibold text-white transition hover:bg-green-800"
+            >
+              Volver al catálogo
+            </button>
+          </section>
+        </main>
+      </>
     );
   }
 
   if (!producto) {
     return (
-      <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
-        <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-          <p className="mb-6 text-gray-700">Producto no encontrado.</p>
-          <button
-            type="button"
-            onClick={volverAlCatalogo}
-            className="rounded-full bg-green-700 px-6 py-3 font-semibold text-white transition hover:bg-green-800"
-          >
-            Volver al catálogo
-          </button>
-        </section>
-      </main>
+      <>
+        <NavBar />
+        <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
+          <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+            <p className="mb-6 text-gray-700">Producto no encontrado.</p>
+            <button
+              type="button"
+              onClick={volverAlCatalogo}
+              className="rounded-full bg-green-700 px-6 py-3 font-semibold text-white transition hover:bg-green-800"
+            >
+              Volver al catálogo
+            </button>
+          </section>
+        </main>
+      </>
     );
   }
 
@@ -133,8 +143,10 @@ export default function ProductoDetalle() {
   const images = producto.images || [];
 
   return (
-    <main className="min-h-screen bg-[#f8f3ef] px-4 py-8 sm:px-6 lg:py-12">
-      <section className="mx-auto max-w-6xl">
+    <>
+      <NavBar />
+      <main className="min-h-screen bg-[#f8f3ef] px-4 py-8 sm:px-6 lg:py-12">
+        <section className="mx-auto max-w-6xl">
         <button
           type="button"
           onClick={volverAlCatalogo}
@@ -255,7 +267,8 @@ export default function ProductoDetalle() {
             </div>
           </div>
         </div>
-      </section>
-    </main>
+        </section>
+      </main>
+    </>
   );
 }
