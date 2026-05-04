@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import NavBar from "../components/NavBar";
 import { formatPrice } from "../lib/formatPrice";
 
@@ -24,6 +24,29 @@ type Conversation = {
   messages: Message[];
 };
 
+const getLastMessage = (conversation: Conversation) =>
+  conversation.messages[conversation.messages.length - 1];
+
+const getConversationTimestamp = (conversation: Conversation) => {
+  const lastMessage = getLastMessage(conversation);
+
+  return lastMessage ? new Date(lastMessage.createdAt).getTime() : 0;
+};
+
+const formatMessageDate = (date: string) =>
+  new Intl.DateTimeFormat("es-ES", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(date));
+
+const formatShortTime = (date: string) =>
+  new Intl.DateTimeFormat("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(date));
+
 export default function Mensajes() {
   const router = useRouter();
   const [userId, setUserId] = useState("");
@@ -32,6 +55,7 @@ export default function Mensajes() {
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const storedUserId = localStorage.getItem("userId") || "";
@@ -52,12 +76,15 @@ export default function Mensajes() {
         return res.json();
       })
       .then((data: Conversation[]) => {
-        setConversaciones(data);
+        const conversacionesOrdenadas = [...data].sort(
+          (a, b) => getConversationTimestamp(b) - getConversationTimestamp(a)
+        );
+        setConversaciones(conversacionesOrdenadas);
         const queryId =
           typeof router.query.conversationId === "string"
             ? router.query.conversationId
             : "";
-        setSelectedId(queryId || data[0]?.id || "");
+        setSelectedId(queryId || conversacionesOrdenadas[0]?.id || "");
         setError("");
       })
       .catch((err: Error) => {
@@ -70,6 +97,10 @@ export default function Mensajes() {
     () => conversaciones.find((conversacion) => conversacion.id === selectedId),
     [conversaciones, selectedId]
   );
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [conversacionSeleccionada?.id, conversacionSeleccionada?.messages.length]);
 
   const seleccionarConversacion = (id: string) => {
     setSelectedId(id);
@@ -102,14 +133,18 @@ export default function Mensajes() {
 
     const nuevoMensaje: Message = await res.json();
     setConversaciones((prev) =>
-      prev.map((conversacion) =>
-        conversacion.id === nuevoMensaje.conversationId
-          ? {
-              ...conversacion,
-              messages: [...conversacion.messages, nuevoMensaje],
-            }
-          : conversacion
-      )
+      prev
+        .map((conversacion) =>
+          conversacion.id === nuevoMensaje.conversationId
+            ? {
+                ...conversacion,
+                messages: [...conversacion.messages, nuevoMensaje],
+              }
+            : conversacion
+        )
+        .sort(
+          (a, b) => getConversationTimestamp(b) - getConversationTimestamp(a)
+        )
     );
     setBody("");
     setError("");
@@ -138,28 +173,41 @@ export default function Mensajes() {
           {!loading && conversaciones.length > 0 && (
             <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
               <aside className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                {conversaciones.map((conversacion) => (
-                  <button
-                    type="button"
-                    key={conversacion.id}
-                    onClick={() => seleccionarConversacion(conversacion.id)}
-                    className={`block w-full border-b border-gray-100 p-4 text-left transition last:border-b-0 ${
-                      selectedId === conversacion.id
-                        ? "bg-green-50"
-                        : "hover:bg-gray-50"
-                    }`}
-                  >
-                    <p className="font-semibold text-gray-950">
-                      {conversacion.listing.title}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-red-700">
-                      {formatPrice(conversacion.listing.priceCents)}
-                    </p>
-                    <p className="mt-2 text-xs text-gray-500">
-                      {conversacion.messages.length} mensajes
-                    </p>
-                  </button>
-                ))}
+                {conversaciones.map((conversacion) => {
+                  const lastMessage = getLastMessage(conversacion);
+
+                  return (
+                    <button
+                      type="button"
+                      key={conversacion.id}
+                      onClick={() => seleccionarConversacion(conversacion.id)}
+                      className={`block w-full border-b border-gray-100 p-4 text-left transition last:border-b-0 ${
+                        selectedId === conversacion.id
+                          ? "bg-green-50"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="font-semibold text-gray-950">
+                          {conversacion.listing.title}
+                        </p>
+                        {lastMessage && (
+                          <p className="whitespace-nowrap text-xs text-gray-400">
+                            {formatMessageDate(lastMessage.createdAt)}
+                          </p>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm font-semibold text-red-700">
+                        {formatPrice(conversacion.listing.priceCents)}
+                      </p>
+                      <p className="mt-2 line-clamp-2 text-sm text-gray-500">
+                        {lastMessage
+                          ? lastMessage.body
+                          : "Sin mensajes todavía"}
+                      </p>
+                    </button>
+                  );
+                })}
               </aside>
 
               <section className="flex min-h-[520px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -194,11 +242,19 @@ export default function Mensajes() {
                                   : "bg-gray-100 text-gray-800"
                               }`}
                             >
-                              {message.body}
+                              <p>{message.body}</p>
+                              <p
+                                className={`mt-1 text-[11px] ${
+                                  propio ? "text-green-100" : "text-gray-500"
+                                }`}
+                              >
+                                {formatShortTime(message.createdAt)}
+                              </p>
                             </div>
                           </div>
                         );
                       })}
+                      <div ref={messagesEndRef} />
                     </div>
 
                     <form

@@ -8,17 +8,30 @@ const links = [
   { href: "/publicar", label: "Publicar" },
   { href: "/mis-anuncios", label: "Mis anuncios" },
   { href: "/favoritos", label: "Favoritos" },
-  { href: "/mensajes", label: "Mensajes" },
 ];
 
 export default function NavBar() {
   const router = useRouter();
   const [userId, setUserId] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [conversationCount, setConversationCount] = useState(0);
 
   useEffect(() => {
-    setUserId(localStorage.getItem("userId") || "");
+    const storedUserId = localStorage.getItem("userId") || "";
+    setUserId(storedUserId);
     setUserEmail(localStorage.getItem("userEmail") || "");
+
+    if (!storedUserId) {
+      setConversationCount(0);
+      return;
+    }
+
+    fetch(`/api/conversaciones?userId=${encodeURIComponent(storedUserId)}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        setConversationCount(Array.isArray(data) ? data.length : 0);
+      })
+      .catch(() => setConversationCount(0));
   }, []);
 
   const salir = () => {
@@ -26,6 +39,7 @@ export default function NavBar() {
     localStorage.removeItem("userEmail");
     setUserId("");
     setUserEmail("");
+    setConversationCount(0);
     router.push("/catalogo");
   };
 
@@ -49,6 +63,12 @@ export default function NavBar() {
 
           {userId ? (
             <>
+              <Link
+                href="/mensajes"
+                className="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-[#f8f3ef] hover:text-green-700"
+              >
+                Mensajes ({conversationCount})
+              </Link>
               <Link
                 href="/perfil"
                 className="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-[#f8f3ef] hover:text-green-700"
