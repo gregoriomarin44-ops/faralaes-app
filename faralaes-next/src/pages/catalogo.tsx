@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-
+import { useRouter } from "next/router";
 type Producto = {
   id: string;
   title: string;
@@ -19,6 +19,8 @@ type Producto = {
 export default function Catalogo() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     fetch("/api/productos")
@@ -52,8 +54,9 @@ export default function Catalogo() {
           {productos.map((p) => (
             <article
               key={p.id}
-              className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm"
-            >
+              onClick={() => router.push(`/producto/${p.id}`)}
+              className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:shadow-lg transition"
+>
               <div className="aspect-[4/5] overflow-hidden bg-gray-200">
                 {p.images?.[0]?.url ? (
                   <img
