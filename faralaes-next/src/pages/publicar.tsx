@@ -1,8 +1,8 @@
+import { useRouter } from "next/router";
 import { useState } from "react";
 
-const SELLER_ID = "9b9f0f33-faf2-44ad-adbd-c2d8cbf2db2c";
-
 export default function Publicar() {
+  const router = useRouter();
   const [titulo, setTitulo] = useState("");
   const [precio, setPrecio] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -23,11 +23,19 @@ export default function Publicar() {
   const publicar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    const userId = localStorage.getItem("userId");
+
+    if (!userId) {
+      setMensaje("Inicia sesion antes de publicar.");
+      router.push("/login");
+      return;
+    }
+
     const res = await fetch("/api/productos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        sellerId: SELLER_ID,
+        sellerId: userId,
         title: titulo,
         description: descripcion,
         priceCents: Number(precio) * 100,

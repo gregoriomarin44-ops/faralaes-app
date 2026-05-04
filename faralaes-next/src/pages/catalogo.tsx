@@ -31,17 +31,29 @@ export default function Catalogo() {
   return (
     <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
       <section className="max-w-6xl mx-auto">
-        <p className="text-sm uppercase tracking-widest text-red-700 font-semibold">
-          Catálogo
-        </p>
+        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-widest text-red-700 font-semibold">
+              Catálogo
+            </p>
 
-        <h1 className="text-4xl md:text-5xl font-serif mt-3 mb-4">
-          Prendas seleccionadas a mano
-        </h1>
+            <h1 className="text-4xl md:text-5xl font-serif mt-3 mb-4">
+              Prendas seleccionadas a mano
+            </h1>
 
-        <p className="text-gray-600 mb-10">
-          Mostrando {productos.length} prendas publicadas.
-        </p>
+            <p className="text-gray-600">
+              Mostrando {productos.length} prendas publicadas.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => router.push("/mis-anuncios")}
+            className="rounded-full bg-green-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-green-800"
+          >
+            Mis anuncios
+          </button>
+        </div>
 
         {loading && <p>Cargando prendas...</p>}
 
@@ -55,7 +67,7 @@ export default function Catalogo() {
               key={p.id}
               onClick={() => router.push(`/producto/${p.id}`)}
               className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:shadow-lg transition"
->
+            >
               <div className="aspect-[4/5] overflow-hidden bg-gray-200">
                 {p.images?.[0]?.url ? (
                   <img

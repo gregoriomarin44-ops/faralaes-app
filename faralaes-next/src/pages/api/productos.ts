@@ -4,8 +4,19 @@ import { prisma } from "../../lib/prisma";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === "GET") {
+      const { mine, userId } = req.query;
+
+      if (mine === "true" && (!userId || typeof userId !== "string")) {
+        return res.status(400).json({ error: "userId obligatorio" });
+      }
+
       const productos = await prisma.listing.findMany({
-        where: { status: "published" },
+        where: {
+          status: "published",
+          ...(mine === "true" && typeof userId === "string"
+            ? { sellerId: userId }
+            : {}),
+        },
         orderBy: { createdAt: "desc" },
         include: {
           images: {
