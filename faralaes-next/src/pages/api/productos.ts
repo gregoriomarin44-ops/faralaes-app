@@ -13,13 +13,9 @@ export const config = {
   },
 };
 
-const normalizarImagenes = (images: unknown, image?: unknown) => {
+const normalizarImagenes = (images: unknown) => {
   if (Array.isArray(images)) {
     return images;
-  }
-
-  if (typeof image === "string" && image) {
-    return [image];
   }
 
   return [];
@@ -98,7 +94,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         condition,
         shippingAvailable,
         whatsappContactAllowed,
-        image,
         images,
       } = req.body;
 
@@ -112,7 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      const imagenesNormalizadas = normalizarImagenes(images, image);
+      const imagenesNormalizadas = normalizarImagenes(images);
       const errorImagenes = validarImagenes(imagenesNormalizadas);
 
       if (errorImagenes) {
@@ -164,7 +159,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         condition,
         shippingAvailable,
         whatsappContactAllowed,
-        image,
         images,
       } = req.body;
 
@@ -201,8 +195,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const imagenesNormalizadas = Array.isArray(images)
         ? normalizarImagenes(images)
-        : typeof image === "string" && image
-        ? normalizarImagenes(undefined, image)
         : null;
       const errorImagenes = imagenesNormalizadas
         ? validarImagenes(imagenesNormalizadas)
