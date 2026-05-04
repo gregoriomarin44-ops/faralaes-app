@@ -1,7 +1,6 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../../components/NavBar";
-import { uploadListingImages } from "../../lib/supabaseStorage";
 
 const precioAcentimos = (valor: string) => {
   const normalizado = valor.trim().replace(",", ".");
@@ -49,12 +48,11 @@ export default function EditarProducto() {
   const [estado, setEstado] = useState("muy_bueno");
   const [envioDisponible, setEnvioDisponible] = useState(false);
   const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
-  const [imagenes, setImagenes] = useState<string[]>([]);
+  const [imagen, setImagen] = useState<string | null>(null);
+  const [imagenCambiada, setImagenCambiada] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [subiendoImagenes, setSubiendoImagenes] = useState(false);
   const [mensaje, setMensaje] = useState("");
-  const [mensajeImagenes, setMensajeImagenes] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -96,7 +94,8 @@ export default function EditarProducto() {
         setEstado(producto.condition || "muy_bueno");
         setEnvioDisponible(producto.shippingAvailable);
         setContactoWhatsapp(producto.whatsappContactAllowed);
-        setImagenes(producto.images?.map((image) => image.url) || []);
+        setImagen(producto.images?.[0]?.url || null);
+        setImagenCambiada(false);
         setError("");
       })
       .catch((err: Error) => {
@@ -148,7 +147,7 @@ export default function EditarProducto() {
         condition: estado,
         shippingAvailable: envioDisponible,
         whatsappContactAllowed: contactoWhatsapp,
-        images: imagenes,
+        ...(imagenCambiada && imagen ? { image: imagen } : {}),
       }),
     });
 
@@ -162,33 +161,20 @@ export default function EditarProducto() {
     setSaving(false);
   };
 
-  const subirImagenes = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const convertirImagenABase64 = (file: File) => {
+    setError("");
 
-    const seleccionadas = Array.from(files).slice(0, 5 - imagenes.length);
-
-    if (seleccionadas.length === 0) {
-      setError("Puedes subir un máximo de 5 imágenes.");
-      return;
-    }
-
-    setSubiendoImagenes(true);
-    setMensajeImagenes("");
-
-    try {
-      const { urls, warning } = await uploadListingImages(seleccionadas);
-      setImagenes((prev) => [...prev, ...urls].slice(0, 5));
-      setMensajeImagenes(warning || "");
-    } catch (error) {
-      console.error(error);
-      setMensajeImagenes(
-        error instanceof Error
-          ? `Error al subir imágenes: ${error.message}`
-          : "Error al subir imágenes: error desconocido"
-      );
-    } finally {
-      setSubiendoImagenes(false);
-    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setImagen(reader.result);
+        setImagenCambiada(true);
+      }
+    };
+    reader.onerror = () => {
+      setError("No se ha podido leer la imagen seleccionada.");
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -290,44 +276,19 @@ export default function EditarProducto() {
                 <input
                   type="file"
                   accept="image/*"
-                  multiple
-                  disabled={subiendoImagenes || imagenes.length >= 5}
-                  onChange={(e) => subirImagenes(e.target.files)}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) convertirImagenABase64(file);
+                  }}
                 />
 
-                {subiendoImagenes && (
-                  <p className="text-sm text-gray-600">Subiendo imágenes...</p>
-                )}
-
-                {mensajeImagenes && (
-                  <p className="text-sm text-amber-700">{mensajeImagenes}</p>
-                )}
-
-                {imagenes.length > 0 && (
-                  <div className="grid grid-cols-5 gap-2">
-                    {imagenes.map((url, index) => (
-                      <div
-                        key={url}
-                        className="relative aspect-square overflow-hidden rounded border border-gray-200 bg-gray-100"
-                      >
-                        <img
-                          src={url}
-                          alt={`Imagen ${index + 1}`}
-                          className="h-full w-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setImagenes((prev) =>
-                              prev.filter((imagen) => imagen !== url)
-                            )
-                          }
-                          className="absolute right-1 top-1 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-red-700 shadow"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
+                {imagen && (
+                  <div className="h-40 w-40 overflow-hidden rounded border border-gray-200 bg-gray-100">
+                    <img
+                      src={imagen}
+                      alt="Imagen del anuncio"
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                 )}
               </div>
@@ -335,7 +296,7 @@ export default function EditarProducto() {
               <button
                 className="w-full rounded bg-green-700 p-3 font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-gray-400"
                 type="submit"
-                disabled={saving || subiendoImagenes}
+                disabled={saving}
               >
                 {saving ? "Guardando..." : "Guardar cambios"}
               </button>

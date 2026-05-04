@@ -2,6 +2,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getUser } from "../../lib/getUser";
 import { prisma } from "../../lib/prisma";
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "10mb",
+    },
+  },
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === "GET") {
@@ -116,6 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         condition,
         shippingAvailable,
         whatsappContactAllowed,
+        image,
         images,
       } = req.body;
 
@@ -163,7 +172,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           condition: condition || null,
           shippingAvailable: Boolean(shippingAvailable),
           whatsappContactAllowed: Boolean(whatsappContactAllowed),
-          ...(Array.isArray(images)
+          ...(image
+            ? {
+                images: {
+                  deleteMany: {},
+                  create: [
+                    {
+                      url: image,
+                      sortOrder: 0,
+                    },
+                  ],
+                },
+              }
+            : Array.isArray(images)
             ? {
                 images: {
                   deleteMany: {},

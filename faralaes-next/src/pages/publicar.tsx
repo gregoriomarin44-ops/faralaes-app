@@ -1,7 +1,6 @@
 import { useRouter } from "next/router";
 import { useState } from "react";
 import NavBar from "../components/NavBar";
-import { uploadListingImages } from "../lib/supabaseStorage";
 
 const precioAcentimos = (valor: string) => {
   const normalizado = valor.trim().replace(",", ".");
@@ -26,37 +25,20 @@ export default function Publicar() {
   const [estado, setEstado] = useState("muy_bueno");
   const [shippingAvailable, setShippingAvailable] = useState(false);
   const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
-  const [imagenes, setImagenes] = useState<string[]>([]);
-  const [subiendoImagenes, setSubiendoImagenes] = useState(false);
+  const [imagen, setImagen] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState("");
 
-  const subirImagenes = async (files: FileList | null) => {
-    if (!files?.length) return;
-
-    const seleccionadas = Array.from(files).slice(0, 5 - imagenes.length);
-
-    if (seleccionadas.length === 0) {
-      setMensaje("Puedes subir un máximo de 5 imágenes.");
-      return;
-    }
-
-    setSubiendoImagenes(true);
+  const convertirImagenABase64 = (file: File) => {
     setMensaje("");
 
-    try {
-      const { urls, warning } = await uploadListingImages(seleccionadas);
-      setImagenes((prev) => [...prev, ...urls].slice(0, 5));
-      setMensaje(warning || "");
-    } catch (error) {
-      console.error(error);
-      setMensaje(
-        error instanceof Error
-          ? `Error al subir imágenes: ${error.message}`
-          : "Error al subir imágenes: error desconocido"
-      );
-    } finally {
-      setSubiendoImagenes(false);
-    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagen(typeof reader.result === "string" ? reader.result : null);
+    };
+    reader.onerror = () => {
+      setMensaje("No se ha podido leer la imagen seleccionada.");
+    };
+    reader.readAsDataURL(file);
   };
 
   const publicar = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -92,7 +74,7 @@ export default function Publicar() {
         condition: estado,
         shippingAvailable,
         whatsappContactAllowed: contactoWhatsapp,
-        images: imagenes,
+        image: imagen,
       }),
     });
 
@@ -108,7 +90,7 @@ export default function Publicar() {
       setEstado("muy_bueno");
       setShippingAvailable(false);
       setContactoWhatsapp(false);
-      setImagenes([]);
+      setImagen(null);
     } else {
       setMensaje("Error al publicar.");
     }
@@ -166,46 +148,32 @@ export default function Publicar() {
               <input
                 type="file"
                 accept="image/*"
-                multiple
-                disabled={subiendoImagenes || imagenes.length >= 5}
-                onChange={(e) => subirImagenes(e.target.files)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) convertirImagenABase64(file);
+                }}
               />
 
-              {subiendoImagenes && (
-                <p className="text-sm text-gray-600">Subiendo imágenes...</p>
-              )}
-
-              {imagenes.length > 0 && (
-                <div className="grid grid-cols-5 gap-2">
-                  {imagenes.map((url, index) => (
-                    <div
-                      key={url}
-                      className="relative aspect-square overflow-hidden rounded border border-gray-200 bg-gray-100"
-                    >
-                      <img
-                        src={url}
-                        alt={`Imagen ${index + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setImagenes((prev) =>
-                            prev.filter((imagen) => imagen !== url)
-                          )
-                        }
-                        className="absolute right-1 top-1 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-red-700 shadow"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+              {imagen && (
+                <div className="relative h-40 w-40 overflow-hidden rounded border border-gray-200 bg-gray-100">
+                  <img
+                    src={imagen}
+                    alt="Imagen del anuncio"
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setImagen(null)}
+                    className="absolute right-2 top-2 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-red-700 shadow"
+                  >
+                    ×
+                  </button>
                 </div>
               )}
             </div>
 
-            <button className="w-full bg-green-700 text-white p-3 rounded font-semibold disabled:bg-gray-400" type="submit" disabled={subiendoImagenes}>
-              {subiendoImagenes ? "Subiendo imágenes..." : "Publicar"}
+            <button className="w-full bg-green-700 text-white p-3 rounded font-semibold" type="submit">
+              Publicar
             </button>
           </form>
 
