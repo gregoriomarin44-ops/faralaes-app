@@ -19,6 +19,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         images: {
           orderBy: { sortOrder: "asc" },
         },
+        seller: {
+          include: {
+            profile: true,
+          },
+        },
       },
     });
 
