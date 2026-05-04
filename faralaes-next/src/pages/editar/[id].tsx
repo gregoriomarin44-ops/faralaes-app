@@ -54,6 +54,7 @@ export default function EditarProducto() {
   const [saving, setSaving] = useState(false);
   const [subiendoImagenes, setSubiendoImagenes] = useState(false);
   const [mensaje, setMensaje] = useState("");
+  const [mensajeImagenes, setMensajeImagenes] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -172,14 +173,19 @@ export default function EditarProducto() {
     }
 
     setSubiendoImagenes(true);
-    setError("");
+    setMensajeImagenes("");
 
     try {
-      const urls = await uploadListingImages(seleccionadas);
+      const { urls, warning } = await uploadListingImages(seleccionadas);
       setImagenes((prev) => [...prev, ...urls].slice(0, 5));
+      setMensajeImagenes(warning || "");
     } catch (error) {
       console.error(error);
-      setError("Error al subir imágenes.");
+      setMensajeImagenes(
+        error instanceof Error
+          ? `Error al subir imágenes: ${error.message}`
+          : "Error al subir imágenes: error desconocido"
+      );
     } finally {
       setSubiendoImagenes(false);
     }
@@ -291,6 +297,10 @@ export default function EditarProducto() {
 
                 {subiendoImagenes && (
                   <p className="text-sm text-gray-600">Subiendo imágenes...</p>
+                )}
+
+                {mensajeImagenes && (
+                  <p className="text-sm text-amber-700">{mensajeImagenes}</p>
                 )}
 
                 {imagenes.length > 0 && (

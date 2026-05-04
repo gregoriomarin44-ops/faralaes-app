@@ -24,6 +24,7 @@ export default function Publicar() {
   const [color, setColor] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [estado, setEstado] = useState("muy_bueno");
+  const [shippingAvailable, setShippingAvailable] = useState(false);
   const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [subiendoImagenes, setSubiendoImagenes] = useState(false);
@@ -43,11 +44,16 @@ export default function Publicar() {
     setMensaje("");
 
     try {
-      const urls = await uploadListingImages(seleccionadas);
+      const { urls, warning } = await uploadListingImages(seleccionadas);
       setImagenes((prev) => [...prev, ...urls].slice(0, 5));
+      setMensaje(warning || "");
     } catch (error) {
       console.error(error);
-      setMensaje("Error al subir imágenes.");
+      setMensaje(
+        error instanceof Error
+          ? `Error al subir imágenes: ${error.message}`
+          : "Error al subir imágenes: error desconocido"
+      );
     } finally {
       setSubiendoImagenes(false);
     }
@@ -84,6 +90,7 @@ export default function Publicar() {
         color: color || null,
         location: ubicacion || null,
         condition: estado,
+        shippingAvailable,
         whatsappContactAllowed: contactoWhatsapp,
         images: imagenes,
       }),
@@ -99,6 +106,7 @@ export default function Publicar() {
       setColor("");
       setUbicacion("");
       setEstado("muy_bueno");
+      setShippingAvailable(false);
       setContactoWhatsapp(false);
       setImagenes([]);
     } else {
@@ -135,6 +143,15 @@ export default function Publicar() {
               <option value="bueno">Bueno</option>
               <option value="usado">Usado</option>
             </select>
+
+            <label className="flex items-center gap-3 rounded border p-3 text-sm font-semibold text-gray-700">
+              <input
+                type="checkbox"
+                checked={shippingAvailable}
+                onChange={(e) => setShippingAvailable(e.target.checked)}
+              />
+              Envío disponible
+            </label>
 
             <label className="flex items-center gap-3 rounded border p-3 text-sm font-semibold text-gray-700">
               <input
