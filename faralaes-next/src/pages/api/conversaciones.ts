@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { getUser } from "../../lib/getUser";
 import { prisma } from "../../lib/prisma";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -8,6 +9,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!listingId || !buyerId) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
+      }
+
+      const user = await getUser(buyerId);
+
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
       }
 
       const listing = await prisma.listing.findUnique({
@@ -22,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: "Anuncio no encontrado" });
       }
 
-      if (listing.sellerId === buyerId) {
+      if (listing.sellerId === user.id) {
         return res
           .status(400)
           .json({ error: "No puedes abrir conversación con tu propio anuncio" });
@@ -31,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const existente = await prisma.conversation.findFirst({
         where: {
           listingId,
-          buyerId,
+          buyerId: user.id,
         },
         include: {
           listing: true,
@@ -58,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const conversation = await prisma.conversation.create({
         data: {
           listingId,
-          buyerId,
+          buyerId: user.id,
           sellerId: listing.sellerId,
         },
         include: {
@@ -89,9 +96,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "userId obligatorio" });
       }
 
+      const user = await getUser(userId);
+
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
       const conversaciones = await prisma.conversation.findMany({
         where: {
-          OR: [{ buyerId: userId }, { sellerId: userId }],
+          OR: [{ buyerId: user.id }, { sellerId: user.id }],
         },
         orderBy: { updatedAt: "desc" },
         include: {

@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { getUser } from "../../lib/getUser";
 import { prisma } from "../../lib/prisma";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -10,10 +11,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
+      const user = await getUser(senderId);
+
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const conversation = await prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: {
+          buyerId: true,
+          sellerId: true,
+        },
+      });
+
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversación no encontrada" });
+      }
+
+      if (conversation.buyerId !== user.id && conversation.sellerId !== user.id) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
       const message = await prisma.message.create({
         data: {
           conversationId,
-          senderId,
+          senderId: user.id,
           body,
         },
       });
@@ -27,10 +50,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "GET") {
-      const { conversationId } = req.query;
+      const { conversationId, userId } = req.query;
 
       if (!conversationId || typeof conversationId !== "string") {
         return res.status(400).json({ error: "conversationId obligatorio" });
+      }
+
+      const user = await getUser(userId);
+
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const conversation = await prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: {
+          buyerId: true,
+          sellerId: true,
+        },
+      });
+
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversación no encontrada" });
+      }
+
+      if (conversation.buyerId !== user.id && conversation.sellerId !== user.id) {
+        return res.status(403).json({ error: "No autorizado" });
       }
 
       const messages = await prisma.message.findMany({

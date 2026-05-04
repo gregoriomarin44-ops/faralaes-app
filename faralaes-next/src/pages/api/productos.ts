@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { getUser } from "../../lib/getUser";
 import { prisma } from "../../lib/prisma";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -10,11 +11,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "userId obligatorio" });
       }
 
+      const user = mine === "true" ? await getUser(userId) : null;
+
+      if (mine === "true" && !user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
       const productos = await prisma.listing.findMany({
         where: {
           status: "published",
-          ...(mine === "true" && typeof userId === "string"
-            ? { sellerId: userId }
+          ...(mine === "true" && user
+            ? { sellerId: user.id }
             : {}),
         },
         orderBy: { createdAt: "desc" },
@@ -48,12 +55,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
+      const user = await getUser(sellerId);
+
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
       const producto = await prisma.listing.create({
         data: {
           title,
           description: description || null,
           priceCents,
-          sellerId,
+          sellerId: user.id,
           category,
           size: size || null,
           color: color || null,
@@ -101,6 +114,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
+      const user = await getUser(userId);
+
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
       if (!title || !priceCents || !category) {
         return res
           .status(400)
@@ -118,7 +137,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: "Producto no encontrado" });
       }
 
-      if (productoActual.sellerId !== userId) {
+      if (productoActual.sellerId !== user.id) {
         return res.status(403).json({ error: "No autorizado" });
       }
 
@@ -153,6 +172,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
+      const user = await getUser(userId);
+
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
       const productoActual = await prisma.listing.findUnique({
         where: { id },
         select: {
@@ -164,7 +189,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: "Producto no encontrado" });
       }
 
-      if (productoActual.sellerId !== userId) {
+      if (productoActual.sellerId !== user.id) {
         return res.status(403).json({ error: "No autorizado" });
       }
 
