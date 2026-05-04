@@ -77,6 +77,78 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(201).json(producto);
     }
 
+    if (req.method === "PUT") {
+      const { id, userId, title, description, priceCents } = req.body;
+
+      if (!id || !userId) {
+        return res.status(400).json({ error: "Faltan campos obligatorios" });
+      }
+
+      if (!title || !priceCents) {
+        return res.status(400).json({ error: "Título y precio obligatorios" });
+      }
+
+      const productoActual = await prisma.listing.findUnique({
+        where: { id },
+        select: {
+          sellerId: true,
+        },
+      });
+
+      if (!productoActual) {
+        return res.status(404).json({ error: "Producto no encontrado" });
+      }
+
+      if (productoActual.sellerId !== userId) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      const producto = await prisma.listing.update({
+        where: { id },
+        data: {
+          title,
+          description: description || null,
+          priceCents,
+        },
+        include: {
+          images: {
+            orderBy: { sortOrder: "asc" },
+          },
+        },
+      });
+
+      return res.status(200).json(producto);
+    }
+
+    if (req.method === "DELETE") {
+      const { id, userId } = req.body;
+
+      if (!id || !userId) {
+        return res.status(400).json({ error: "Faltan campos obligatorios" });
+      }
+
+      const productoActual = await prisma.listing.findUnique({
+        where: { id },
+        select: {
+          sellerId: true,
+        },
+      });
+
+      if (!productoActual) {
+        return res.status(404).json({ error: "Producto no encontrado" });
+      }
+
+      if (productoActual.sellerId !== userId) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      await prisma.listing.delete({
+        where: { id },
+      });
+
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(405).json({ error: "Método no permitido" });
   } catch (error) {
     console.error(error);
