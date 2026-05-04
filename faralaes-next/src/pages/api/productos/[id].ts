@@ -20,18 +20,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status: "published",
       },
       include: {
-        images: {
-          orderBy: { sortOrder: "asc" },
-        },
+        images: true,
         seller: {
-          select: {
-            profile: {
-              select: {
-                displayName: true,
-                phone: true,
-                location: true,
-              },
-            },
+          include: {
+            profile: true,
           },
         },
       },

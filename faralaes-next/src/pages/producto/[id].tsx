@@ -147,13 +147,13 @@ export default function ProductoDetalle() {
       }).format(new Date(producto.createdAt))
     : "Fecha no disponible";
   const images = producto.images || [];
-  const esAnuncioPropio = Boolean(userId && producto.sellerId === userId);
+  const esPropio = userId === producto.sellerId;
   const sellerPhone = producto.seller?.profile?.phone?.replace(/\D/g, "") || "";
-  const puedeContactarPorWhatsapp =
-    Boolean(userId) &&
-    !esAnuncioPropio &&
+  const puedeWhatsapp =
+    userId &&
+    !esPropio &&
     producto.whatsappContactAllowed &&
-    Boolean(sellerPhone);
+    producto.seller?.profile?.phone;
 
   return (
     <>
@@ -265,7 +265,7 @@ export default function ProductoDetalle() {
               </div>
             </div>
 
-            {esAnuncioPropio ? (
+            {esPropio ? (
               <button
                 type="button"
                 onClick={() => router.push(`/editar/${producto.id}`)}
@@ -273,7 +273,23 @@ export default function ProductoDetalle() {
               >
                 Editar anuncio
               </button>
-            ) : puedeContactarPorWhatsapp ? (
+            ) : !userId ? (
+              <button
+                type="button"
+                onClick={() => router.push("/login")}
+                className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
+              >
+                Entra para contactar
+              </button>
+            ) : !producto.whatsappContactAllowed ? (
+              <p className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-center font-semibold text-gray-700">
+                Este vendedor no permite contacto por WhatsApp
+              </p>
+            ) : !producto.seller?.profile?.phone ? (
+              <p className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-center font-semibold text-gray-700">
+                Este vendedor no tiene teléfono de WhatsApp configurado
+              </p>
+            ) : puedeWhatsapp ? (
               <a
                 href={`https://wa.me/${sellerPhone}?text=${whatsappText}`}
                 target="_blank"
@@ -282,21 +298,7 @@ export default function ProductoDetalle() {
               >
                 Contactar por WhatsApp
               </a>
-            ) : userId ? (
-              <p className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-center font-semibold text-gray-700">
-                {producto.whatsappContactAllowed
-                  ? "Este vendedor no tiene teléfono de WhatsApp configurado"
-                  : "Este vendedor no acepta contacto por WhatsApp"}
-              </p>
-            ) : (
-              <button
-                type="button"
-                onClick={() => router.push("/login")}
-                className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
-              >
-                Entra para contactar
-              </button>
-            )}
+            ) : null}
 
             <div className="mt-6 space-y-1 text-xs text-gray-400">
               <p>Publicado el {publishedDate}</p>
