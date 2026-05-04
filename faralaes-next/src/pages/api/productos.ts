@@ -39,6 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         color,
         location,
         condition,
+        shippingAvailable,
+        whatsappContactAllowed,
         image,
       } = req.body;
 
@@ -57,6 +59,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           color: color || null,
           location: location || null,
           condition: condition || null,
+          shippingAvailable: Boolean(shippingAvailable),
+          whatsappContactAllowed: Boolean(whatsappContactAllowed),
           status: "published",
           images: image
             ? {
@@ -90,6 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         location,
         condition,
         shippingAvailable,
+        whatsappContactAllowed,
       } = req.body;
 
       if (!id || !userId) {
@@ -129,6 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           location: location || null,
           condition: condition || null,
           shippingAvailable: Boolean(shippingAvailable),
+          whatsappContactAllowed: Boolean(whatsappContactAllowed),
         },
         include: {
           images: {

@@ -23,6 +23,7 @@ export default function Publicar() {
   const [color, setColor] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [estado, setEstado] = useState("muy_bueno");
+  const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
   const [imagen, setImagen] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState("");
 
@@ -63,6 +64,7 @@ export default function Publicar() {
         color: color || null,
         location: ubicacion || null,
         condition: estado,
+        whatsappContactAllowed: contactoWhatsapp,
         image: imagen,
       }),
     });
@@ -77,6 +79,7 @@ export default function Publicar() {
       setColor("");
       setUbicacion("");
       setEstado("muy_bueno");
+      setContactoWhatsapp(false);
       setImagen(null);
     } else {
       setMensaje("Error al publicar.");
@@ -112,6 +115,15 @@ export default function Publicar() {
               <option value="bueno">Bueno</option>
               <option value="usado">Usado</option>
             </select>
+
+            <label className="flex items-center gap-3 rounded border p-3 text-sm font-semibold text-gray-700">
+              <input
+                type="checkbox"
+                checked={contactoWhatsapp}
+                onChange={(e) => setContactoWhatsapp(e.target.checked)}
+              />
+              Permitir contacto por WhatsApp
+            </label>
 
             <input type="file" accept="image/*" onChange={(e) => {
               const file = e.target.files?.[0];

@@ -28,6 +28,7 @@ type Producto = {
   location: string | null;
   condition: string | null;
   shippingAvailable: boolean;
+  whatsappContactAllowed: boolean;
 };
 
 export default function EditarProducto() {
@@ -43,6 +44,7 @@ export default function EditarProducto() {
   const [ubicacion, setUbicacion] = useState("");
   const [estado, setEstado] = useState("muy_bueno");
   const [envioDisponible, setEnvioDisponible] = useState(false);
+  const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -86,6 +88,7 @@ export default function EditarProducto() {
         setUbicacion(producto.location || "");
         setEstado(producto.condition || "muy_bueno");
         setEnvioDisponible(producto.shippingAvailable);
+        setContactoWhatsapp(producto.whatsappContactAllowed);
         setError("");
       })
       .catch((err: Error) => {
@@ -136,6 +139,7 @@ export default function EditarProducto() {
         location: ubicacion || null,
         condition: estado,
         shippingAvailable: envioDisponible,
+        whatsappContactAllowed: contactoWhatsapp,
       }),
     });
 
@@ -234,6 +238,14 @@ export default function EditarProducto() {
                   onChange={(e) => setEnvioDisponible(e.target.checked)}
                 />
                 Envío disponible
+              </label>
+              <label className="flex items-center gap-3 rounded border p-3 text-sm font-semibold text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={contactoWhatsapp}
+                  onChange={(e) => setContactoWhatsapp(e.target.checked)}
+                />
+                Permitir contacto por WhatsApp
               </label>
 
               <button

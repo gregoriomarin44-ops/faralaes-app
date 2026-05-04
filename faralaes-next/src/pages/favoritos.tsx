@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
+import { formatPrice } from "../lib/formatPrice";
 
 type Producto = {
   id: string;
@@ -155,7 +156,7 @@ export default function Favoritos() {
                   )}
 
                   <p className="mb-3 text-2xl font-semibold text-red-700">
-                    {(p.priceCents / 100).toFixed(2)} €
+                    {formatPrice(p.priceCents)}
                   </p>
 
                   <div className="space-y-1 text-sm text-gray-500">

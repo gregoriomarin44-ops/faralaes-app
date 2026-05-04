@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import NavBar from "../components/NavBar";
+import { formatPrice } from "../lib/formatPrice";
 
 type Producto = {
   id: string;
@@ -192,7 +193,7 @@ export default function Catalogo() {
                 )}
 
                 <p className="text-2xl font-semibold text-red-700 mb-3">
-                  {(p.priceCents / 100).toFixed(2)} €
+                  {formatPrice(p.priceCents)}
                 </p>
 
                 <div className="text-sm text-gray-500 space-y-1">

@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../../components/NavBar";
+import { formatPrice } from "../../lib/formatPrice";
 
 type Producto = {
   id: string;
@@ -14,6 +15,7 @@ type Producto = {
   location: string | null;
   condition: string | null;
   shippingAvailable: boolean;
+  whatsappContactAllowed: boolean;
   createdAt: string;
   images?: {
     url: string;
@@ -146,6 +148,8 @@ export default function ProductoDetalle() {
     : "Fecha no disponible";
   const images = producto.images || [];
   const esAnuncioPropio = Boolean(userId && producto.sellerId === userId);
+  const puedeContactarPorWhatsapp =
+    Boolean(userId) && !esAnuncioPropio && producto.whatsappContactAllowed;
 
   return (
     <>
@@ -210,7 +214,7 @@ export default function ProductoDetalle() {
               </h1>
 
               <p className="text-4xl font-bold text-red-700">
-                {(producto.priceCents / 100).toFixed(2)} €
+                {formatPrice(producto.priceCents)}
               </p>
             </div>
 
@@ -265,7 +269,7 @@ export default function ProductoDetalle() {
               >
                 Editar anuncio
               </button>
-            ) : (
+            ) : puedeContactarPorWhatsapp ? (
               <a
                 href={`https://wa.me/?text=${whatsappText}`}
                 target="_blank"
@@ -274,6 +278,18 @@ export default function ProductoDetalle() {
               >
                 Contactar por WhatsApp
               </a>
+            ) : userId ? (
+              <p className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-center font-semibold text-gray-700">
+                Este vendedor no acepta contacto por WhatsApp
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => router.push("/login")}
+                className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
+              >
+                Entra para contactar
+              </button>
             )}
 
             <div className="mt-6 space-y-1 text-xs text-gray-400">
