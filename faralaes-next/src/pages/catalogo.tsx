@@ -20,15 +20,72 @@ type Producto = {
 
 export default function Catalogo() {
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [favoritos, setFavoritos] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/productos")
-      .then((res) => res.json())
-      .then((data) => setProductos(data))
-      .finally(() => setLoading(false));
+    const userId = localStorage.getItem("userId");
+
+    const cargarCatalogo = async () => {
+      try {
+        const productosRes = await fetch("/api/productos");
+        const productosData = await productosRes.json();
+        setProductos(productosData);
+
+        if (userId) {
+          const favoritosRes = await fetch(
+            `/api/favoritos?userId=${encodeURIComponent(userId)}`
+          );
+
+          if (favoritosRes.ok) {
+            const favoritosData: Producto[] = await favoritosRes.json();
+            setFavoritos(favoritosData.map((producto) => producto.id));
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarCatalogo();
   }, []);
+
+  const toggleFavorito = async (
+    e: React.MouseEvent<HTMLButtonElement>,
+    listingId: string
+  ) => {
+    e.stopPropagation();
+
+    const userId = localStorage.getItem("userId");
+
+    if (!userId) {
+      router.push("/login");
+      return;
+    }
+
+    const estaGuardado = favoritos.includes(listingId);
+
+    setFavoritos((prev) =>
+      estaGuardado
+        ? prev.filter((id) => id !== listingId)
+        : [...prev, listingId]
+    );
+
+    const res = await fetch("/api/favoritos", {
+      method: estaGuardado ? "DELETE" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, listingId }),
+    });
+
+    if (!res.ok) {
+      setFavoritos((prev) =>
+        estaGuardado
+          ? [...prev, listingId]
+          : prev.filter((id) => id !== listingId)
+      );
+    }
+  };
 
   return (
     <>
@@ -72,7 +129,28 @@ export default function Catalogo() {
               onClick={() => router.push(`/producto/${p.id}`)}
               className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:shadow-lg transition"
             >
-              <div className="aspect-[4/5] overflow-hidden bg-gray-200">
+              <div className="relative aspect-[4/5] overflow-hidden bg-gray-200">
+                <button
+                  type="button"
+                  onClick={(e) => toggleFavorito(e, p.id)}
+                  className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-3xl leading-none shadow-md transition hover:scale-105"
+                  aria-label={
+                    favoritos.includes(p.id)
+                      ? "Quitar de favoritos"
+                      : "Guardar en favoritos"
+                  }
+                >
+                  <span
+                    className={
+                      favoritos.includes(p.id)
+                        ? "text-red-600"
+                        : "text-gray-500"
+                    }
+                  >
+                    ♥
+                  </span>
+                </button>
+
                 {p.images?.[0]?.url ? (
                   <img
                     src={p.images[0].url}
