@@ -12,7 +12,17 @@ type Producto = {
   location: string | null;
   condition: string | null;
   shippingAvailable: boolean;
-  images?: { url: string }[];
+  createdAt: string;
+  images?: {
+    url: string;
+  }[];
+  seller?: {
+    profile?: {
+      displayName?: string | null;
+      phone?: string | null;
+      location?: string | null;
+    } | null;
+  } | null;
 };
 
 export default function ProductoDetalle() {
@@ -20,46 +30,88 @@ export default function ProductoDetalle() {
   const { id } = router.query;
 
   const [producto, setProducto] = useState<Producto | null>(null);
+  const [selectedImage, setSelectedImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!id) return;
+    if (!router.isReady) return;
+
+    if (!id || typeof id !== "string") {
+      setProducto(null);
+      setError("Producto no encontrado.");
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
+    setError("");
 
     fetch(`/api/productos/${id}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Producto no encontrado");
+        if (res.status === 404) {
+          throw new Error("Producto no encontrado.");
+        }
+
+        if (!res.ok) {
+          throw new Error("No se ha podido cargar el anuncio.");
+        }
+
         return res.json();
       })
-      .then((data) => {
+      .then((data: Producto) => {
         setProducto(data);
-        setError("");
+        setSelectedImage(data.images?.[0]?.url || "");
       })
-      .catch(() => {
+      .catch((err: Error) => {
         setProducto(null);
-        setError("No se ha podido cargar el anuncio.");
+        setError(err.message || "No se ha podido cargar el anuncio.");
       })
-      .finally(() => setLoading(false));
-  }, [id]);
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [id, router.isReady]);
+
+  const volverAlCatalogo = () => {
+    router.push("/catalogo");
+  };
 
   if (loading) {
     return (
       <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
-        <p className="text-center text-gray-600">Cargando anuncio...</p>
+        <section className="mx-auto max-w-6xl">
+          <p className="text-center text-gray-600">Cargando anuncio...</p>
+        </section>
       </main>
     );
   }
 
-  if (error || !producto) {
+  if (error) {
     return (
       <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
-        <section className="max-w-3xl mx-auto bg-white rounded-2xl p-8 border border-gray-200 text-center">
-          <p className="text-gray-700 mb-6">{error || "Producto no encontrado."}</p>
+        <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <p className="mb-6 text-gray-700">{error}</p>
           <button
-            onClick={() => router.push("/catalogo")}
-            className="bg-green-700 text-white px-6 py-3 rounded-full font-semibold"
+            type="button"
+            onClick={volverAlCatalogo}
+            className="rounded-full bg-green-700 px-6 py-3 font-semibold text-white transition hover:bg-green-800"
+          >
+            Volver al catálogo
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  if (!producto) {
+    return (
+      <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
+        <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <p className="mb-6 text-gray-700">Producto no encontrado.</p>
+          <button
+            type="button"
+            onClick={volverAlCatalogo}
+            className="rounded-full bg-green-700 px-6 py-3 font-semibold text-white transition hover:bg-green-800"
           >
             Volver al catálogo
           </button>
@@ -69,68 +121,138 @@ export default function ProductoDetalle() {
   }
 
   const whatsappText = encodeURIComponent(
-    `Hola, me interesa este anuncio de Faralaes:\n\n${producto.title}\nPrecio: ${(producto.priceCents / 100).toFixed(2)} €\nUbicación: ${producto.location || "Sin ubicación"}`
+    `Hola, me interesa el producto ${producto.title}`
   );
+  const publishedDate = producto.createdAt
+    ? new Intl.DateTimeFormat("es-ES", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      }).format(new Date(producto.createdAt))
+    : "Fecha no disponible";
+  const images = producto.images || [];
 
   return (
-    <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
-      <section className="max-w-6xl mx-auto">
+    <main className="min-h-screen bg-[#f8f3ef] px-4 py-8 sm:px-6 lg:py-12">
+      <section className="mx-auto max-w-6xl">
         <button
-          onClick={() => router.push("/catalogo")}
-          className="mb-6 text-sm text-green-700 font-semibold hover:underline"
+          type="button"
+          onClick={volverAlCatalogo}
+          className="mb-6 rounded-full border border-gray-300 bg-white px-5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-green-700 hover:text-green-700"
         >
-          ← Volver al catálogo
+          Volver al catálogo
         </button>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 grid md:grid-cols-2 gap-8">
-          <div className="aspect-[4/5] bg-gray-200 rounded-xl overflow-hidden flex items-center justify-center">
-            {producto.images?.[0]?.url ? (
-              <img
-                src={producto.images[0].url}
-                alt={producto.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-gray-400">Sin imagen</span>
+        <div className="grid gap-8 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:gap-10">
+          <div>
+            <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-2xl bg-gray-100">
+              {selectedImage ? (
+                <img
+                  src={selectedImage}
+                  alt={producto.title}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-gray-400">Sin imagen</span>
+              )}
+            </div>
+
+            {images.length > 1 && (
+              <div className="mt-4 grid grid-cols-5 gap-3 sm:grid-cols-6">
+                {images.map((image, index) => (
+                  <button
+                    type="button"
+                    key={`${image.url}-${index}`}
+                    onClick={() => setSelectedImage(image.url)}
+                    className={`aspect-square overflow-hidden rounded-xl border bg-gray-100 transition ${
+                      selectedImage === image.url
+                        ? "border-green-700 ring-2 ring-green-700/20"
+                        : "border-gray-200 hover:border-gray-400"
+                    }`}
+                    aria-label={`Ver imagen ${index + 1}`}
+                  >
+                    <img
+                      src={image.url}
+                      alt={`${producto.title} ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
           <div className="flex flex-col">
-            <p className="text-sm uppercase tracking-widest text-red-700 font-semibold mb-3">
-              {producto.category}
-            </p>
+            <div className="border-b border-gray-100 pb-6">
+              <p className="mb-3 text-xs font-bold uppercase tracking-widest text-red-700">
+                {producto.category}
+              </p>
 
-            <h1 className="font-serif text-4xl mb-3">
-              {producto.title}
-            </h1>
+              <h1 className="mb-4 text-3xl font-bold leading-tight text-gray-950 sm:text-4xl">
+                {producto.title}
+              </h1>
+
+              <p className="text-4xl font-bold text-red-700">
+                {(producto.priceCents / 100).toFixed(2)} €
+              </p>
+            </div>
 
             {producto.description && (
-              <p className="text-gray-600 mb-5 leading-relaxed">
-                {producto.description}
-              </p>
+              <div className="border-b border-gray-100 py-6">
+                <h2 className="mb-3 text-lg font-semibold text-gray-950">
+                  Descripción
+                </h2>
+                <p className="leading-relaxed text-gray-600">
+                  {producto.description}
+                </p>
+              </div>
             )}
 
-            <p className="text-4xl font-semibold text-red-700 mb-8">
-              {(producto.priceCents / 100).toFixed(2)} €
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600 mb-8">
-              <p><strong>Categoría:</strong> {producto.category}</p>
-              <p><strong>Talla:</strong> {producto.size || "Única"}</p>
-              <p><strong>Color:</strong> {producto.color || "Sin color"}</p>
-              <p><strong>Ubicación:</strong> {producto.location || "Sin ubicación"}</p>
-              <p><strong>Estado:</strong> {producto.condition || "No indicado"}</p>
-              <p><strong>Envío:</strong> {producto.shippingAvailable ? "Disponible" : "No indicado"}</p>
+            <div className="border-b border-gray-100 py-6">
+              <h2 className="mb-4 text-lg font-semibold text-gray-950">
+                Detalles
+              </h2>
+              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                <div className="rounded-xl bg-gray-50 p-3">
+                  <p className="text-gray-500">Talla</p>
+                  <p className="font-semibold text-gray-900">
+                    {producto.size || "Única"}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-3">
+                  <p className="text-gray-500">Color</p>
+                  <p className="font-semibold text-gray-900">
+                    {producto.color || "Sin color"}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-3">
+                  <p className="text-gray-500">Ubicación</p>
+                  <p className="font-semibold text-gray-900">
+                    {producto.location || "Sin ubicación"}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-3">
+                  <p className="text-gray-500">Estado</p>
+                  <p className="font-semibold text-gray-900">
+                    {producto.condition || "No indicado"}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <a
-              href={`https://wa.me/34633195730?text=${whatsappText}`}
+              href={`https://wa.me/?text=${whatsappText}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-auto w-full bg-green-700 hover:bg-green-800 text-white py-3 rounded-full font-semibold text-center transition"
+              className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
             >
               Contactar por WhatsApp
             </a>
+
+            <div className="mt-6 space-y-1 text-xs text-gray-400">
+              <p>Publicado el {publishedDate}</p>
+              <p>ID del producto: {producto.id}</p>
+            </div>
           </div>
         </div>
       </section>
