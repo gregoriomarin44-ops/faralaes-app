@@ -16,12 +16,22 @@ type Conversation = {
   listingId: string;
   buyerId: string;
   sellerId: string;
+  buyer: User;
+  seller: User;
   listing: {
     id: string;
     title: string;
     priceCents: number;
   };
   messages: Message[];
+};
+
+type User = {
+  id: string;
+  email: string;
+  profile?: {
+    displayName: string;
+  } | null;
 };
 
 const getLastMessage = (conversation: Conversation) =>
@@ -47,6 +57,19 @@ const formatShortTime = (date: string) =>
     minute: "2-digit",
   }).format(new Date(date));
 
+const sortConversations = (conversations: Conversation[]) =>
+  [...conversations].sort(
+    (a, b) => getConversationTimestamp(b) - getConversationTimestamp(a)
+  );
+
+const getOtherUser = (conversation: Conversation, userId: string) =>
+  conversation.buyerId === userId ? conversation.seller : conversation.buyer;
+
+const getDisplayName = (user: User) => user.profile?.displayName || user.email;
+
+const getRoleLabel = (conversation: Conversation, userId: string) =>
+  conversation.buyerId === userId ? "Comprador" : "Vendedor";
+
 export default function Mensajes() {
   const router = useRouter();
   const [userId, setUserId] = useState("");
@@ -67,30 +90,44 @@ export default function Mensajes() {
 
     setUserId(storedUserId);
 
-    fetch(`/api/conversaciones?userId=${encodeURIComponent(storedUserId)}`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("No se han podido cargar tus mensajes.");
-        }
+    const cargarConversaciones = (initial = false) => {
+      fetch(`/api/conversaciones?userId=${encodeURIComponent(storedUserId)}`)
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error("No se han podido cargar tus mensajes.");
+          }
 
-        return res.json();
-      })
-      .then((data: Conversation[]) => {
-        const conversacionesOrdenadas = [...data].sort(
-          (a, b) => getConversationTimestamp(b) - getConversationTimestamp(a)
-        );
-        setConversaciones(conversacionesOrdenadas);
+          return res.json();
+        })
+        .then((data: Conversation[]) => {
+          const conversacionesOrdenadas = sortConversations(data);
+          setConversaciones(conversacionesOrdenadas);
+          setError("");
+
+          if (!initial) {
+            return;
+          }
+
         const queryId =
           typeof router.query.conversationId === "string"
             ? router.query.conversationId
             : "";
         setSelectedId(queryId || conversacionesOrdenadas[0]?.id || "");
-        setError("");
-      })
-      .catch((err: Error) => {
-        setError(err.message || "No se han podido cargar tus mensajes.");
-      })
-      .finally(() => setLoading(false));
+        })
+        .catch((err: Error) => {
+          setError(err.message || "No se han podido cargar tus mensajes.");
+        })
+        .finally(() => {
+          if (initial) {
+            setLoading(false);
+          }
+        });
+    };
+
+    cargarConversaciones(true);
+    const intervalId = window.setInterval(() => cargarConversaciones(), 3000);
+
+    return () => window.clearInterval(intervalId);
   }, [router]);
 
   const conversacionSeleccionada = useMemo(
@@ -142,9 +179,7 @@ export default function Mensajes() {
               }
             : conversacion
         )
-        .sort(
-          (a, b) => getConversationTimestamp(b) - getConversationTimestamp(a)
-        )
+        .sort((a, b) => getConversationTimestamp(b) - getConversationTimestamp(a))
     );
     setBody("");
     setError("");
@@ -175,6 +210,8 @@ export default function Mensajes() {
               <aside className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                 {conversaciones.map((conversacion) => {
                   const lastMessage = getLastMessage(conversacion);
+                  const otherUser = getOtherUser(conversacion, userId);
+                  const roleLabel = getRoleLabel(conversacion, userId);
 
                   return (
                     <button
@@ -200,6 +237,14 @@ export default function Mensajes() {
                       <p className="mt-1 text-sm font-semibold text-red-700">
                         {formatPrice(conversacion.listing.priceCents)}
                       </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
+                          {roleLabel}
+                        </span>
+                        <p className="text-xs text-gray-500">
+                          Con: {getDisplayName(otherUser)}
+                        </p>
+                      </div>
                       <p className="mt-2 line-clamp-2 text-sm text-gray-500">
                         {lastMessage
                           ? lastMessage.body
@@ -218,6 +263,17 @@ export default function Mensajes() {
                       <h2 className="font-serif text-2xl text-gray-950">
                         {conversacionSeleccionada.listing.title}
                       </h2>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-green-700">
+                          {getRoleLabel(conversacionSeleccionada, userId)}
+                        </span>
+                        <p className="text-sm font-semibold text-gray-700">
+                          Con:{" "}
+                          {getDisplayName(
+                            getOtherUser(conversacionSeleccionada, userId)
+                          )}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="flex-1 space-y-3 overflow-y-auto p-5">

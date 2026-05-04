@@ -35,6 +35,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         include: {
           listing: true,
+          buyer: {
+            include: {
+              profile: true,
+            },
+          },
+          seller: {
+            include: {
+              profile: true,
+            },
+          },
           messages: {
             orderBy: { createdAt: "asc" },
           },
@@ -53,6 +63,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         include: {
           listing: true,
+          buyer: {
+            include: {
+              profile: true,
+            },
+          },
+          seller: {
+            include: {
+              profile: true,
+            },
+          },
           messages: {
             orderBy: { createdAt: "asc" },
           },
@@ -76,6 +96,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         orderBy: { updatedAt: "desc" },
         include: {
           listing: true,
+          buyer: {
+            include: {
+              profile: true,
+            },
+          },
+          seller: {
+            include: {
+              profile: true,
+            },
+          },
           messages: {
             orderBy: { createdAt: "asc" },
           },
