@@ -15,15 +15,38 @@ type Producto = {
   location: string | null;
   condition: string | null;
   shippingAvailable: boolean;
+  whatsappContactAllowed: boolean;
   images?: {
     url: string;
   }[];
+};
+
+const precioAcentimos = (valor: string) => {
+  if (!valor.trim()) return null;
+
+  const normalizado = valor.trim().replace(",", ".");
+  const numero = Number(normalizado);
+
+  if (!Number.isFinite(numero)) {
+    return null;
+  }
+
+  return Math.round(numero * 100);
 };
 
 export default function Catalogo() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [userId, setUserId] = useState("");
+  const [busqueda, setBusqueda] = useState("");
+  const [categoria, setCategoria] = useState("todas");
+  const [ubicacion, setUbicacion] = useState("");
+  const [talla, setTalla] = useState("");
+  const [precioMin, setPrecioMin] = useState("");
+  const [precioMax, setPrecioMax] = useState("");
+  const [soloWhatsapp, setSoloWhatsapp] = useState(false);
+  const [soloEnvio, setSoloEnvio] = useState(false);
+  const [orden, setOrden] = useState("recientes");
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -100,6 +123,56 @@ export default function Catalogo() {
     }
   };
 
+  const precioMinCents = precioAcentimos(precioMin);
+  const precioMaxCents = precioAcentimos(precioMax);
+  const productosFiltrados = productos
+    .filter((producto) => {
+      const texto = busqueda.trim().toLowerCase();
+      const coincideTexto =
+        !texto ||
+        producto.title.toLowerCase().includes(texto) ||
+        (producto.description || "").toLowerCase().includes(texto);
+      const coincideCategoria =
+        categoria === "todas" || producto.category === categoria;
+      const coincideUbicacion =
+        !ubicacion.trim() ||
+        (producto.location || "")
+          .toLowerCase()
+          .includes(ubicacion.trim().toLowerCase());
+      const coincideTalla =
+        !talla.trim() ||
+        (producto.size || "").toLowerCase().includes(talla.trim().toLowerCase());
+      const coincidePrecioMin =
+        precioMinCents === null || producto.priceCents >= precioMinCents;
+      const coincidePrecioMax =
+        precioMaxCents === null || producto.priceCents <= precioMaxCents;
+      const coincideWhatsapp =
+        !soloWhatsapp || producto.whatsappContactAllowed;
+      const coincideEnvio = !soloEnvio || producto.shippingAvailable;
+
+      return (
+        coincideTexto &&
+        coincideCategoria &&
+        coincideUbicacion &&
+        coincideTalla &&
+        coincidePrecioMin &&
+        coincidePrecioMax &&
+        coincideWhatsapp &&
+        coincideEnvio
+      );
+    })
+    .sort((a, b) => {
+      if (orden === "precio-asc") {
+        return a.priceCents - b.priceCents;
+      }
+
+      if (orden === "precio-desc") {
+        return b.priceCents - a.priceCents;
+      }
+
+      return 0;
+    });
+
   return (
     <>
       <NavBar />
@@ -116,7 +189,7 @@ export default function Catalogo() {
             </h1>
 
             <p className="text-gray-600">
-              Mostrando {productos.length} prendas publicadas.
+              Mostrando {productosFiltrados.length} de {productos.length} prendas publicadas.
             </p>
           </div>
 
@@ -135,8 +208,91 @@ export default function Catalogo() {
           <p>No hay anuncios publicados.</p>
         )}
 
+        {!loading && productos.length > 0 && (
+          <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              <input
+                className="rounded border border-gray-300 p-3"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por título o descripción"
+              />
+              <select
+                className="rounded border border-gray-300 p-3"
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
+              >
+                <option value="todas">Todas las categorías</option>
+                <option value="traje">Traje</option>
+                <option value="zapatos">Zapatos</option>
+                <option value="mantoncillo">Mantoncillo</option>
+                <option value="complementos">Complementos</option>
+              </select>
+              <input
+                className="rounded border border-gray-300 p-3"
+                value={ubicacion}
+                onChange={(e) => setUbicacion(e.target.value)}
+                placeholder="Ubicación"
+              />
+              <input
+                className="rounded border border-gray-300 p-3"
+                value={talla}
+                onChange={(e) => setTalla(e.target.value)}
+                placeholder="Talla"
+              />
+              <input
+                className="rounded border border-gray-300 p-3"
+                value={precioMin}
+                onChange={(e) => setPrecioMin(e.target.value)}
+                placeholder="Precio mínimo"
+                type="text"
+                inputMode="decimal"
+              />
+              <input
+                className="rounded border border-gray-300 p-3"
+                value={precioMax}
+                onChange={(e) => setPrecioMax(e.target.value)}
+                placeholder="Precio máximo"
+                type="text"
+                inputMode="decimal"
+              />
+              <select
+                className="rounded border border-gray-300 p-3"
+                value={orden}
+                onChange={(e) => setOrden(e.target.value)}
+              >
+                <option value="recientes">Más recientes</option>
+                <option value="precio-asc">Precio menor a mayor</option>
+                <option value="precio-desc">Precio mayor a menor</option>
+              </select>
+              <div className="flex flex-col justify-center gap-2 rounded border border-gray-200 p-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={soloWhatsapp}
+                    onChange={(e) => setSoloWhatsapp(e.target.checked)}
+                  />
+                  Solo con WhatsApp permitido
+                </label>
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={soloEnvio}
+                    onChange={(e) => setSoloEnvio(e.target.checked)}
+                  />
+                  Solo con envío disponible
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!loading && productos.length > 0 && productosFiltrados.length === 0 && (
+          <p>No se han encontrado anuncios con esos filtros.</p>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {productos.map((p) => (
+          {productosFiltrados.map((p) => (
             <article
               key={p.id}
               onClick={() => abrirProducto(p)}
