@@ -8,6 +8,12 @@ type Producto = {
   title: string;
   description: string | null;
   priceCents: number;
+  category: string;
+  size: string | null;
+  color: string | null;
+  location: string | null;
+  condition: string | null;
+  shippingAvailable: boolean;
 };
 
 export default function EditarProducto() {
@@ -17,6 +23,12 @@ export default function EditarProducto() {
   const [titulo, setTitulo] = useState("");
   const [precio, setPrecio] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [categoria, setCategoria] = useState("traje");
+  const [talla, setTalla] = useState("");
+  const [color, setColor] = useState("");
+  const [ubicacion, setUbicacion] = useState("");
+  const [estado, setEstado] = useState("muy_bueno");
+  const [envioDisponible, setEnvioDisponible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -54,6 +66,12 @@ export default function EditarProducto() {
         setTitulo(producto.title);
         setPrecio(String(producto.priceCents / 100));
         setDescripcion(producto.description || "");
+        setCategoria(producto.category);
+        setTalla(producto.size || "");
+        setColor(producto.color || "");
+        setUbicacion(producto.location || "");
+        setEstado(producto.condition || "muy_bueno");
+        setEnvioDisponible(producto.shippingAvailable);
         setError("");
       })
       .catch((err: Error) => {
@@ -90,6 +108,12 @@ export default function EditarProducto() {
         title: titulo,
         description: descripcion,
         priceCents: Math.round(Number(precio) * 100),
+        category: categoria,
+        size: talla || null,
+        color: color || null,
+        location: ubicacion || null,
+        condition: estado,
+        shippingAvailable: envioDisponible,
       }),
     });
 
@@ -143,6 +167,52 @@ export default function EditarProducto() {
                 onChange={(e) => setDescripcion(e.target.value)}
                 placeholder="Descripción"
               />
+              <select
+                className="w-full rounded border p-3"
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
+              >
+                <option value="traje">Traje</option>
+                <option value="zapatos">Zapatos</option>
+                <option value="mantoncillo">Mantoncillo</option>
+                <option value="complementos">Complementos</option>
+              </select>
+              <input
+                className="w-full rounded border p-3"
+                value={talla}
+                onChange={(e) => setTalla(e.target.value)}
+                placeholder="Talla"
+              />
+              <input
+                className="w-full rounded border p-3"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                placeholder="Color"
+              />
+              <input
+                className="w-full rounded border p-3"
+                value={ubicacion}
+                onChange={(e) => setUbicacion(e.target.value)}
+                placeholder="Ubicación"
+              />
+              <select
+                className="w-full rounded border p-3"
+                value={estado}
+                onChange={(e) => setEstado(e.target.value)}
+              >
+                <option value="nuevo">Nuevo</option>
+                <option value="muy_bueno">Muy bueno</option>
+                <option value="bueno">Bueno</option>
+                <option value="usado">Usado</option>
+              </select>
+              <label className="flex items-center gap-3 rounded border p-3 text-sm font-semibold text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={envioDisponible}
+                  onChange={(e) => setEnvioDisponible(e.target.checked)}
+                />
+                Envío disponible
+              </label>
 
               <button
                 className="w-full rounded bg-green-700 p-3 font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-gray-400"

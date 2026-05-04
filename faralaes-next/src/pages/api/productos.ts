@@ -78,14 +78,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "PUT") {
-      const { id, userId, title, description, priceCents } = req.body;
+      const {
+        id,
+        userId,
+        title,
+        description,
+        priceCents,
+        category,
+        size,
+        color,
+        location,
+        condition,
+        shippingAvailable,
+      } = req.body;
 
       if (!id || !userId) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      if (!title || !priceCents) {
-        return res.status(400).json({ error: "Título y precio obligatorios" });
+      if (!title || !priceCents || !category) {
+        return res
+          .status(400)
+          .json({ error: "Título, precio y categoría obligatorios" });
       }
 
       const productoActual = await prisma.listing.findUnique({
@@ -109,6 +123,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           title,
           description: description || null,
           priceCents,
+          category,
+          size: size || null,
+          color: color || null,
+          location: location || null,
+          condition: condition || null,
+          shippingAvailable: Boolean(shippingAvailable),
         },
         include: {
           images: {
