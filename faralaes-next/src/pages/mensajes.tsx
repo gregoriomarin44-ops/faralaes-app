@@ -24,6 +24,9 @@ type Conversation = {
     id: string;
     title: string;
     priceCents: number;
+    images?: {
+      url: string;
+    }[];
   };
   messages: Message[];
 };
@@ -354,20 +357,55 @@ export default function Mensajes() {
                 {conversacionSeleccionada && (
                   <>
                     <div className="border-b border-gray-100 p-5">
-                      <p className="text-sm text-gray-500">Anuncio</p>
-                      <h2 className="font-serif text-2xl text-gray-950">
-                        {conversacionSeleccionada.listing.title}
-                      </h2>
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-green-700">
-                          {getRoleLabel(conversacionSeleccionada, userId)}
-                        </span>
-                        <p className="text-sm font-semibold text-gray-700">
-                          Con:{" "}
-                          {getDisplayName(
-                            getOtherUser(conversacionSeleccionada, userId)
+                      <div className="flex items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/producto/${conversacionSeleccionada.listing.id}`
+                            )
+                          }
+                          className="h-[60px] w-[60px] shrink-0 overflow-hidden rounded-lg bg-gray-200"
+                          aria-label="Abrir anuncio"
+                        >
+                          {conversacionSeleccionada.listing.images?.[0]?.url ? (
+                            <img
+                              src={conversacionSeleccionada.listing.images[0].url}
+                              alt={conversacionSeleccionada.listing.title}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center px-1 text-center text-[11px] text-gray-500">
+                              Sin imagen
+                            </span>
                           )}
-                        </p>
+                        </button>
+
+                        <div>
+                          <p className="text-sm text-gray-500">Anuncio</p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              router.push(
+                                `/producto/${conversacionSeleccionada.listing.id}`
+                              )
+                            }
+                            className="text-left font-serif text-2xl text-gray-950 transition hover:text-green-700"
+                          >
+                            {conversacionSeleccionada.listing.title}
+                          </button>
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-green-700">
+                              {getRoleLabel(conversacionSeleccionada, userId)}
+                            </span>
+                            <p className="text-sm font-semibold text-gray-700">
+                              Con:{" "}
+                              {getDisplayName(
+                                getOtherUser(conversacionSeleccionada, userId)
+                              )}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
 

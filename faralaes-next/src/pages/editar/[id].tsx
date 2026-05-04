@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../../components/NavBar";
+import { uploadListingImages } from "../../lib/supabaseStorage";
 
 const precioAcentimos = (valor: string) => {
   const normalizado = valor.trim().replace(",", ".");
@@ -29,6 +30,9 @@ type Producto = {
   condition: string | null;
   shippingAvailable: boolean;
   whatsappContactAllowed: boolean;
+  images?: {
+    url: string;
+  }[];
 };
 
 export default function EditarProducto() {
@@ -45,8 +49,10 @@ export default function EditarProducto() {
   const [estado, setEstado] = useState("muy_bueno");
   const [envioDisponible, setEnvioDisponible] = useState(false);
   const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
+  const [imagenes, setImagenes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [subiendoImagenes, setSubiendoImagenes] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
@@ -89,6 +95,7 @@ export default function EditarProducto() {
         setEstado(producto.condition || "muy_bueno");
         setEnvioDisponible(producto.shippingAvailable);
         setContactoWhatsapp(producto.whatsappContactAllowed);
+        setImagenes(producto.images?.map((image) => image.url) || []);
         setError("");
       })
       .catch((err: Error) => {
@@ -140,6 +147,7 @@ export default function EditarProducto() {
         condition: estado,
         shippingAvailable: envioDisponible,
         whatsappContactAllowed: contactoWhatsapp,
+        images: imagenes,
       }),
     });
 
@@ -151,6 +159,30 @@ export default function EditarProducto() {
     }
 
     setSaving(false);
+  };
+
+  const subirImagenes = async (files: FileList | null) => {
+    if (!files?.length) return;
+
+    const seleccionadas = Array.from(files).slice(0, 5 - imagenes.length);
+
+    if (seleccionadas.length === 0) {
+      setError("Puedes subir un máximo de 5 imágenes.");
+      return;
+    }
+
+    setSubiendoImagenes(true);
+    setError("");
+
+    try {
+      const urls = await uploadListingImages(seleccionadas);
+      setImagenes((prev) => [...prev, ...urls].slice(0, 5));
+    } catch (error) {
+      console.error(error);
+      setError("Error al subir imágenes.");
+    } finally {
+      setSubiendoImagenes(false);
+    }
   };
 
   return (
@@ -248,10 +280,52 @@ export default function EditarProducto() {
                 Permitir contacto por WhatsApp
               </label>
 
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={subiendoImagenes || imagenes.length >= 5}
+                  onChange={(e) => subirImagenes(e.target.files)}
+                />
+
+                {subiendoImagenes && (
+                  <p className="text-sm text-gray-600">Subiendo imágenes...</p>
+                )}
+
+                {imagenes.length > 0 && (
+                  <div className="grid grid-cols-5 gap-2">
+                    {imagenes.map((url, index) => (
+                      <div
+                        key={url}
+                        className="relative aspect-square overflow-hidden rounded border border-gray-200 bg-gray-100"
+                      >
+                        <img
+                          src={url}
+                          alt={`Imagen ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setImagenes((prev) =>
+                              prev.filter((imagen) => imagen !== url)
+                            )
+                          }
+                          className="absolute right-1 top-1 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-red-700 shadow"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button
                 className="w-full rounded bg-green-700 p-3 font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-gray-400"
                 type="submit"
-                disabled={saving}
+                disabled={saving || subiendoImagenes}
               >
                 {saving ? "Guardando..." : "Guardar cambios"}
               </button>

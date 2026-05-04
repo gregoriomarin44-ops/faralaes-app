@@ -49,6 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         shippingAvailable,
         whatsappContactAllowed,
         image,
+        images,
       } = req.body;
 
       if (!title || !priceCents || !sellerId || !category) {
@@ -75,7 +76,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           shippingAvailable: Boolean(shippingAvailable),
           whatsappContactAllowed: Boolean(whatsappContactAllowed),
           status: "published",
-          images: image
+          images: Array.isArray(images) && images.length > 0
+            ? {
+                create: images.map((url: string, index: number) => ({
+                  url,
+                  sortOrder: index,
+                })),
+              }
+            : image
             ? {
                 create: [
                   {
@@ -108,6 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         condition,
         shippingAvailable,
         whatsappContactAllowed,
+        images,
       } = req.body;
 
       if (!id || !userId) {
@@ -154,6 +163,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           condition: condition || null,
           shippingAvailable: Boolean(shippingAvailable),
           whatsappContactAllowed: Boolean(whatsappContactAllowed),
+          ...(Array.isArray(images)
+            ? {
+                images: {
+                  deleteMany: {},
+                  create: images.map((url: string, index: number) => ({
+                    url,
+                    sortOrder: index,
+                  })),
+                },
+              }
+            : {}),
         },
         include: {
           images: {

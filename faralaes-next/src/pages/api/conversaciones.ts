@@ -41,7 +41,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           buyerId: user.id,
         },
         include: {
-          listing: true,
+          listing: {
+            include: {
+              images: {
+                orderBy: { sortOrder: "asc" },
+              },
+            },
+          },
           buyer: {
             include: {
               profile: true,
@@ -69,7 +75,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           sellerId: listing.sellerId,
         },
         include: {
-          listing: true,
+          listing: {
+            include: {
+              images: {
+                orderBy: { sortOrder: "asc" },
+              },
+            },
+          },
           buyer: {
             include: {
               profile: true,
@@ -108,7 +120,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         orderBy: { updatedAt: "desc" },
         include: {
-          listing: true,
+          listing: {
+            include: {
+              images: {
+                orderBy: { sortOrder: "asc" },
+              },
+            },
+          },
           buyer: {
             include: {
               profile: true,

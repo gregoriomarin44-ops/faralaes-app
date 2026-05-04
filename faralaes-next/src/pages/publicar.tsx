@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useState } from "react";
 import NavBar from "../components/NavBar";
+import { uploadListingImages } from "../lib/supabaseStorage";
 
 const precioAcentimos = (valor: string) => {
   const normalizado = valor.trim().replace(",", ".");
@@ -24,13 +25,32 @@ export default function Publicar() {
   const [ubicacion, setUbicacion] = useState("");
   const [estado, setEstado] = useState("muy_bueno");
   const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
-  const [imagen, setImagen] = useState<string | null>(null);
+  const [imagenes, setImagenes] = useState<string[]>([]);
+  const [subiendoImagenes, setSubiendoImagenes] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
-  const convertirImagen = (file: File) => {
-    const reader = new FileReader();
-    reader.onloadend = () => setImagen(reader.result as string);
-    reader.readAsDataURL(file);
+  const subirImagenes = async (files: FileList | null) => {
+    if (!files?.length) return;
+
+    const seleccionadas = Array.from(files).slice(0, 5 - imagenes.length);
+
+    if (seleccionadas.length === 0) {
+      setMensaje("Puedes subir un máximo de 5 imágenes.");
+      return;
+    }
+
+    setSubiendoImagenes(true);
+    setMensaje("");
+
+    try {
+      const urls = await uploadListingImages(seleccionadas);
+      setImagenes((prev) => [...prev, ...urls].slice(0, 5));
+    } catch (error) {
+      console.error(error);
+      setMensaje("Error al subir imágenes.");
+    } finally {
+      setSubiendoImagenes(false);
+    }
   };
 
   const publicar = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -65,7 +85,7 @@ export default function Publicar() {
         location: ubicacion || null,
         condition: estado,
         whatsappContactAllowed: contactoWhatsapp,
-        image: imagen,
+        images: imagenes,
       }),
     });
 
@@ -80,7 +100,7 @@ export default function Publicar() {
       setUbicacion("");
       setEstado("muy_bueno");
       setContactoWhatsapp(false);
-      setImagen(null);
+      setImagenes([]);
     } else {
       setMensaje("Error al publicar.");
     }
@@ -125,13 +145,50 @@ export default function Publicar() {
               Permitir contacto por WhatsApp
             </label>
 
-            <input type="file" accept="image/*" onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) convertirImagen(file);
-            }} />
+            <div className="space-y-3">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={subiendoImagenes || imagenes.length >= 5}
+                onChange={(e) => subirImagenes(e.target.files)}
+              />
 
-            <button className="w-full bg-green-700 text-white p-3 rounded font-semibold" type="submit">
-              Publicar
+              {subiendoImagenes && (
+                <p className="text-sm text-gray-600">Subiendo imágenes...</p>
+              )}
+
+              {imagenes.length > 0 && (
+                <div className="grid grid-cols-5 gap-2">
+                  {imagenes.map((url, index) => (
+                    <div
+                      key={url}
+                      className="relative aspect-square overflow-hidden rounded border border-gray-200 bg-gray-100"
+                    >
+                      <img
+                        src={url}
+                        alt={`Imagen ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setImagenes((prev) =>
+                            prev.filter((imagen) => imagen !== url)
+                          )
+                        }
+                        className="absolute right-1 top-1 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-red-700 shadow"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button className="w-full bg-green-700 text-white p-3 rounded font-semibold disabled:bg-gray-400" type="submit" disabled={subiendoImagenes}>
+              {subiendoImagenes ? "Subiendo imágenes..." : "Publicar"}
             </button>
           </form>
 
