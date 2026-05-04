@@ -101,7 +101,7 @@ export default function Mensajes() {
   };
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
   };
 
   const mergeConversations = (incoming: Conversation[]) => {
@@ -178,7 +178,7 @@ export default function Mensajes() {
     };
 
     cargarConversaciones(true);
-    const intervalId = window.setInterval(() => cargarConversaciones(), 3000);
+    const intervalId = window.setInterval(() => cargarConversaciones(false), 3000);
 
     return () => window.clearInterval(intervalId);
   }, [router]);
@@ -223,16 +223,14 @@ export default function Mensajes() {
     setBody("");
     setSending(true);
     setConversaciones((prev) =>
-      prev
-        .map((conversacion) =>
-          conversacion.id === conversacionSeleccionada.id
-            ? {
-                ...conversacion,
-                messages: [...conversacion.messages, mensajeTemporal],
-              }
-            : conversacion
-        )
-        .sort((a, b) => getConversationTimestamp(b) - getConversationTimestamp(a))
+      prev.map((conversacion) =>
+        conversacion.id === conversacionSeleccionada.id
+          ? {
+              ...conversacion,
+              messages: [...conversacion.messages, mensajeTemporal],
+            }
+          : conversacion
+      )
     );
 
     const res = await fetch("/api/mensajes", {
@@ -267,18 +265,16 @@ export default function Mensajes() {
 
     const nuevoMensaje: Message = await res.json();
     setConversaciones((prev) =>
-      prev
-        .map((conversacion) =>
-          conversacion.id === nuevoMensaje.conversationId
-            ? {
-                ...conversacion,
-                messages: conversacion.messages.map((message) =>
-                  message.id === tempId ? nuevoMensaje : message
-                ),
-              }
-            : conversacion
-        )
-        .sort((a, b) => getConversationTimestamp(b) - getConversationTimestamp(a))
+      prev.map((conversacion) =>
+        conversacion.id === nuevoMensaje.conversationId
+          ? {
+              ...conversacion,
+              messages: conversacion.messages.map((message) =>
+                message.id === tempId ? nuevoMensaje : message
+              ),
+            }
+          : conversacion
+      )
     );
     setSending(false);
     setError("");
@@ -354,7 +350,7 @@ export default function Mensajes() {
                 })}
               </aside>
 
-              <section className="flex min-h-[520px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <section className="flex h-[640px] min-h-0 flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
                 {conversacionSeleccionada && (
                   <>
                     <div className="border-b border-gray-100 p-5">
@@ -380,7 +376,7 @@ export default function Mensajes() {
                       onScroll={() => {
                         shouldStickToBottomRef.current = isNearBottom();
                       }}
-                      className="flex-1 space-y-3 overflow-y-auto p-5"
+                      className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5"
                     >
                       {conversacionSeleccionada.messages.length === 0 && (
                         <p className="text-gray-500">
@@ -424,7 +420,7 @@ export default function Mensajes() {
 
                     <form
                       onSubmit={enviarMensaje}
-                      className="flex gap-3 border-t border-gray-100 p-5"
+                      className="shrink-0 flex gap-3 border-t border-gray-100 p-5"
                     >
                       <input
                         className="flex-1 rounded-full border border-gray-300 px-4 py-3 outline-none transition focus:border-green-700"
