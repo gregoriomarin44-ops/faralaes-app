@@ -19,7 +19,6 @@ type Producto = {
 export default function Catalogo() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
