@@ -2,6 +2,9 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../../components/NavBar";
 
+const MAX_IMAGES = 5;
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+
 const precioAcentimos = (valor: string) => {
   const normalizado = valor.trim().replace(",", ".");
   const numero = Number(normalizado);
@@ -48,8 +51,8 @@ export default function EditarProducto() {
   const [estado, setEstado] = useState("muy_bueno");
   const [envioDisponible, setEnvioDisponible] = useState(false);
   const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
-  const [imagen, setImagen] = useState<string | null>(null);
-  const [imagenCambiada, setImagenCambiada] = useState(false);
+  const [imagenes, setImagenes] = useState<string[]>([]);
+  const [imagenesCambiadas, setImagenesCambiadas] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -94,8 +97,8 @@ export default function EditarProducto() {
         setEstado(producto.condition || "muy_bueno");
         setEnvioDisponible(producto.shippingAvailable);
         setContactoWhatsapp(producto.whatsappContactAllowed);
-        setImagen(producto.images?.[0]?.url || null);
-        setImagenCambiada(false);
+        setImagenes(producto.images?.map((image) => image.url) || []);
+        setImagenesCambiadas(false);
         setError("");
       })
       .catch((err: Error) => {
@@ -147,7 +150,7 @@ export default function EditarProducto() {
         condition: estado,
         shippingAvailable: envioDisponible,
         whatsappContactAllowed: contactoWhatsapp,
-        ...(imagenCambiada && imagen ? { image: imagen } : {}),
+        ...(imagenesCambiadas ? { images: imagenes } : {}),
       }),
     });
 
@@ -161,20 +164,54 @@ export default function EditarProducto() {
     setSaving(false);
   };
 
-  const convertirImagenABase64 = (file: File) => {
+  const convertirImagenABase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+          return;
+        }
+
+        reject(new Error("No se ha podido leer la imagen seleccionada."));
+      };
+      reader.onerror = () =>
+        reject(new Error("No se ha podido leer la imagen seleccionada."));
+      reader.readAsDataURL(file);
+    });
+
+  const seleccionarImagenes = async (files: FileList | null) => {
+    if (!files?.length) return;
+
+    const seleccionadas = Array.from(files);
+
+    if (seleccionadas.length > MAX_IMAGES) {
+      setError("Puedes subir un máximo de 5 imágenes.");
+      return;
+    }
+
+    const imagenGrande = seleccionadas.find((file) => file.size > MAX_IMAGE_SIZE);
+
+    if (imagenGrande) {
+      setError(`La imagen "${imagenGrande.name}" supera el máximo de 2MB.`);
+      return;
+    }
+
     setError("");
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === "string") {
-        setImagen(reader.result);
-        setImagenCambiada(true);
-      }
-    };
-    reader.onerror = () => {
-      setError("No se ha podido leer la imagen seleccionada.");
-    };
-    reader.readAsDataURL(file);
+    try {
+      const nuevasImagenes = await Promise.all(
+        seleccionadas.map((file) => convertirImagenABase64(file))
+      );
+      setImagenes(nuevasImagenes);
+      setImagenesCambiadas(true);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "No se han podido leer las imágenes seleccionadas."
+      );
+    }
   };
 
   return (
@@ -276,19 +313,42 @@ export default function EditarProducto() {
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) convertirImagenABase64(file);
+                    seleccionarImagenes(e.target.files);
+                    e.target.value = "";
                   }}
                 />
 
-                {imagen && (
-                  <div className="h-40 w-40 overflow-hidden rounded border border-gray-200 bg-gray-100">
-                    <img
-                      src={imagen}
-                      alt="Imagen del anuncio"
-                      className="h-full w-full object-cover"
-                    />
+                {imagenes.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                    {imagenes.map((imagen, index) => (
+                      <div
+                        key={`${imagen.slice(0, 40)}-${index}`}
+                        className="relative aspect-square overflow-hidden rounded border border-gray-200 bg-gray-100"
+                      >
+                        <img
+                          src={imagen}
+                          alt={`Imagen ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        {imagenesCambiadas && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setImagenes((prev) =>
+                                prev.filter(
+                                  (_, imageIndex) => imageIndex !== index
+                                )
+                              )
+                            }
+                            className="absolute right-2 top-2 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-red-700 shadow"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

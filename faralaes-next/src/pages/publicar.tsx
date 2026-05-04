@@ -2,6 +2,9 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import NavBar from "../components/NavBar";
 
+const MAX_IMAGES = 5;
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+
 const precioAcentimos = (valor: string) => {
   const normalizado = valor.trim().replace(",", ".");
   const numero = Number(normalizado);
@@ -25,20 +28,58 @@ export default function Publicar() {
   const [estado, setEstado] = useState("muy_bueno");
   const [shippingAvailable, setShippingAvailable] = useState(false);
   const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
-  const [imagen, setImagen] = useState<string | null>(null);
+  const [imagenes, setImagenes] = useState<string[]>([]);
   const [mensaje, setMensaje] = useState("");
 
-  const convertirImagenABase64 = (file: File) => {
+  const convertirImagenABase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+          return;
+        }
+
+        reject(new Error("No se ha podido leer la imagen seleccionada."));
+      };
+      reader.onerror = () =>
+        reject(new Error("No se ha podido leer la imagen seleccionada."));
+      reader.readAsDataURL(file);
+    });
+
+  const seleccionarImagenes = async (files: FileList | null) => {
+    if (!files?.length) return;
+
+    const seleccionadas = Array.from(files);
+
+    if (seleccionadas.length > MAX_IMAGES) {
+      setMensaje("Puedes subir un máximo de 5 imágenes.");
+      setImagenes([]);
+      return;
+    }
+
+    const imagenGrande = seleccionadas.find((file) => file.size > MAX_IMAGE_SIZE);
+
+    if (imagenGrande) {
+      setMensaje(`La imagen "${imagenGrande.name}" supera el máximo de 2MB.`);
+      setImagenes([]);
+      return;
+    }
+
     setMensaje("");
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagen(typeof reader.result === "string" ? reader.result : null);
-    };
-    reader.onerror = () => {
-      setMensaje("No se ha podido leer la imagen seleccionada.");
-    };
-    reader.readAsDataURL(file);
+    try {
+      const nuevasImagenes = await Promise.all(
+        seleccionadas.map((file) => convertirImagenABase64(file))
+      );
+      setImagenes(nuevasImagenes);
+    } catch (error) {
+      setMensaje(
+        error instanceof Error
+          ? error.message
+          : "No se han podido leer las imágenes seleccionadas."
+      );
+    }
   };
 
   const publicar = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -74,7 +115,7 @@ export default function Publicar() {
         condition: estado,
         shippingAvailable,
         whatsappContactAllowed: contactoWhatsapp,
-        image: imagen,
+        images: imagenes,
       }),
     });
 
@@ -90,7 +131,7 @@ export default function Publicar() {
       setEstado("muy_bueno");
       setShippingAvailable(false);
       setContactoWhatsapp(false);
-      setImagen(null);
+      setImagenes([]);
     } else {
       setMensaje("Error al publicar.");
     }
@@ -148,26 +189,38 @@ export default function Publicar() {
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) convertirImagenABase64(file);
+                  seleccionarImagenes(e.target.files);
+                  e.target.value = "";
                 }}
               />
 
-              {imagen && (
-                <div className="relative h-40 w-40 overflow-hidden rounded border border-gray-200 bg-gray-100">
-                  <img
-                    src={imagen}
-                    alt="Imagen del anuncio"
-                    className="h-full w-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setImagen(null)}
-                    className="absolute right-2 top-2 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-red-700 shadow"
-                  >
-                    ×
-                  </button>
+              {imagenes.length > 0 && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  {imagenes.map((imagen, index) => (
+                    <div
+                      key={`${imagen.slice(0, 40)}-${index}`}
+                      className="relative aspect-square overflow-hidden rounded border border-gray-200 bg-gray-100"
+                    >
+                      <img
+                        src={imagen}
+                        alt={`Imagen ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setImagenes((prev) =>
+                            prev.filter((_, imageIndex) => imageIndex !== index)
+                          )
+                        }
+                        className="absolute right-2 top-2 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-red-700 shadow"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

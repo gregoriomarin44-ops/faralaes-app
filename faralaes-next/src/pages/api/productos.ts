@@ -2,12 +2,54 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getUser } from "../../lib/getUser";
 import { prisma } from "../../lib/prisma";
 
+const MAX_IMAGES = 5;
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "10mb",
+      sizeLimit: "50mb",
     },
   },
+};
+
+const normalizarImagenes = (images: unknown, image?: unknown) => {
+  if (Array.isArray(images)) {
+    return images;
+  }
+
+  if (typeof image === "string" && image) {
+    return [image];
+  }
+
+  return [];
+};
+
+const obtenerTamanoBase64 = (value: string) => {
+  const base64 = value.includes(",") ? value.split(",").pop() || "" : value;
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+
+  return Math.floor((base64.length * 3) / 4) - padding;
+};
+
+const validarImagenes = (images: unknown[]) => {
+  if (images.length > MAX_IMAGES) {
+    return "Puedes subir un máximo de 5 imágenes.";
+  }
+
+  if (!images.every((url) => typeof url === "string")) {
+    return "Las imágenes no tienen un formato válido.";
+  }
+
+  const imagenDemasiadoGrande = images.find(
+    (url) => typeof url === "string" && obtenerTamanoBase64(url) > MAX_IMAGE_BYTES
+  );
+
+  if (imagenDemasiadoGrande) {
+    return "Cada imagen debe pesar 2MB como máximo.";
+  }
+
+  return null;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -70,6 +112,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: "Unauthorized" });
       }
 
+      const imagenesNormalizadas = normalizarImagenes(images, image);
+      const errorImagenes = validarImagenes(imagenesNormalizadas);
+
+      if (errorImagenes) {
+        return res.status(400).json({ error: errorImagenes });
+      }
+
       const producto = await prisma.listing.create({
         data: {
           title,
@@ -84,21 +133,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           shippingAvailable: Boolean(shippingAvailable),
           whatsappContactAllowed: Boolean(whatsappContactAllowed),
           status: "published",
-          images: Array.isArray(images) && images.length > 0
+          images: imagenesNormalizadas.length > 0
             ? {
-                create: images.map((url: string, index: number) => ({
+                create: imagenesNormalizadas.map((url, index) => ({
                   url,
                   sortOrder: index,
                 })),
-              }
-            : image
-            ? {
-                create: [
-                  {
-                    url: image,
-                    sortOrder: 0,
-                  },
-                ],
               }
             : undefined,
         },
@@ -159,6 +199,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: "No autorizado" });
       }
 
+      const imagenesNormalizadas = Array.isArray(images)
+        ? normalizarImagenes(images)
+        : typeof image === "string" && image
+        ? normalizarImagenes(undefined, image)
+        : null;
+      const errorImagenes = imagenesNormalizadas
+        ? validarImagenes(imagenesNormalizadas)
+        : null;
+
+      if (errorImagenes) {
+        return res.status(400).json({ error: errorImagenes });
+      }
+
       const producto = await prisma.listing.update({
         where: { id },
         data: {
@@ -172,23 +225,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           condition: condition || null,
           shippingAvailable: Boolean(shippingAvailable),
           whatsappContactAllowed: Boolean(whatsappContactAllowed),
-          ...(image
+          ...(imagenesNormalizadas
             ? {
                 images: {
                   deleteMany: {},
-                  create: [
-                    {
-                      url: image,
-                      sortOrder: 0,
-                    },
-                  ],
-                },
-              }
-            : Array.isArray(images)
-            ? {
-                images: {
-                  deleteMany: {},
-                  create: images.map((url: string, index: number) => ({
+                  create: imagenesNormalizadas.map((url, index) => ({
                     url,
                     sortOrder: index,
                   })),
