@@ -13,39 +13,40 @@ export const config = {
   },
 };
 
-const normalizarImagenes = (images: unknown) => {
-  if (Array.isArray(images)) {
-    return images;
-  }
-
-  return [];
-};
-
 const obtenerTamanoBase64 = (value: string) => {
   const base64 = value.includes(",") ? value.split(",").pop() || "" : value;
   const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
-
   return Math.floor((base64.length * 3) / 4) - padding;
 };
 
-const validarImagenes = (images: unknown[]) => {
+const prepararImagenes = (images: unknown): { images: string[]; error: string | null } => {
+  if (images === undefined || images === null) {
+    return { images: [], error: null };
+  }
+
+  if (!Array.isArray(images)) {
+    return { images: [], error: "Las imágenes no tienen un formato válido." };
+  }
+
   if (images.length > MAX_IMAGES) {
-    return "Puedes subir un máximo de 5 imágenes.";
+    return { images: [], error: "Puedes subir un máximo de 5 imágenes." };
   }
 
-  if (!images.every((url) => typeof url === "string")) {
-    return "Las imágenes no tienen un formato válido.";
+  if (!images.every((img) => typeof img === "string")) {
+    return { images: [], error: "Las imágenes no tienen un formato válido." };
   }
 
-  const imagenDemasiadoGrande = images.find(
-    (url) => typeof url === "string" && obtenerTamanoBase64(url) > MAX_IMAGE_BYTES
+  const imagenes = images as string[];
+
+  const demasiadoGrande = imagenes.some(
+    (img) => obtenerTamanoBase64(img) > MAX_IMAGE_BYTES
   );
 
-  if (imagenDemasiadoGrande) {
-    return "Cada imagen debe pesar 2MB como máximo.";
+  if (demasiadoGrande) {
+    return { images: [], error: "Cada imagen debe pesar 2MB como máximo." };
   }
 
-  return null;
+  return { images: imagenes, error: null };
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -66,9 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const productos = await prisma.listing.findMany({
         where: {
           status: "published",
-          ...(mine === "true" && user
-            ? { sellerId: user.id }
-            : {}),
+          ...(mine === "true" && user ? { sellerId: user.id } : {}),
         },
         orderBy: { createdAt: "desc" },
         include: {
@@ -107,11 +106,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      const imagenesNormalizadas = normalizarImagenes(images);
-      const errorImagenes = validarImagenes(imagenesNormalizadas);
+      const { images: imagenes, error } = prepararImagenes(images);
 
-      if (errorImagenes) {
-        return res.status(400).json({ error: errorImagenes });
+      if (error) {
+        return res.status(400).json({ error });
       }
 
       const producto = await prisma.listing.create({
@@ -128,17 +126,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           shippingAvailable: Boolean(shippingAvailable),
           whatsappContactAllowed: Boolean(whatsappContactAllowed),
           status: "published",
-          images: imagenesNormalizadas.length > 0
-            ? {
-                create: imagenesNormalizadas.map((url, index) => ({
-                  url,
-                  sortOrder: index,
-                })),
-              }
-            : undefined,
+          images:
+            imagenes.length > 0
+              ? {
+                  create: imagenes.map((url, index) => ({
+                    url,
+                    sortOrder: index,
+                  })),
+                }
+              : undefined,
         },
         include: {
-          images: true,
+          images: {
+            orderBy: { sortOrder: "asc" },
+          },
         },
       });
 
@@ -173,16 +174,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       if (!title || !priceCents || !category) {
-        return res
-          .status(400)
-          .json({ error: "Título, precio y categoría obligatorios" });
+        return res.status(400).json({
+          error: "Título, precio y categoría obligatorios",
+        });
       }
 
       const productoActual = await prisma.listing.findUnique({
         where: { id },
-        select: {
-          sellerId: true,
-        },
+        select: { sellerId: true },
       });
 
       if (!productoActual) {
@@ -193,15 +192,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: "No autorizado" });
       }
 
-      const imagenesNormalizadas = Array.isArray(images)
-        ? normalizarImagenes(images)
-        : null;
-      const errorImagenes = imagenesNormalizadas
-        ? validarImagenes(imagenesNormalizadas)
-        : null;
+      let nuevasImagenes: string[] | null = null;
 
-      if (errorImagenes) {
-        return res.status(400).json({ error: errorImagenes });
+      if (images !== undefined) {
+        const prepared = prepararImagenes(images);
+
+        if (prepared.error) {
+          return res.status(400).json({ error: prepared.error });
+        }
+
+        nuevasImagenes = prepared.images;
       }
 
       const producto = await prisma.listing.update({
@@ -217,11 +217,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           condition: condition || null,
           shippingAvailable: Boolean(shippingAvailable),
           whatsappContactAllowed: Boolean(whatsappContactAllowed),
-          ...(imagenesNormalizadas
+          ...(nuevasImagenes !== null
             ? {
                 images: {
                   deleteMany: {},
-                  create: imagenesNormalizadas.map((url, index) => ({
+                  create: nuevasImagenes.map((url, index) => ({
                     url,
                     sortOrder: index,
                   })),
@@ -254,9 +254,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const productoActual = await prisma.listing.findUnique({
         where: { id },
-        select: {
-          sellerId: true,
-        },
+        select: { sellerId: true },
       });
 
       if (!productoActual) {
