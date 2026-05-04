@@ -4,6 +4,7 @@ import NavBar from "../../components/NavBar";
 
 type Producto = {
   id: string;
+  sellerId: string;
   title: string;
   description: string | null;
   priceCents: number;
@@ -32,11 +33,14 @@ export default function ProductoDetalle() {
 
   const [producto, setProducto] = useState<Producto | null>(null);
   const [selectedImage, setSelectedImage] = useState("");
+  const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!router.isReady) return;
+
+    setUserId(localStorage.getItem("userId") || "");
 
     if (!id || typeof id !== "string") {
       setProducto(null);
@@ -141,6 +145,7 @@ export default function ProductoDetalle() {
       }).format(new Date(producto.createdAt))
     : "Fecha no disponible";
   const images = producto.images || [];
+  const esAnuncioPropio = Boolean(userId && producto.sellerId === userId);
 
   return (
     <>
@@ -252,14 +257,24 @@ export default function ProductoDetalle() {
               </div>
             </div>
 
-            <a
-              href={`https://wa.me/?text=${whatsappText}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
-            >
-              Contactar por WhatsApp
-            </a>
+            {esAnuncioPropio ? (
+              <button
+                type="button"
+                onClick={() => router.push(`/editar/${producto.id}`)}
+                className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
+              >
+                Editar anuncio
+              </button>
+            ) : (
+              <a
+                href={`https://wa.me/?text=${whatsappText}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
+              >
+                Contactar por WhatsApp
+              </a>
+            )}
 
             <div className="mt-6 space-y-1 text-xs text-gray-400">
               <p>Publicado el {publishedDate}</p>

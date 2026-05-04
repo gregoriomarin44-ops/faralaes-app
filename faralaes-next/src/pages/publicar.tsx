@@ -2,6 +2,17 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import NavBar from "../components/NavBar";
 
+const precioAcentimos = (valor: string) => {
+  const normalizado = valor.trim().replace(",", ".");
+  const numero = Number(normalizado);
+
+  if (!Number.isFinite(numero)) {
+    return null;
+  }
+
+  return Math.round(numero * 100);
+};
+
 export default function Publicar() {
   const router = useRouter();
   const [titulo, setTitulo] = useState("");
@@ -32,6 +43,13 @@ export default function Publicar() {
       return;
     }
 
+    const priceCents = precioAcentimos(precio);
+
+    if (priceCents === null) {
+      setMensaje("Introduce un precio válido. Ejemplo: 90,50");
+      return;
+    }
+
     const res = await fetch("/api/productos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -39,7 +57,7 @@ export default function Publicar() {
         sellerId: userId,
         title: titulo,
         description: descripcion,
-        priceCents: Number(precio) * 100,
+        priceCents,
         category: categoria,
         size: talla || null,
         color: color || null,
@@ -74,7 +92,7 @@ export default function Publicar() {
 
           <form onSubmit={publicar} className="space-y-4">
             <input className="w-full border p-3 rounded" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título" required />
-            <input className="w-full border p-3 rounded" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" type="number" required />
+            <input className="w-full border p-3 rounded" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" type="text" inputMode="decimal" required />
             <textarea className="w-full border p-3 rounded" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
 
             <select className="w-full border p-3 rounded" value={categoria} onChange={(e) => setCategoria(e.target.value)}>

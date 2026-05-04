@@ -4,6 +4,7 @@ import NavBar from "../components/NavBar";
 
 type Producto = {
   id: string;
+  sellerId: string;
   title: string;
   description: string | null;
   priceCents: number;
@@ -21,11 +22,13 @@ type Producto = {
 export default function Catalogo() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [favoritos, setFavoritos] = useState<string[]>([]);
+  const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
+    const storedUserId = localStorage.getItem("userId") || "";
+    setUserId(storedUserId);
 
     const cargarCatalogo = async () => {
       try {
@@ -33,9 +36,9 @@ export default function Catalogo() {
         const productosData = await productosRes.json();
         setProductos(productosData);
 
-        if (userId) {
+        if (storedUserId) {
           const favoritosRes = await fetch(
-            `/api/favoritos?userId=${encodeURIComponent(userId)}`
+            `/api/favoritos?userId=${encodeURIComponent(storedUserId)}`
           );
 
           if (favoritosRes.ok) {
@@ -50,6 +53,15 @@ export default function Catalogo() {
 
     cargarCatalogo();
   }, []);
+
+  const abrirProducto = (producto: Producto) => {
+    if (userId && producto.sellerId === userId) {
+      router.push(`/editar/${producto.id}`);
+      return;
+    }
+
+    router.push(`/producto/${producto.id}`);
+  };
 
   const toggleFavorito = async (
     e: React.MouseEvent<HTMLButtonElement>,
@@ -126,10 +138,16 @@ export default function Catalogo() {
           {productos.map((p) => (
             <article
               key={p.id}
-              onClick={() => router.push(`/producto/${p.id}`)}
+              onClick={() => abrirProducto(p)}
               className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:shadow-lg transition"
             >
               <div className="relative aspect-[4/5] overflow-hidden bg-gray-200">
+                {userId && p.sellerId === userId && (
+                  <span className="absolute left-3 top-3 z-10 rounded-full bg-green-700 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
+                    Tu anuncio
+                  </span>
+                )}
+
                 <button
                   type="button"
                   onClick={(e) => toggleFavorito(e, p.id)}

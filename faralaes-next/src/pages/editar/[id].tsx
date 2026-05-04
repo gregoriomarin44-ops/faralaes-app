@@ -2,6 +2,20 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../../components/NavBar";
 
+const precioAcentimos = (valor: string) => {
+  const normalizado = valor.trim().replace(",", ".");
+  const numero = Number(normalizado);
+
+  if (!Number.isFinite(numero)) {
+    return null;
+  }
+
+  return Math.round(numero * 100);
+};
+
+const centimosAPrecio = (centimos: number) =>
+  (centimos / 100).toFixed(2).replace(".", ",");
+
 type Producto = {
   id: string;
   sellerId: string;
@@ -64,7 +78,7 @@ export default function EditarProducto() {
         }
 
         setTitulo(producto.title);
-        setPrecio(String(producto.priceCents / 100));
+        setPrecio(centimosAPrecio(producto.priceCents));
         setDescripcion(producto.description || "");
         setCategoria(producto.category);
         setTalla(producto.size || "");
@@ -99,6 +113,14 @@ export default function EditarProducto() {
     setMensaje("");
     setError("");
 
+    const priceCents = precioAcentimos(precio);
+
+    if (priceCents === null) {
+      setError("Introduce un precio válido. Ejemplo: 90,50");
+      setSaving(false);
+      return;
+    }
+
     const res = await fetch("/api/productos", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -107,7 +129,7 @@ export default function EditarProducto() {
         userId,
         title: titulo,
         description: descripcion,
-        priceCents: Math.round(Number(precio) * 100),
+        priceCents,
         category: categoria,
         size: talla || null,
         color: color || null,
@@ -157,8 +179,8 @@ export default function EditarProducto() {
                 value={precio}
                 onChange={(e) => setPrecio(e.target.value)}
                 placeholder="Precio"
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 required
               />
               <textarea
