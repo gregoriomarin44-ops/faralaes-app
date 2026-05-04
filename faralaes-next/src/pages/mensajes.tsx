@@ -9,6 +9,8 @@ type Message = {
   senderId: string;
   body: string;
   createdAt: string;
+  pending?: boolean;
+  failed?: boolean;
 };
 
 type Conversation = {
@@ -70,6 +72,9 @@ const getDisplayName = (user: User) => user.profile?.displayName || user.email;
 const getRoleLabel = (conversation: Conversation, userId: string) =>
   conversation.buyerId === userId ? "Comprador" : "Vendedor";
 
+const conversationsEqual = (a: Conversation[], b: Conversation[]) =>
+  JSON.stringify(a) === JSON.stringify(b);
+
 export default function Mensajes() {
   const router = useRouter();
   const [userId, setUserId] = useState("");
@@ -77,8 +82,56 @@ export default function Mensajes() {
   const [selectedId, setSelectedId] = useState("");
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const shouldStickToBottomRef = useRef(true);
+
+  const isNearBottom = () => {
+    const container = messagesContainerRef.current;
+
+    if (!container) {
+      return true;
+    }
+
+    return (
+      container.scrollHeight - container.scrollTop - container.clientHeight < 120
+    );
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  const mergeConversations = (incoming: Conversation[]) => {
+    setConversaciones((prev) => {
+      const prevById = new Map(prev.map((conversation) => [conversation.id, conversation]));
+      const merged = incoming.map((conversation) => {
+        const current = prevById.get(conversation.id);
+
+        if (!current) {
+          return conversation;
+        }
+
+        const pendingMessages = current.messages.filter(
+          (message) => message.pending || message.failed
+        );
+        const incomingIds = new Set(conversation.messages.map((message) => message.id));
+
+        return {
+          ...conversation,
+          messages: [
+            ...conversation.messages,
+            ...pendingMessages.filter((message) => !incomingIds.has(message.id)),
+          ],
+        };
+      });
+      const sorted = sortConversations(merged);
+
+      return conversationsEqual(prev, sorted) ? prev : sorted;
+    });
+  };
 
   useEffect(() => {
     const storedUserId = localStorage.getItem("userId") || "";
@@ -101,7 +154,7 @@ export default function Mensajes() {
         })
         .then((data: Conversation[]) => {
           const conversacionesOrdenadas = sortConversations(data);
-          setConversaciones(conversacionesOrdenadas);
+          mergeConversations(conversacionesOrdenadas);
           setError("");
 
           if (!initial) {
@@ -136,7 +189,9 @@ export default function Mensajes() {
   );
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (shouldStickToBottomRef.current) {
+      scrollToBottom("smooth");
+    }
   }, [conversacionSeleccionada?.id, conversacionSeleccionada?.messages.length]);
 
   const seleccionarConversacion = (id: string) => {
@@ -153,18 +208,60 @@ export default function Mensajes() {
       return;
     }
 
+    const texto = body.trim();
+    const tempId = `temp-${Date.now()}`;
+    const mensajeTemporal: Message = {
+      id: tempId,
+      conversationId: conversacionSeleccionada.id,
+      senderId: userId,
+      body: texto,
+      createdAt: new Date().toISOString(),
+      pending: true,
+    };
+
+    shouldStickToBottomRef.current = true;
+    setBody("");
+    setSending(true);
+    setConversaciones((prev) =>
+      prev
+        .map((conversacion) =>
+          conversacion.id === conversacionSeleccionada.id
+            ? {
+                ...conversacion,
+                messages: [...conversacion.messages, mensajeTemporal],
+              }
+            : conversacion
+        )
+        .sort((a, b) => getConversationTimestamp(b) - getConversationTimestamp(a))
+    );
+
     const res = await fetch("/api/mensajes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         conversationId: conversacionSeleccionada.id,
         senderId: userId,
-        body: body.trim(),
+        body: texto,
       }),
     });
 
     if (!res.ok) {
+      setConversaciones((prev) =>
+        prev.map((conversacion) =>
+          conversacion.id === conversacionSeleccionada.id
+            ? {
+                ...conversacion,
+                messages: conversacion.messages.map((message) =>
+                  message.id === tempId
+                    ? { ...message, pending: false, failed: true }
+                    : message
+                ),
+              }
+            : conversacion
+        )
+      );
       setError("No se ha podido enviar el mensaje.");
+      setSending(false);
       return;
     }
 
@@ -175,13 +272,15 @@ export default function Mensajes() {
           conversacion.id === nuevoMensaje.conversationId
             ? {
                 ...conversacion,
-                messages: [...conversacion.messages, nuevoMensaje],
+                messages: conversacion.messages.map((message) =>
+                  message.id === tempId ? nuevoMensaje : message
+                ),
               }
             : conversacion
         )
         .sort((a, b) => getConversationTimestamp(b) - getConversationTimestamp(a))
     );
-    setBody("");
+    setSending(false);
     setError("");
   };
 
@@ -276,7 +375,13 @@ export default function Mensajes() {
                       </div>
                     </div>
 
-                    <div className="flex-1 space-y-3 overflow-y-auto p-5">
+                    <div
+                      ref={messagesContainerRef}
+                      onScroll={() => {
+                        shouldStickToBottomRef.current = isNearBottom();
+                      }}
+                      className="flex-1 space-y-3 overflow-y-auto p-5"
+                    >
                       {conversacionSeleccionada.messages.length === 0 && (
                         <p className="text-gray-500">
                           Todavía no hay mensajes en esta conversación.
@@ -304,7 +409,11 @@ export default function Mensajes() {
                                   propio ? "text-green-100" : "text-gray-500"
                                 }`}
                               >
-                                {formatShortTime(message.createdAt)}
+                                {message.failed
+                                  ? "No enviado"
+                                  : message.pending
+                                    ? "Enviando..."
+                                    : formatShortTime(message.createdAt)}
                               </p>
                             </div>
                           </div>
@@ -325,9 +434,10 @@ export default function Mensajes() {
                       />
                       <button
                         type="submit"
+                        disabled={sending}
                         className="rounded-full bg-green-700 px-6 py-3 font-semibold text-white transition hover:bg-green-800"
                       >
-                        Enviar
+                        {sending ? "Enviando..." : "Enviar"}
                       </button>
                     </form>
                   </>
