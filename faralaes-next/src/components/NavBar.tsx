@@ -16,6 +16,7 @@ export default function NavBar() {
   const [userId, setUserId] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [conversationCount, setConversationCount] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const storedUserId = localStorage.getItem("userId") || "";
@@ -24,6 +25,7 @@ export default function NavBar() {
 
     if (!storedUserId) {
       setConversationCount(0);
+      setIsAdmin(false);
       return;
     }
 
@@ -33,6 +35,12 @@ export default function NavBar() {
         setConversationCount(Array.isArray(data) ? data.length : 0);
       })
       .catch(() => setConversationCount(0));
+
+    fetch(`/api/admin/me?userId=${encodeURIComponent(storedUserId)}`)
+      .then((res) => {
+        setIsAdmin(res.ok);
+      })
+      .catch(() => setIsAdmin(false));
   }, []);
 
   const salir = () => {
@@ -41,6 +49,7 @@ export default function NavBar() {
     setUserId("");
     setUserEmail("");
     setConversationCount(0);
+    setIsAdmin(false);
     router.push("/catalogo");
   };
 
@@ -76,6 +85,14 @@ export default function NavBar() {
               >
                 Perfil
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-[#f8f3ef] hover:text-green-700"
+                >
+                  Admin
+                </Link>
+              )}
               {userEmail && (
                 <span className="whitespace-nowrap rounded-full bg-[#f8f3ef] px-4 py-2 text-sm font-semibold text-gray-600">
                   {userEmail}
