@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import NavBar from "../components/NavBar";
 import { formatPrice } from "../lib/formatPrice";
@@ -34,6 +35,13 @@ export default function Home() {
 
   return (
     <>
+      <Head>
+        <title>Faralaes | Compra y venta de trajes de flamenca</title>
+        <meta
+          name="description"
+          content="Marketplace de moda flamenca para comprar y vender trajes de flamenca, vestidos de gitana y complementos flamencos de segunda mano en toda Andalucía."
+        />
+      </Head>
       <NavBar />
       <main className="min-h-screen bg-[#f8f3ef]">
         <section className="mx-auto max-w-6xl px-6 py-16 text-center md:py-20">
@@ -42,12 +50,12 @@ export default function Home() {
           </p>
 
           <h1 className="mx-auto mt-4 max-w-4xl font-serif text-5xl leading-tight text-gray-950 md:text-6xl">
-            Compra y vende trajes de flamenca en Sevilla
+            Compra y vende trajes de flamenca
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-gray-600">
-            Encuentra trajes cerca de ti o publica el tuyo en menos de 1 minuto.
-            Gratis y sin comisiones.
+            Encuentra trajes de flamenca de segunda mano cerca de ti o publica
+            el tuyo gratis en menos de 1 minuto.
           </p>
 
           <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
@@ -69,7 +77,7 @@ export default function Home() {
 
           <div className="mx-auto mt-10 grid max-w-3xl grid-cols-1 gap-3 text-sm font-bold text-red-800 sm:grid-cols-3">
             <div className="rounded-full bg-white px-4 py-3 shadow-sm">
-              Solo en Sevilla
+              Toda Andalucía
             </div>
             <div className="rounded-full bg-white px-4 py-3 shadow-sm">
               Sin comisiones
@@ -87,8 +95,13 @@ export default function Home() {
                 Catálogo
               </p>
               <h2 className="mt-2 font-serif text-4xl text-gray-950">
-                Últimos trajes publicados
+                Últimos trajes y vestidos publicados
               </h2>
+              <p className="mt-3 max-w-2xl leading-relaxed text-gray-600">
+                Moda flamenca de segunda mano para feria, romerías y celebraciones
+                en Andalucía: trajes de flamenca, vestidos de gitana y
+                complementos flamencos entre particulares.
+              </p>
             </div>
             <button
               type="button"
@@ -146,7 +159,7 @@ export default function Home() {
                       {formatPrice(producto.priceCents)}
                     </p>
                     <p className="mt-2 text-sm text-gray-500">
-                      {producto.location || "Sevilla"}
+                      {producto.location || "Andalucía"}
                     </p>
                   </div>
                 </article>
@@ -164,15 +177,15 @@ export default function Home() {
               {[
                 {
                   title: "Sube tu traje",
-                  text: "Añade fotos, precio y detalles en menos de 1 minuto.",
+                  text: "Añade fotos, precio y detalles de tu traje o vestido de flamenca en menos de 1 minuto.",
                 },
                 {
                   title: "Recibe interesados",
-                  text: "Las personas interesadas pueden contactar contigo directamente.",
+                  text: "Personas de toda Andalucía pueden contactar contigo directamente para comprar moda flamenca de segunda mano.",
                 },
                 {
                   title: "Véndelo",
-                  text: "Sin comisiones ni intermediarios.",
+                  text: "Cierra la venta de trajes, complementos flamencos o vestidos de gitana sin comisiones ni intermediarios.",
                 },
               ].map((paso, index) => (
                 <div
@@ -200,10 +213,10 @@ export default function Home() {
           </h2>
           <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              "Solo moda flamenca",
-              "Enfocado en Sevilla",
+              "Trajes y vestidos de flamenca",
+              "Compra y venta entre particulares",
+              "Toda Andalucía",
               "Sin comisiones",
-              "Rápido y sencillo",
             ].map((beneficio) => (
               <div
                 key={beneficio}
@@ -220,6 +233,10 @@ export default function Home() {
             <h2 className="font-serif text-4xl">
               ¿Tienes un traje guardado en el armario?
             </h2>
+            <p className="mx-auto mt-4 max-w-2xl leading-relaxed text-red-50">
+              Dale una nueva vida a tu moda flamenca para la próxima feria o
+              romería: publícala gratis y llega a compradoras de toda Andalucía.
+            </p>
             <button
               type="button"
               onClick={() => router.push("/publicar")}
