@@ -20,11 +20,16 @@ const legalLinks = [
   { href: "/terminos", label: "Términos" },
 ];
 
+type FooterLink = {
+  href: string;
+  label: string;
+};
+
 function FooterColumn({
   links,
   title,
 }: {
-  links: { href: string; label: string }[];
+  links: FooterLink[];
   title: string;
 }) {
   return (
@@ -32,11 +37,12 @@ function FooterColumn({
       <h2 className="text-sm font-bold uppercase tracking-widest text-stone-500">
         {title}
       </h2>
-      <nav className="mt-4 flex flex-col gap-3">
+      <nav aria-label={`Footer ${title}`} className="mt-4 flex flex-col gap-3">
         {links.map((link) => (
           <Link
             key={link.href}
             href={link.href}
+            prefetch={false}
             className="text-sm font-semibold text-stone-700 transition hover:text-green-800"
           >
             {link.label}
@@ -54,6 +60,7 @@ export default function Footer() {
         <div>
           <Link
             href="/"
+            prefetch={false}
             className="font-serif text-3xl font-semibold text-red-800"
           >
             Faralaes
