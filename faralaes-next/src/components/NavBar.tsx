@@ -14,7 +14,8 @@ const links = [
 export default function NavBar() {
   const router = useRouter();
   const [userId, setUserId] = useState("");
-  const [userEmail, setUserEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [conversationCount, setConversationCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -28,20 +29,24 @@ export default function NavBar() {
         return (await res.json()) as {
           id: string;
           email: string;
+          username: string;
+          displayName: string;
           role: "ADMIN" | "USER";
         };
       })
       .then((user) => {
         if (!user) {
           setUserId("");
-          setUserEmail("");
+          setUsername("");
+          setDisplayName("");
           setConversationCount(0);
           setIsAdmin(false);
           return;
         }
 
         setUserId(user.id);
-        setUserEmail(user.email);
+        setUsername(user.username);
+        setDisplayName(user.displayName);
         setIsAdmin(user.role === "ADMIN");
 
         fetch("/api/conversaciones")
@@ -53,7 +58,8 @@ export default function NavBar() {
       })
       .catch(() => {
         setUserId("");
-        setUserEmail("");
+        setUsername("");
+        setDisplayName("");
         setConversationCount(0);
         setIsAdmin(false);
       });
@@ -62,7 +68,8 @@ export default function NavBar() {
   const salir = async () => {
     await fetch("/api/logout", { method: "POST" }).catch(() => null);
     setUserId("");
-    setUserEmail("");
+    setUsername("");
+    setDisplayName("");
     setConversationCount(0);
     setIsAdmin(false);
     router.push("/catalogo");
@@ -108,9 +115,9 @@ export default function NavBar() {
                   Admin
                 </Link>
               )}
-              {userEmail && (
+              {username && (
                 <span className="whitespace-nowrap rounded-full bg-[#f8f3ef] px-4 py-2 text-sm font-semibold text-gray-600">
-                  {userEmail}
+                  {displayName || `@${username}`}
                 </span>
               )}
               <button

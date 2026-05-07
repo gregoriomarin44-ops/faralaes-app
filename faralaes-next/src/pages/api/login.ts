@@ -1,7 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import { setSessionCookie } from "../../lib/auth";
+import {
+  getAppBaseUrl,
+  sendUserVerificationEmail,
+} from "../../lib/emailVerification";
 import { prisma } from "../../lib/prisma";
+import {
+  normalizeDisplayName,
+  normalizeUsername,
+  validateUsername,
+} from "../../lib/userIdentity";
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -12,11 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { email, password, mode } = req.body;
-
-    if (!email || typeof email !== "string") {
-      return res.status(400).json({ error: "Email no valido" });
-    }
+    const { email, identifier, password, confirmPassword, mode } = req.body;
 
     if (!password || typeof password !== "string" || password.length < 8) {
       return res
@@ -24,22 +29,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .json({ error: "La contraseña debe tener al menos 8 caracteres." });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-
-    if (!isValidEmail(normalizedEmail)) {
-      return res.status(400).json({ error: "Email no valido" });
-    }
-
     if (mode === "register") {
-      const existingUser = await prisma.user.findUnique({
-        where: { email: normalizedEmail },
-        select: { id: true, passwordHash: true },
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Email no valido" });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (!isValidEmail(normalizedEmail)) {
+        return res.status(400).json({ error: "Email no valido" });
+      }
+
+      if (password !== confirmPassword) {
+        return res.status(400).json({
+          error: "Las contraseñas no coinciden.",
+        });
+      }
+
+      const displayName = normalizeDisplayName(req.body.displayName);
+
+      if (!displayName) {
+        return res.status(400).json({ error: "El nombre visible es obligatorio." });
+      }
+
+      const usernameValidation = validateUsername(req.body.username);
+
+      if (usernameValidation.error) {
+        return res.status(400).json({ error: usernameValidation.error });
+      }
+
+      const username = usernameValidation.username;
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [{ email: normalizedEmail }, { username }],
+        },
+        select: { id: true, email: true, username: true, passwordHash: true },
       });
 
-      if (existingUser?.passwordHash) {
+      if (existingUser?.email === normalizedEmail && existingUser.passwordHash) {
         return res
           .status(409)
           .json({ error: "Ya existe una cuenta con este email." });
+      }
+
+      if (existingUser?.username === username) {
+        return res
+          .status(409)
+          .json({ error: "Ese nombre de usuario ya esta en uso." });
       }
 
       const passwordHash = await bcrypt.hash(password, 12);
@@ -47,39 +83,82 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ? await prisma.user.update({
             where: { id: existingUser.id },
             data: {
+              displayName,
               passwordHash,
-              emailVerified: true,
+              username,
+              emailVerified: false,
+              profile: {
+                upsert: {
+                  update: { displayName },
+                  create: { displayName },
+                },
+              },
             },
             select: {
               id: true,
               email: true,
+              username: true,
+              displayName: true,
               role: true,
             },
           })
         : await prisma.user.create({
             data: {
+              displayName,
               email: normalizedEmail,
               passwordHash,
-              emailVerified: true,
+              username,
+              emailVerified: false,
+              profile: {
+                create: { displayName },
+              },
             },
             select: {
               id: true,
               email: true,
+              username: true,
+              displayName: true,
               role: true,
             },
           });
 
-      setSessionCookie(res, user.id);
-      return res.status(201).json(user);
+      await sendUserVerificationEmail({
+        baseUrl: getAppBaseUrl(req),
+        email: user.email,
+        userId: user.id,
+      });
+
+      return res.status(201).json({
+        ok: true,
+        email: user.email,
+        requiresVerification: true,
+        message: "Te hemos enviado un email para verificar tu cuenta.",
+      });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+    const normalizedIdentifier =
+      typeof identifier === "string"
+        ? identifier.trim().toLowerCase()
+        : typeof email === "string"
+          ? email.trim().toLowerCase()
+          : "";
+
+    if (!normalizedIdentifier) {
+      return res.status(400).json({ error: "Introduce tu email o usuario." });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: isValidEmail(normalizedIdentifier)
+        ? { email: normalizedIdentifier }
+        : { username: normalizeUsername(normalizedIdentifier) },
       select: {
         id: true,
         email: true,
+        username: true,
+        displayName: true,
         role: true,
         passwordHash: true,
+        emailVerified: true,
       },
     });
 
@@ -97,10 +176,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .json({ error: "Email o contraseña incorrectos." });
     }
 
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        error: "Revisa tu correo y verifica tu cuenta antes de continuar.",
+        code: "EMAIL_NOT_VERIFIED",
+        email: user.email,
+      });
+    }
+
     setSessionCookie(res, user.id);
     return res.status(200).json({
       id: user.id,
       email: user.email,
+      username: user.username,
+      displayName: user.displayName,
       role: user.role,
     });
   } catch (error) {

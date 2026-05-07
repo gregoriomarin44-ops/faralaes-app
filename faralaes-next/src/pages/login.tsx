@@ -5,28 +5,62 @@ import NavBar from "../components/NavBar";
 export default function Login() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [canResendVerification, setCanResendVerification] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
 
   const login = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setMessage("");
+    setCanResendVerification(false);
+    setVerificationEmail("");
 
     try {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, mode }),
+        body: JSON.stringify({
+          confirmPassword,
+          displayName,
+          email,
+          identifier,
+          password,
+          mode,
+          username,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.code === "EMAIL_NOT_VERIFIED") {
+          setCanResendVerification(true);
+          setVerificationEmail(data.email || email);
+        }
+
         throw new Error(data.error || "No se ha podido iniciar sesion.");
+      }
+
+      if (data.requiresVerification) {
+        setMessage(
+          data.message ||
+            "Te hemos enviado un email para verificar tu cuenta antes de entrar."
+        );
+        setCanResendVerification(true);
+        setVerificationEmail(data.email || email);
+        return;
       }
 
       const next = typeof router.query.next === "string" ? router.query.next : "";
@@ -37,6 +71,37 @@ export default function Login() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendVerification = async () => {
+    setResending(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/reenviar-verificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: verificationEmail || email || identifier }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(
+          data?.error || "No se ha podido reenviar el email de verificacion."
+        );
+      }
+
+      setMessage("Te hemos reenviado el email de verificacion.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se ha podido reenviar el email de verificacion."
+      );
+    } finally {
+      setResending(false);
     }
   };
 
@@ -52,7 +117,7 @@ export default function Login() {
             {mode === "login" ? "Entrar" : "Crear cuenta"}
           </h1>
           <p className="mt-3 text-gray-600">
-            Accede a tus anuncios, perfil y mensajes con tu email y contraseña.
+            Accede a tus anuncios, perfil y mensajes con tu usuario o email.
           </p>
 
           <form onSubmit={login} className="mt-8 space-y-4">
@@ -62,6 +127,9 @@ export default function Login() {
                 onClick={() => {
                   setMode("login");
                   setError("");
+                  setMessage("");
+                  setCanResendVerification(false);
+                  setVerificationEmail("");
                 }}
                 className={`rounded-md px-3 py-2 transition ${
                   mode === "login"
@@ -76,6 +144,9 @@ export default function Login() {
                 onClick={() => {
                   setMode("register");
                   setError("");
+                  setMessage("");
+                  setCanResendVerification(false);
+                  setVerificationEmail("");
                 }}
                 className={`rounded-md px-3 py-2 transition ${
                   mode === "register"
@@ -87,14 +158,56 @@ export default function Login() {
               </button>
             </div>
 
-            <input
-              className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
-              type="email"
-              required
-            />
+            {mode === "register" ? (
+              <>
+                <input
+                  className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Nombre visible"
+                  type="text"
+                  autoComplete="name"
+                  required
+                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    @
+                  </span>
+                  <input
+                    className="w-full rounded border border-gray-300 p-3 pl-8 outline-none transition focus:border-green-700"
+                    value={username}
+                    onChange={(e) =>
+                      setUsername(e.target.value.toLowerCase().replace(/\s/g, ""))
+                    }
+                    placeholder="nombre_usuario"
+                    type="text"
+                    minLength={3}
+                    pattern="[a-z0-9_]+"
+                    autoComplete="username"
+                    required
+                  />
+                </div>
+                <input
+                  className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@email.com"
+                  type="email"
+                  autoComplete="email"
+                  required
+                />
+              </>
+            ) : (
+              <input
+                className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="Email o nombre de usuario"
+                type="text"
+                autoComplete="username"
+                required
+              />
+            )}
 
             <div className="relative">
               <input
@@ -148,6 +261,19 @@ export default function Login() {
               </button>
             </div>
 
+            {mode === "register" && (
+              <input
+                className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirmar contraseña"
+                type="password"
+                minLength={8}
+                autoComplete="new-password"
+                required
+              />
+            )}
+
             <button
               className="w-full rounded bg-green-700 p-3 font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-gray-400"
               type="submit"
@@ -163,7 +289,20 @@ export default function Login() {
             </button>
           </form>
 
+          {message && <p className="mt-4 text-sm text-green-700">{message}</p>}
           {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
+          {canResendVerification && (
+            <button
+              type="button"
+              onClick={resendVerification}
+              disabled={resending || !email.trim()}
+              className="mt-4 w-full rounded border border-green-700 bg-white p-3 text-sm font-semibold text-green-700 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400"
+            >
+              {resending
+                ? "Reenviando..."
+                : "Reenviar email de verificacion"}
+            </button>
+          )}
         </section>
       </main>
     </>

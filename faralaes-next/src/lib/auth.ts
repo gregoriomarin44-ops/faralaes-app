@@ -107,3 +107,24 @@ export const requireSessionUser = async (
 
   return user;
 };
+
+export const requireVerifiedSessionUser = async (
+  req: NextApiRequest,
+  res: NextApiResponse
+) => {
+  const user = await requireSessionUser(req, res);
+
+  if (!user) {
+    return null;
+  }
+
+  if (!user.emailVerified) {
+    res.status(403).json({
+      error: "Revisa tu correo y verifica tu cuenta antes de continuar.",
+      code: "EMAIL_NOT_VERIFIED",
+    });
+    return null;
+  }
+
+  return user;
+};

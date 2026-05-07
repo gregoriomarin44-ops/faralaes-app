@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../../components/NavBar";
 import { formatPrice } from "../../lib/formatPrice";
+import { getInitial } from "../../lib/userIdentity";
 
 type Producto = {
   id: string;
@@ -21,8 +22,9 @@ type Producto = {
     url: string;
   }[];
   seller?: {
+    username: string;
+    displayName: string;
     profile?: {
-      displayName?: string | null;
       phone?: string | null;
       location?: string | null;
     } | null;
@@ -178,6 +180,9 @@ export default function ProductoDetalle() {
   const images = producto.images || [];
   const esPropio = userId === producto.sellerId;
   const sellerPhone = producto.seller?.profile?.phone?.replace(/\D/g, "") || "";
+  const sellerUsername = producto.seller?.username || "";
+  const sellerDisplayName = producto.seller?.displayName || "Usuario Faralaes";
+  const sellerInitial = getInitial(sellerDisplayName, sellerUsername);
   const puedeWhatsapp =
     userId &&
     !esPropio &&
@@ -293,6 +298,31 @@ export default function ProductoDetalle() {
                 </div>
               </div>
             </div>
+
+            {producto.seller && (
+              <div className="border-b border-gray-100 py-6">
+                <h2 className="mb-4 text-lg font-semibold text-gray-950">
+                  Vendedor
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/usuario/${sellerUsername}`)}
+                  className="flex w-full items-center gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-left transition hover:border-green-700 hover:bg-green-50"
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-700 text-lg font-bold text-white">
+                    {sellerInitial}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-gray-950">
+                      {sellerDisplayName}
+                    </span>
+                    <span className="block text-sm font-semibold text-gray-500">
+                      @{sellerUsername}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            )}
 
             {esPropio ? (
               <button

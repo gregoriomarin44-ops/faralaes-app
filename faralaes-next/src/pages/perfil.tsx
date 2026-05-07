@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
+import { getInitial } from "../lib/userIdentity";
 
 type Profile = {
   displayName: string;
@@ -13,12 +14,15 @@ type ProfileResponse = {
   profile: Profile | null;
   user: {
     email: string;
+    username: string;
+    displayName: string;
   };
 };
 
 export default function Perfil() {
   const router = useRouter();
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [location, setLocation] = useState("");
   const [bio, setBio] = useState("");
@@ -47,8 +51,8 @@ export default function Perfil() {
         }
 
         const profile = data.profile;
-        const userEmail = data.user.email;
-        setDisplayName(profile?.displayName || userEmail.split("@")[0] || "");
+        setDisplayName(data.user.displayName || profile?.displayName || "");
+        setUsername(data.user.username);
         setPhone(profile?.phone || "");
         setLocation(profile?.location || "");
         setBio(profile?.bio || "");
@@ -103,9 +107,19 @@ export default function Perfil() {
           <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
             Perfil
           </p>
-          <h1 className="mb-6 mt-3 font-serif text-4xl">
-            Tus datos de contacto
-          </h1>
+          <div className="mb-6 mt-3 flex items-center gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-green-700 text-2xl font-bold text-white">
+              {getInitial(displayName, username)}
+            </div>
+            <div>
+              <h1 className="font-serif text-4xl">Tus datos</h1>
+              {username && (
+                <p className="mt-1 text-sm font-semibold text-gray-500">
+                  @{username}
+                </p>
+              )}
+            </div>
+          </div>
 
           {loading && <p>Cargando perfil...</p>}
 

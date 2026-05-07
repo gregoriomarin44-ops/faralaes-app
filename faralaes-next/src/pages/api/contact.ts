@@ -1,5 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import nodemailer from "nodemailer";
+import {
+  createMailTransporter,
+  escapeHtml,
+  getRequiredMailEnv,
+} from "../../lib/mail";
 
 type ContactResponse = {
   ok?: true;
@@ -19,25 +23,11 @@ const requiredEnvVars = [
   "CONTACT_TO",
 ] as const;
 
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-
 const normalizeString = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
 
 const isValidEmail = (value: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
-
-const isSmtpSecure = () => {
-  const value = (process.env.SMTP_SECURE || "").trim().toLowerCase();
-
-  return value === "true" || value === "1" || value === "yes";
-};
 
 export default async function handler(
   req: NextApiRequest,
@@ -81,28 +71,20 @@ export default async function handler(
     });
   }
 
-  const smtpPort = Number(process.env.SMTP_PORT);
+  let mailEnv: ReturnType<typeof getRequiredMailEnv>;
 
-  if (!Number.isInteger(smtpPort) || smtpPort <= 0) {
-    console.error("SMTP_PORT no es valido");
+  try {
+    mailEnv = getRequiredMailEnv();
+  } catch (error) {
+    console.error(error);
     return res.status(500).json({
       error: "El formulario no esta disponible ahora mismo.",
     });
   }
 
-  const fromName = process.env.MAIL_FROM_NAME as string;
-  const fromEmail = process.env.MAIL_FROM as string;
+  const { fromEmail, fromName } = mailEnv;
   const contactTo = process.env.CONTACT_TO as string;
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: smtpPort,
-    secure: isSmtpSecure(),
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  });
+  const transporter = createMailTransporter();
 
   const safeNombre = escapeHtml(nombre);
   const safeEmail = escapeHtml(email);

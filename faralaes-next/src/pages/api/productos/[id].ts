@@ -24,7 +24,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           orderBy: { sortOrder: "asc" },
         },
         seller: {
-          include: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
             profile: true,
           },
         },

@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { requireSessionUser } from "../../lib/auth";
+import { requireVerifiedSessionUser } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const user = await requireSessionUser(req, res);
+    const user = await requireVerifiedSessionUser(req, res);
 
     if (!user) {
       return;

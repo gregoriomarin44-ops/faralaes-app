@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { requireSessionUser } from "../../lib/auth";
+import { requireSessionUser, requireVerifiedSessionUser } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 
 const MAX_IMAGES = 5;
@@ -95,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const user = await requireSessionUser(req, res);
+      const user = await requireVerifiedSessionUser(req, res);
 
       if (!user) {
         return;
@@ -161,7 +161,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const user = await requireSessionUser(req, res);
+      const user = await requireVerifiedSessionUser(req, res);
 
       if (!user) {
         return;
@@ -240,7 +240,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const user = await requireSessionUser(req, res);
+      const user = await requireVerifiedSessionUser(req, res);
 
       if (!user) {
         return;

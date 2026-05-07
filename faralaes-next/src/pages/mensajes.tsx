@@ -33,10 +33,8 @@ type Conversation = {
 
 type User = {
   id: string;
-  email: string;
-  profile?: {
-    displayName: string;
-  } | null;
+  username: string;
+  displayName: string;
 };
 
 const getLastMessage = (conversation: Conversation) =>
@@ -70,7 +68,14 @@ const sortConversations = (conversations: Conversation[]) =>
 const getOtherUser = (conversation: Conversation, userId: string) =>
   conversation.buyerId === userId ? conversation.seller : conversation.buyer;
 
-const getDisplayName = (user: User) => user.profile?.displayName || user.email;
+const getDisplayName = (user: User) => user.displayName || `@${user.username}`;
+
+const openUserProfile = (
+  router: ReturnType<typeof useRouter>,
+  user: User
+) => {
+  router.push(`/usuario/${user.username}`);
+};
 
 const getRoleLabel = (conversation: Conversation, userId: string) =>
   conversation.buyerId === userId ? "Comprador" : "Vendedor";
@@ -367,9 +372,16 @@ export default function Mensajes() {
                         <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
                           {roleLabel}
                         </span>
-                        <p className="text-xs text-gray-500">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openUserProfile(router, otherUser);
+                          }}
+                          className="text-xs font-semibold text-gray-500 transition hover:text-green-700"
+                        >
                           Con: {getDisplayName(otherUser)}
-                        </p>
+                        </button>
                       </div>
                       <p className="mt-2 line-clamp-2 text-sm text-gray-500">
                         {lastMessage
@@ -426,12 +438,21 @@ export default function Mensajes() {
                             <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-green-700">
                               {getRoleLabel(conversacionSeleccionada, userId)}
                             </span>
-                            <p className="text-sm font-semibold text-gray-700">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openUserProfile(
+                                  router,
+                                  getOtherUser(conversacionSeleccionada, userId)
+                                )
+                              }
+                              className="text-sm font-semibold text-gray-700 transition hover:text-green-700"
+                            >
                               Con:{" "}
                               {getDisplayName(
                                 getOtherUser(conversacionSeleccionada, userId)
                               )}
-                            </p>
+                            </button>
                           </div>
                         </div>
                       </div>
