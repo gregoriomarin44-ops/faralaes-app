@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getUser } from "../../lib/getUser";
+import { requireSessionUser } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 
 const MAX_IMAGES = 5;
@@ -52,16 +52,12 @@ const prepararImagenes = (images: unknown): { images: string[]; error: string | 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === "GET") {
-      const { mine, userId } = req.query;
+      const { mine } = req.query;
 
-      if (mine === "true" && (!userId || typeof userId !== "string")) {
-        return res.status(400).json({ error: "userId obligatorio" });
-      }
-
-      const user = mine === "true" ? await getUser(userId) : null;
+      const user = mine === "true" ? await requireSessionUser(req, res) : null;
 
       if (mine === "true" && !user) {
-        return res.status(401).json({ error: "Unauthorized" });
+        return;
       }
 
       const productos = await prisma.listing.findMany({
@@ -85,7 +81,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         title,
         description,
         priceCents,
-        sellerId,
         category,
         size,
         color,
@@ -96,14 +91,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         images,
       } = req.body;
 
-      if (!title || !priceCents || !sellerId || !category) {
+      if (!title || !priceCents || !category) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const user = await getUser(sellerId);
+      const user = await requireSessionUser(req, res);
 
       if (!user) {
-        return res.status(401).json({ error: "Unauthorized" });
+        return;
       }
 
       const { images: imagenes, error } = prepararImagenes(images);
@@ -149,7 +144,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === "PUT") {
       const {
         id,
-        userId,
         title,
         description,
         priceCents,
@@ -163,14 +157,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         images,
       } = req.body;
 
-      if (!id || !userId) {
+      if (!id) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const user = await getUser(userId);
+      const user = await requireSessionUser(req, res);
 
       if (!user) {
-        return res.status(401).json({ error: "Unauthorized" });
+        return;
       }
 
       if (!title || !priceCents || !category) {
@@ -240,16 +234,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "DELETE") {
-      const { id, userId } = req.body;
+      const { id } = req.body;
 
-      if (!id || !userId) {
+      if (!id) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const user = await getUser(userId);
+      const user = await requireSessionUser(req, res);
 
       if (!user) {
-        return res.status(401).json({ error: "Unauthorized" });
+        return;
       }
 
       const productoActual = await prisma.listing.findUnique({

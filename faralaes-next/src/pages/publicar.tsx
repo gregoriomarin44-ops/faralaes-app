@@ -85,14 +85,6 @@ export default function Publicar() {
   const publicar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const userId = localStorage.getItem("userId");
-
-    if (!userId) {
-      setMensaje("Inicia sesion antes de publicar.");
-      router.push("/login");
-      return;
-    }
-
     const priceCents = precioAcentimos(precio);
 
     if (priceCents === null) {
@@ -104,7 +96,6 @@ export default function Publicar() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        sellerId: userId,
         title: titulo,
         description: descripcion,
         priceCents,
@@ -132,6 +123,9 @@ export default function Publicar() {
       setShippingAvailable(false);
       setContactoWhatsapp(false);
       setImagenes([]);
+    } else if (res.status === 401) {
+      setMensaje("Inicia sesion antes de publicar.");
+      router.push("/login");
     } else {
       setMensaje("Error al publicar.");
     }

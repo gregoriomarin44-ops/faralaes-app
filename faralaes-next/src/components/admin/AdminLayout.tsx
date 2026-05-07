@@ -31,14 +31,7 @@ export function useAdminSession(): AdminSession {
   });
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId") || "";
-
-    if (!userId) {
-      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
-      return;
-    }
-
-    fetch(`/api/admin/me?userId=${encodeURIComponent(userId)}`)
+    fetch("/api/admin/me")
       .then(async (res) => {
         if (res.status === 401) {
           router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
@@ -46,7 +39,7 @@ export function useAdminSession(): AdminSession {
         }
 
         if (res.status === 403) {
-          setSession({ status: "denied", userId, user: null });
+          setSession({ status: "denied", userId: "", user: null });
           return null;
         }
 
@@ -58,11 +51,11 @@ export function useAdminSession(): AdminSession {
       })
       .then((user) => {
         if (user) {
-          setSession({ status: "authorized", userId, user });
+          setSession({ status: "authorized", userId: user.id, user });
         }
       })
       .catch(() => {
-        setSession({ status: "denied", userId, user: null });
+        setSession({ status: "denied", userId: "", user: null });
       });
   }, [router]);
 

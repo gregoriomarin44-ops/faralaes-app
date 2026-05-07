@@ -61,29 +61,34 @@ export default function EditarProducto() {
   useEffect(() => {
     if (!router.isReady) return;
 
-    const userId = localStorage.getItem("userId");
-
-    if (!userId) {
-      router.push("/login");
-      return;
-    }
-
     if (!id || typeof id !== "string") {
       setError("Producto no encontrado.");
       setLoading(false);
       return;
     }
 
-    fetch(`/api/productos/${id}`)
-      .then((res) => {
+    Promise.all([
+      fetch("/api/me").then((res) => (res.ok ? res.json() : null)),
+      fetch(`/api/productos/${id}`).then((res) => {
         if (!res.ok) {
           throw new Error("No se ha podido cargar el anuncio.");
         }
 
         return res.json();
-      })
-      .then((producto: Producto) => {
-        if (producto.sellerId !== userId) {
+      }),
+    ])
+      .then((res) => {
+        const [user, producto] = res as [
+          { id: string } | null,
+          Producto,
+        ];
+
+        if (!user) {
+          router.push("/login");
+          return null;
+        }
+
+        if (producto.sellerId !== user.id) {
           throw new Error("No puedes editar un anuncio de otro usuario.");
         }
 
@@ -100,6 +105,7 @@ export default function EditarProducto() {
         setImagenes(producto.images?.map((image) => image.url) || []);
         setImagenesCambiadas(false);
         setError("");
+        return null;
       })
       .catch((err: Error) => {
         setError(err.message || "No se ha podido cargar el anuncio.");
@@ -109,13 +115,6 @@ export default function EditarProducto() {
 
   const guardar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    const userId = localStorage.getItem("userId");
-
-    if (!userId) {
-      router.push("/login");
-      return;
-    }
 
     if (!id || typeof id !== "string") {
       setError("Producto no encontrado.");
@@ -139,7 +138,6 @@ export default function EditarProducto() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id,
-        userId,
         title: titulo,
         description: descripcion,
         priceCents,
@@ -156,6 +154,8 @@ export default function EditarProducto() {
 
     if (res.ok) {
       setMensaje("Anuncio actualizado correctamente.");
+    } else if (res.status === 401) {
+      router.push("/login");
     } else {
       const data = await res.json().catch(() => null);
       setError(data?.error || "No se ha podido guardar el anuncio.");

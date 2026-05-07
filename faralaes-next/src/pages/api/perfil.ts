@@ -1,35 +1,38 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { requireSessionUser } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    const user = await requireSessionUser(req, res);
+
+    if (!user) {
+      return;
+    }
+
     if (req.method === "GET") {
-      const { userId } = req.query;
-
-      if (!userId || typeof userId !== "string") {
-        return res.status(400).json({ error: "userId obligatorio" });
-      }
-
       const profile = await prisma.profile.findUnique({
-        where: { userId },
+        where: { userId: user.id },
       });
 
-      return res.status(200).json(profile);
+      return res.status(200).json({
+        profile,
+        user: {
+          id: user.id,
+          email: user.email,
+        },
+      });
     }
 
     if (req.method === "PUT") {
-      const { userId, displayName, phone, location, bio } = req.body;
-
-      if (!userId || typeof userId !== "string") {
-        return res.status(400).json({ error: "userId obligatorio" });
-      }
+      const { displayName, phone, location, bio } = req.body;
 
       if (!displayName || typeof displayName !== "string") {
         return res.status(400).json({ error: "Nombre público obligatorio" });
       }
 
       const profile = await prisma.profile.upsert({
-        where: { userId },
+        where: { userId: user.id },
         update: {
           displayName: displayName.trim(),
           phone: phone || null,
@@ -37,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           bio: bio || null,
         },
         create: {
-          userId,
+          userId: user.id,
           displayName: displayName.trim(),
           phone: phone || null,
           location: location || null,

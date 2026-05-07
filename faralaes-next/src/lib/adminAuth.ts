@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { getSessionUser } from "./auth";
 import { prisma } from "./prisma";
 
 export type AdminUser = {
@@ -48,21 +49,14 @@ export async function requireAdmin(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<AdminUser | null> {
-  const userId = getRequestUserId(req);
-
-  if (!userId) {
-    res.status(401).json({ error: "No has iniciado sesion." });
-    return null;
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-    },
-  });
+  const sessionUser = await getSessionUser(req);
+  const user = sessionUser
+    ? {
+        id: sessionUser.id,
+        email: sessionUser.email,
+        role: sessionUser.role,
+      }
+    : await getAdminUser(getRequestUserId(req));
 
   if (!user) {
     res.status(401).json({ error: "No has iniciado sesion." });

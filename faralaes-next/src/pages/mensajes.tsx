@@ -137,25 +137,27 @@ export default function Mensajes() {
   };
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem("userId") || "";
-
-    if (!storedUserId) {
-      router.push("/login");
-      return;
-    }
-
-    setUserId(storedUserId);
+    let currentUserId = "";
 
     const cargarConversaciones = (initial = false) => {
-      fetch(`/api/conversaciones?userId=${encodeURIComponent(storedUserId)}`)
+      fetch("/api/conversaciones")
         .then((res) => {
+          if (res.status === 401) {
+            router.push("/login");
+            return null;
+          }
+
           if (!res.ok) {
             throw new Error("No se han podido cargar tus mensajes.");
           }
 
           return res.json();
         })
-        .then((data: Conversation[]) => {
+        .then((data: Conversation[] | null) => {
+          if (!data) {
+            return;
+          }
+
           const conversacionesOrdenadas = sortConversations(data);
           mergeConversations(conversacionesOrdenadas);
           setError("");
@@ -180,8 +182,35 @@ export default function Mensajes() {
         });
     };
 
-    cargarConversaciones(true);
-    const intervalId = window.setInterval(() => cargarConversaciones(false), 3000);
+    fetch("/api/me")
+      .then((res) => {
+        if (res.status === 401) {
+          router.push("/login");
+          return null;
+        }
+
+        return res.ok ? res.json() : null;
+      })
+      .then((user) => {
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+
+        currentUserId = user.id;
+        setUserId(currentUserId);
+        cargarConversaciones(true);
+      })
+      .catch(() => {
+        setLoading(false);
+        router.push("/login");
+      });
+
+    const intervalId = window.setInterval(() => {
+      if (currentUserId) {
+        cargarConversaciones(false);
+      }
+    }, 3000);
 
     return () => window.clearInterval(intervalId);
   }, [router]);
@@ -241,7 +270,6 @@ export default function Mensajes() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         conversationId: conversacionSeleccionada.id,
-        senderId: userId,
         body: texto,
       }),
     });

@@ -26,15 +26,13 @@ export default function Favoritos() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
-
-    if (!userId) {
-      router.push("/login");
-      return;
-    }
-
-    fetch(`/api/favoritos?userId=${encodeURIComponent(userId)}`)
+    fetch("/api/favoritos")
       .then((res) => {
+        if (res.status === 401) {
+          router.push("/login");
+          return null;
+        }
+
         if (!res.ok) {
           throw new Error("No se han podido cargar tus favoritos.");
         }
@@ -42,6 +40,10 @@ export default function Favoritos() {
         return res.json();
       })
       .then((data) => {
+        if (!data) {
+          return;
+        }
+
         setProductos(data);
         setError("");
       })
@@ -58,24 +60,21 @@ export default function Favoritos() {
   ) => {
     e.stopPropagation();
 
-    const userId = localStorage.getItem("userId");
-
-    if (!userId) {
-      router.push("/login");
-      return;
-    }
-
     const anteriores = productos;
     setProductos((prev) => prev.filter((producto) => producto.id !== listingId));
 
     const res = await fetch("/api/favoritos", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, listingId }),
+      body: JSON.stringify({ listingId }),
     });
 
     if (!res.ok) {
       setProductos(anteriores);
+
+      if (res.status === 401) {
+        router.push("/login");
+      }
     }
   };
 

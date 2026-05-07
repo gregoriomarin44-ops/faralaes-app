@@ -51,24 +51,24 @@ export default function Catalogo() {
   const router = useRouter();
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem("userId") || "";
-    setUserId(storedUserId);
-
     const cargarCatalogo = async () => {
       try {
         const productosRes = await fetch("/api/productos");
         const productosData = await productosRes.json();
         setProductos(productosData);
 
-        if (storedUserId) {
-          const favoritosRes = await fetch(
-            `/api/favoritos?userId=${encodeURIComponent(storedUserId)}`
-          );
+        const meRes = await fetch("/api/me");
 
-          if (favoritosRes.ok) {
-            const favoritosData: Producto[] = await favoritosRes.json();
-            setFavoritos(favoritosData.map((producto) => producto.id));
-          }
+        if (meRes.ok) {
+          const user = await meRes.json();
+          setUserId(user.id);
+
+          const favoritosRes = await fetch("/api/favoritos");
+
+          if (!favoritosRes.ok) return;
+
+          const favoritosData: Producto[] = await favoritosRes.json();
+          setFavoritos(favoritosData.map((producto) => producto.id));
         }
       } finally {
         setLoading(false);
@@ -93,8 +93,6 @@ export default function Catalogo() {
   ) => {
     e.stopPropagation();
 
-    const userId = localStorage.getItem("userId");
-
     if (!userId) {
       router.push("/login");
       return;
@@ -111,7 +109,7 @@ export default function Catalogo() {
     const res = await fetch("/api/favoritos", {
       method: estaGuardado ? "DELETE" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, listingId }),
+      body: JSON.stringify({ listingId }),
     });
 
     if (!res.ok) {
@@ -120,6 +118,10 @@ export default function Catalogo() {
           ? [...prev, listingId]
           : prev.filter((id) => id !== listingId)
       );
+
+      if (res.status === 401) {
+        router.push("/login");
+      }
     }
   };
 

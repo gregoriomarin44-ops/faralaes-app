@@ -19,33 +19,48 @@ export default function NavBar() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem("userId") || "";
-    setUserId(storedUserId);
-    setUserEmail(localStorage.getItem("userEmail") || "");
+    fetch("/api/me")
+      .then(async (res) => {
+        if (!res.ok) {
+          return null;
+        }
 
-    if (!storedUserId) {
-      setConversationCount(0);
-      setIsAdmin(false);
-      return;
-    }
-
-    fetch(`/api/conversaciones?userId=${encodeURIComponent(storedUserId)}`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => {
-        setConversationCount(Array.isArray(data) ? data.length : 0);
+        return (await res.json()) as {
+          id: string;
+          email: string;
+          role: "ADMIN" | "USER";
+        };
       })
-      .catch(() => setConversationCount(0));
+      .then((user) => {
+        if (!user) {
+          setUserId("");
+          setUserEmail("");
+          setConversationCount(0);
+          setIsAdmin(false);
+          return;
+        }
 
-    fetch(`/api/admin/me?userId=${encodeURIComponent(storedUserId)}`)
-      .then((res) => {
-        setIsAdmin(res.ok);
+        setUserId(user.id);
+        setUserEmail(user.email);
+        setIsAdmin(user.role === "ADMIN");
+
+        fetch("/api/conversaciones")
+          .then((res) => (res.ok ? res.json() : []))
+          .then((data) => {
+            setConversationCount(Array.isArray(data) ? data.length : 0);
+          })
+          .catch(() => setConversationCount(0));
       })
-      .catch(() => setIsAdmin(false));
+      .catch(() => {
+        setUserId("");
+        setUserEmail("");
+        setConversationCount(0);
+        setIsAdmin(false);
+      });
   }, []);
 
-  const salir = () => {
-    localStorage.removeItem("userId");
-    localStorage.removeItem("userEmail");
+  const salir = async () => {
+    await fetch("/api/logout", { method: "POST" }).catch(() => null);
     setUserId("");
     setUserEmail("");
     setConversationCount(0);

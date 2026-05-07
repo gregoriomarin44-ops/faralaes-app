@@ -1,18 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { requireSessionUser } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    const user = await requireSessionUser(req, res);
+
+    if (!user) {
+      return;
+    }
+
     if (req.method === "GET") {
-      const { userId } = req.query;
-
-      if (!userId || typeof userId !== "string") {
-        return res.status(400).json({ error: "userId obligatorio" });
-      }
-
       const favoritos = await prisma.favorite.findMany({
         where: {
-          userId,
+          userId: user.id,
           listing: {
             status: "published",
           },
@@ -33,22 +34,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "POST") {
-      const { userId, listingId } = req.body;
+      const { listingId } = req.body;
 
-      if (!userId || !listingId) {
+      if (!listingId) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
       const favorito = await prisma.favorite.upsert({
         where: {
           userId_listingId: {
-            userId,
+            userId: user.id,
             listingId,
           },
         },
         update: {},
         create: {
-          userId,
+          userId: user.id,
           listingId,
         },
       });
@@ -57,15 +58,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "DELETE") {
-      const { userId, listingId } = req.body;
+      const { listingId } = req.body;
 
-      if (!userId || !listingId) {
+      if (!listingId) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
       await prisma.favorite.deleteMany({
         where: {
-          userId,
+          userId: user.id,
           listingId,
         },
       });

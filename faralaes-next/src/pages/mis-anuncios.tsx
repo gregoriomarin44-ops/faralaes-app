@@ -26,15 +26,13 @@ export default function MisAnuncios() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
-
-    if (!userId) {
-      router.push("/login");
-      return;
-    }
-
-    fetch(`/api/productos?mine=true&userId=${encodeURIComponent(userId)}`)
+    fetch("/api/productos?mine=true")
       .then((res) => {
+        if (res.status === 401) {
+          router.push("/login");
+          return null;
+        }
+
         if (!res.ok) {
           throw new Error("No se han podido cargar tus anuncios.");
         }
@@ -42,6 +40,10 @@ export default function MisAnuncios() {
         return res.json();
       })
       .then((data) => {
+        if (!data) {
+          return;
+        }
+
         setProductos(data);
         setError("");
       })
@@ -58,13 +60,6 @@ export default function MisAnuncios() {
   ) => {
     e.stopPropagation();
 
-    const userId = localStorage.getItem("userId");
-
-    if (!userId) {
-      router.push("/login");
-      return;
-    }
-
     const confirmado = confirm("¿Seguro que quieres eliminar este anuncio?");
 
     if (!confirmado) {
@@ -74,11 +69,16 @@ export default function MisAnuncios() {
     const res = await fetch("/api/productos", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, userId }),
+      body: JSON.stringify({ id }),
     });
 
     if (res.ok) {
       setProductos((prev) => prev.filter((producto) => producto.id !== id));
+      return;
+    }
+
+    if (res.status === 401) {
+      router.push("/login");
       return;
     }
 

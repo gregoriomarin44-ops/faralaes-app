@@ -1,20 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getUser } from "../../lib/getUser";
+import { requireSessionUser } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    const user = await requireSessionUser(req, res);
+
+    if (!user) {
+      return;
+    }
+
     if (req.method === "POST") {
-      const { conversationId, senderId, body } = req.body;
+      const { conversationId, body } = req.body;
 
-      if (!conversationId || !senderId || !body) {
+      if (!conversationId || !body) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
-      }
-
-      const user = await getUser(senderId);
-
-      if (!user) {
-        return res.status(401).json({ error: "Unauthorized" });
       }
 
       const conversation = await prisma.conversation.findUnique({
@@ -50,16 +50,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "GET") {
-      const { conversationId, userId } = req.query;
+      const { conversationId } = req.query;
 
       if (!conversationId || typeof conversationId !== "string") {
         return res.status(400).json({ error: "conversationId obligatorio" });
-      }
-
-      const user = await getUser(userId);
-
-      if (!user) {
-        return res.status(401).json({ error: "Unauthorized" });
       }
 
       const conversation = await prisma.conversation.findUnique({

@@ -9,6 +9,13 @@ type Profile = {
   bio: string | null;
 };
 
+type ProfileResponse = {
+  profile: Profile | null;
+  user: {
+    email: string;
+  };
+};
+
 export default function Perfil() {
   const router = useRouter();
   const [displayName, setDisplayName] = useState("");
@@ -21,23 +28,26 @@ export default function Perfil() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
-    const userEmail = localStorage.getItem("userEmail") || "";
-
-    if (!userId) {
-      router.push("/login");
-      return;
-    }
-
-    fetch(`/api/perfil?userId=${encodeURIComponent(userId)}`)
+    fetch("/api/perfil")
       .then((res) => {
+        if (res.status === 401) {
+          router.push("/login");
+          return null;
+        }
+
         if (!res.ok) {
           throw new Error("No se ha podido cargar tu perfil.");
         }
 
         return res.json();
       })
-      .then((profile: Profile | null) => {
+      .then((data: ProfileResponse | null) => {
+        if (!data) {
+          return;
+        }
+
+        const profile = data.profile;
+        const userEmail = data.user.email;
         setDisplayName(profile?.displayName || userEmail.split("@")[0] || "");
         setPhone(profile?.phone || "");
         setLocation(profile?.location || "");
@@ -53,13 +63,6 @@ export default function Perfil() {
   const guardar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const userId = localStorage.getItem("userId");
-
-    if (!userId) {
-      router.push("/login");
-      return;
-    }
-
     if (!displayName.trim()) {
       setError("El nombre público es obligatorio.");
       return;
@@ -73,7 +76,6 @@ export default function Perfil() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId,
         displayName,
         phone,
         location,
@@ -83,6 +85,8 @@ export default function Perfil() {
 
     if (res.ok) {
       setMensaje("Perfil guardado correctamente.");
+    } else if (res.status === 401) {
+      router.push("/login");
     } else {
       const data = await res.json().catch(() => null);
       setError(data?.error || "No se ha podido guardar tu perfil.");

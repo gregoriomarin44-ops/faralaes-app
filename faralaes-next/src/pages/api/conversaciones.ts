@@ -1,20 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getUser } from "../../lib/getUser";
+import { requireSessionUser } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    const user = await requireSessionUser(req, res);
+
+    if (!user) {
+      return;
+    }
+
     if (req.method === "POST") {
-      const { listingId, buyerId } = req.body;
+      const { listingId } = req.body;
 
-      if (!listingId || !buyerId) {
+      if (!listingId) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
-      }
-
-      const user = await getUser(buyerId);
-
-      if (!user) {
-        return res.status(401).json({ error: "Unauthorized" });
       }
 
       const listing = await prisma.listing.findUnique({
@@ -102,18 +102,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "GET") {
-      const { userId } = req.query;
-
-      if (!userId || typeof userId !== "string") {
-        return res.status(400).json({ error: "userId obligatorio" });
-      }
-
-      const user = await getUser(userId);
-
-      if (!user) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
       const conversaciones = await prisma.conversation.findMany({
         where: {
           OR: [{ buyerId: user.id }, { sellerId: user.id }],

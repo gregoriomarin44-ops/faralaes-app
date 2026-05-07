@@ -42,7 +42,10 @@ export default function ProductoDetalle() {
   useEffect(() => {
     if (!router.isReady) return;
 
-    setUserId(localStorage.getItem("userId") || "");
+    fetch("/api/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((user) => setUserId(user?.id || ""))
+      .catch(() => setUserId(""));
 
     if (!id || typeof id !== "string") {
       setProducto(null);
@@ -94,11 +97,14 @@ export default function ProductoDetalle() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         listingId: producto.id,
-        buyerId: userId,
       }),
     });
 
     if (!res.ok) {
+      if (res.status === 401) {
+        router.push("/login");
+      }
+
       return;
     }
 
