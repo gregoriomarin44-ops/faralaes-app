@@ -42,18 +42,18 @@ export default function Login() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        if (data.code === "EMAIL_NOT_VERIFIED") {
+        if (data?.code === "EMAIL_NOT_VERIFIED") {
           setCanResendVerification(true);
           setVerificationEmail(data.email || email);
         }
 
-        throw new Error(data.error || "No se ha podido iniciar sesion.");
+        throw new Error(data?.error || "No se ha podido iniciar sesion.");
       }
 
-      if (data.requiresVerification) {
+      if (data?.requiresVerification) {
         setMessage(
           data.message ||
             "Te hemos enviado un email para verificar tu cuenta antes de entrar."
@@ -177,7 +177,13 @@ export default function Login() {
                     className="w-full rounded border border-gray-300 p-3 pl-8 outline-none transition focus:border-green-700"
                     value={username}
                     onChange={(e) =>
-                      setUsername(e.target.value.toLowerCase().replace(/\s/g, ""))
+                      setUsername(
+                        e.target.value
+                          .toLowerCase()
+                          .trimStart()
+                          .replace(/^@+/, "")
+                          .replace(/\s/g, "")
+                      )
                     }
                     placeholder="nombre_usuario"
                     type="text"
@@ -295,7 +301,9 @@ export default function Login() {
             <button
               type="button"
               onClick={resendVerification}
-              disabled={resending || !email.trim()}
+              disabled={
+                resending || !(verificationEmail || email || identifier).trim()
+              }
               className="mt-4 w-full rounded border border-green-700 bg-white p-3 text-sm font-semibold text-green-700 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400"
             >
               {resending

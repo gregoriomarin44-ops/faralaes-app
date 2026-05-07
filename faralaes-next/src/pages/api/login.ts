@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { setSessionCookie } from "../../lib/auth";
 import {
@@ -13,6 +14,54 @@ import {
 } from "../../lib/userIdentity";
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const getLoginErrorResponse = (error: unknown) => {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      const target = Array.isArray(error.meta?.target)
+        ? error.meta.target.join(", ")
+        : String(error.meta?.target || "");
+
+      if (target.includes("username")) {
+        return { status: 409, error: "Ese nombre de usuario ya esta en uso." };
+      }
+
+      if (target.includes("email")) {
+        return { status: 409, error: "Ya existe una cuenta con este email." };
+      }
+
+      return { status: 409, error: "Ya existe una cuenta con esos datos." };
+    }
+
+    if (error.code === "P2021" || error.code === "P2022") {
+      return {
+        status: 503,
+        error:
+          "La base de datos no esta actualizada. Aplica las migraciones de Prisma antes de crear cuentas.",
+      };
+    }
+  }
+
+  if (error instanceof Error) {
+    if (error.message.includes("Faltan variables SMTP")) {
+      return {
+        status: 503,
+        error:
+          "No se ha podido enviar el email de verificacion porque falta configurar el correo SMTP.",
+      };
+    }
+
+    if (error.message.includes("SMTP_PORT")) {
+      return {
+        status: 503,
+        error:
+          "No se ha podido enviar el email de verificacion porque SMTP_PORT no es valido.",
+      };
+    }
+  }
+
+  return { status: 500, error: "Error interno del servidor" };
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -59,29 +108,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const username = usernameValidation.username;
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          OR: [{ email: normalizedEmail }, { username }],
-        },
-        select: { id: true, email: true, username: true, passwordHash: true },
-      });
+      const [existingEmailUser, existingUsernameUser] = await Promise.all([
+        prisma.user.findUnique({
+          where: { email: normalizedEmail },
+          select: { id: true, email: true, passwordHash: true },
+        }),
+        prisma.user.findUnique({
+          where: { username },
+          select: { id: true, username: true },
+        }),
+      ]);
 
-      if (existingUser?.email === normalizedEmail && existingUser.passwordHash) {
+      if (existingEmailUser?.passwordHash) {
         return res
           .status(409)
           .json({ error: "Ya existe una cuenta con este email." });
       }
 
-      if (existingUser?.username === username) {
+      if (
+        existingUsernameUser &&
+        (!existingEmailUser || existingUsernameUser.id !== existingEmailUser.id)
+      ) {
         return res
           .status(409)
           .json({ error: "Ese nombre de usuario ya esta en uso." });
       }
 
       const passwordHash = await bcrypt.hash(password, 12);
-      const user = existingUser
+      const user = existingEmailUser
         ? await prisma.user.update({
-            where: { id: existingUser.id },
+            where: { id: existingEmailUser.id },
             data: {
               displayName,
               passwordHash,
@@ -188,12 +244,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       id: user.id,
       email: user.email,
-      username: user.username,
-      displayName: user.displayName,
+      username: user.username || user.email.split("@")[0],
+      displayName: user.displayName || user.email.split("@")[0],
       role: user.role,
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: "Error interno del servidor" });
+    const response = getLoginErrorResponse(error);
+
+    return res.status(response.status).json({ error: response.error });
   }
 }

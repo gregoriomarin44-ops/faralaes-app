@@ -1,7 +1,9 @@
 export const USERNAME_PATTERN = /^[a-z0-9_]+$/;
 
 export const normalizeUsername = (value: unknown) =>
-  typeof value === "string" ? value.trim().toLowerCase() : "";
+  typeof value === "string"
+    ? value.trim().toLowerCase().replace(/^@+/, "")
+    : "";
 
 export const validateUsername = (value: unknown) => {
   const username = normalizeUsername(value);
