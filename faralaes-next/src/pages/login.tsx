@@ -7,6 +7,7 @@ export default function Login() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -95,15 +96,57 @@ export default function Login() {
               required
             />
 
-            <input
-              className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Contraseña"
-              type="password"
-              minLength={8}
-              required
-            />
+            <div className="relative">
+              <input
+                className="w-full rounded border border-gray-300 p-3 pr-12 outline-none transition focus:border-green-700"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Contraseña"
+                type={showPassword ? "text" : "password"}
+                minLength={8}
+                required
+              />
+              <button
+                type="button"
+                aria-label={
+                  showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                }
+                onClick={() => setShowPassword((visible) => !visible)}
+                className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-500 transition hover:bg-[#f8f3ef] hover:text-green-800 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-offset-2"
+              >
+                {showPassword ? (
+                  <svg
+                    aria-hidden="true"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="m3 3 18 18" />
+                    <path d="M10.58 10.58a2 2 0 0 0 2.84 2.84" />
+                    <path d="M9.88 4.24A10.7 10.7 0 0 1 12 4c5 0 9 5 10 8a13.2 13.2 0 0 1-2.1 3.36" />
+                    <path d="M6.61 6.61A13 13 0 0 0 2 12c1 3 5 8 10 8a10.8 10.8 0 0 0 5.39-1.61" />
+                  </svg>
+                ) : (
+                  <svg
+                    aria-hidden="true"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8S2 12 2 12Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
 
             <button
               className="w-full rounded bg-green-700 p-3 font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-gray-400"
