@@ -20,23 +20,70 @@ type DashboardListing = {
 type DashboardUser = {
   id: string;
   email: string;
+  username: string;
+  displayName: string;
   role: "ADMIN" | "USER";
+  disabled: boolean;
   createdAt: string;
   profile: {
     displayName: string;
   } | null;
 };
 
+type DashboardReport = {
+  id: string;
+  targetType: "listing" | "user";
+  reason: string;
+  status: "pending" | "reviewed" | "resolved";
+  createdAt: string;
+  reporter: {
+    username: string;
+    displayName: string;
+  };
+  target:
+    | { title: string; status: string }
+    | { username: string; displayName: string; disabled: boolean }
+    | null;
+};
+
+type MetricRow = {
+  label: string;
+  value: number;
+  id?: string;
+  status?: string;
+};
+
+type ChartPoint = {
+  label: string;
+  value: number;
+};
+
 type DashboardData = {
   totals: {
     totalListings: number;
     publishedListings: number;
-    pendingListings: number;
+    hiddenListings: number;
+    publishedToday: number;
     totalUsers: number;
+    newUsersLast7Days: number;
     pendingReports: number;
+    totalFavorites: number;
+    totalMessages: number;
+    disabledUsers: number;
   };
   latestListings: DashboardListing[];
   latestUsers: DashboardUser[];
+  latestReports: DashboardReport[];
+  charts: {
+    listingsByDay: ChartPoint[];
+    usersByDay: ChartPoint[];
+  };
+  marketplace: {
+    topCategories: MetricRow[];
+    topLocations: MetricRow[];
+    topFavoriteListings: MetricRow[];
+    topSellers: MetricRow[];
+  };
 };
 
 const formatDate = (value: string) =>
@@ -45,6 +92,129 @@ const formatDate = (value: string) =>
     month: "short",
     year: "numeric",
   }).format(new Date(value));
+
+const getReportTargetLabel = (report: DashboardReport) => {
+  if (!report.target) {
+    return "Objetivo no disponible";
+  }
+
+  if ("title" in report.target) {
+    return report.target.title;
+  }
+
+  return report.target.displayName || `@${report.target.username}`;
+};
+
+function KpiCard({
+  label,
+  tone = "neutral",
+  value,
+}: {
+  label: string;
+  tone?: "neutral" | "green" | "red";
+  value: number | string;
+}) {
+  const toneClass =
+    tone === "green"
+      ? "text-green-800"
+      : tone === "red"
+        ? "text-red-700"
+        : "text-stone-950";
+
+  return (
+    <article className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+      <p className="text-sm font-semibold text-stone-500">{label}</p>
+      <p className={`mt-3 text-3xl font-bold ${toneClass}`}>{value}</p>
+    </article>
+  );
+}
+
+function Panel({
+  children,
+  href,
+  linkLabel,
+  title,
+}: {
+  children: React.ReactNode;
+  href?: string;
+  linkLabel?: string;
+  title: string;
+}) {
+  return (
+    <section className="rounded-lg border border-stone-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between gap-4 border-b border-stone-100 px-5 py-4">
+        <h2 className="font-serif text-2xl">{title}</h2>
+        {href && linkLabel && (
+          <Link
+            href={href}
+            className="text-sm font-semibold text-green-800 hover:text-green-900"
+          >
+            {linkLabel}
+          </Link>
+        )}
+      </div>
+      <div>{children}</div>
+    </section>
+  );
+}
+
+function EmptyState({ children }: { children: string }) {
+  return <p className="px-5 py-4 text-sm text-stone-500">{children}</p>;
+}
+
+function BarChart({ data }: { data: ChartPoint[] }) {
+  const max = Math.max(...data.map((item) => item.value), 1);
+
+  return (
+    <div className="flex h-52 items-end gap-3 px-5 pb-5 pt-6">
+      {data.map((item) => (
+        <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+          <div className="flex h-32 w-full items-end rounded bg-[#f8f3ef]">
+            <div
+              className="w-full rounded bg-green-700 transition-all"
+              style={{ height: `${Math.max((item.value / max) * 100, item.value ? 8 : 0)}%` }}
+              title={`${item.label}: ${item.value}`}
+            />
+          </div>
+          <p className="text-xs font-semibold text-stone-500">{item.label}</p>
+          <p className="text-sm font-bold text-stone-950">{item.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RankingList({
+  empty,
+  items,
+  suffix,
+}: {
+  empty: string;
+  items: MetricRow[];
+  suffix: string;
+}) {
+  if (items.length === 0) {
+    return <EmptyState>{empty}</EmptyState>;
+  }
+
+  return (
+    <div className="divide-y divide-stone-100">
+      {items.map((item) => (
+        <div key={`${item.label}-${item.id || ""}`} className="flex items-center justify-between gap-4 px-5 py-4">
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-stone-950">{item.label}</p>
+            {item.status && (
+              <p className="text-xs text-stone-500">Estado: {item.status}</p>
+            )}
+          </div>
+          <p className="shrink-0 rounded-full bg-[#f8f3ef] px-3 py-1 text-xs font-bold text-stone-700">
+            {item.value} {suffix}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function AdminHome() {
   const session = useAdminSession();
@@ -71,19 +241,38 @@ export default function AdminHome() {
       .catch((err: Error) => setError(err.message));
   }, [session]);
 
-  const cards = [
-    { label: "Anuncios totales", value: data?.totals.totalListings ?? "-" },
-    { label: "Publicados", value: data?.totals.publishedListings ?? "-" },
-    { label: "Pendientes/borrador", value: data?.totals.pendingListings ?? "-" },
-    { label: "Usuarios registrados", value: data?.totals.totalUsers ?? "-" },
-    { label: "Reportes pendientes", value: data?.totals.pendingReports ?? "-" },
+  const kpis = [
+    { label: "Usuarios totales", value: data?.totals.totalUsers ?? "-" },
+    {
+      label: "Nuevos usuarios 7 dias",
+      value: data?.totals.newUsersLast7Days ?? "-",
+      tone: "green" as const,
+    },
+    { label: "Anuncios publicados", value: data?.totals.publishedListings ?? "-" },
+    {
+      label: "Anuncios ocultos",
+      value: data?.totals.hiddenListings ?? "-",
+      tone: "red" as const,
+    },
+    {
+      label: "Reportes pendientes",
+      value: data?.totals.pendingReports ?? "-",
+      tone: "red" as const,
+    },
+    { label: "Favoritos totales", value: data?.totals.totalFavorites ?? "-" },
+    { label: "Mensajes totales", value: data?.totals.totalMessages ?? "-" },
+    {
+      label: "Publicados hoy",
+      value: data?.totals.publishedToday ?? "-",
+      tone: "green" as const,
+    },
   ];
 
   return (
     <AdminLayout
       session={session}
       title="Resumen"
-      description="Vista operativa del marketplace: actividad reciente, volumen de anuncios y altas de usuarios."
+      description="Vista operativa del marketplace: crecimiento, actividad, salud del catalogo y moderacion."
     >
       {error && (
         <p className="mb-5 rounded-lg border border-red-100 bg-white px-4 py-3 text-sm font-semibold text-red-700">
@@ -91,48 +280,68 @@ export default function AdminHome() {
         </p>
       )}
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {cards.map((card) => (
-          <article
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((card) => (
+          <KpiCard
             key={card.label}
-            className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm"
-          >
-            <p className="text-sm font-semibold text-stone-500">{card.label}</p>
-            <p className="mt-3 text-3xl font-bold text-stone-950">
-              {card.value}
-            </p>
-          </article>
+            label={card.label}
+            value={card.value}
+            tone={card.tone}
+          />
         ))}
       </section>
 
-      <section className="mt-6 rounded-lg border border-red-100 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-serif text-2xl">Reportes</h2>
-            <p className="mt-1 text-sm text-stone-600">
-              Revisa avisos de anuncios y usuarios para actuar rapido.
-            </p>
-          </div>
-          <Link
-            href="/admin/reportes"
-            className="rounded-full bg-red-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-red-800"
-          >
-            Ver reportes
-          </Link>
-        </div>
+      <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <KpiCard
+          label="Moderacion: reportes pendientes"
+          value={data?.totals.pendingReports ?? "-"}
+          tone="red"
+        />
+        <KpiCard
+          label="Moderacion: usuarios desactivados"
+          value={data?.totals.disabledUsers ?? "-"}
+          tone="red"
+        />
+        <KpiCard
+          label="Moderacion: anuncios ocultos"
+          value={data?.totals.hiddenListings ?? "-"}
+          tone="red"
+        />
       </section>
 
       <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="rounded-lg border border-stone-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
-            <h2 className="font-serif text-2xl">Ultimos anuncios</h2>
-            <Link
-              href="/admin/anuncios"
-              className="text-sm font-semibold text-green-800 hover:text-green-900"
-            >
-              Ver todos
-            </Link>
+        <Panel title="Anuncios publicados por dia">
+          <BarChart data={data?.charts.listingsByDay || []} />
+        </Panel>
+        <Panel title="Registros de usuarios por dia">
+          <BarChart data={data?.charts.usersByDay || []} />
+        </Panel>
+      </section>
+
+      <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <Panel title="Ultimos usuarios registrados" href="/admin/usuarios" linkLabel="Ver usuarios">
+          <div className="divide-y divide-stone-100">
+            {data?.latestUsers.map((user) => (
+              <div key={user.id} className="grid gap-1 px-5 py-4 sm:grid-cols-[1fr_auto]">
+                <div>
+                  <p className="font-semibold">
+                    {user.displayName || user.profile?.displayName || "Sin nombre publico"}
+                  </p>
+                  <p className="text-sm text-stone-500">@{user.username}</p>
+                </div>
+                <div className="text-left text-sm text-stone-500 sm:text-right">
+                  <p>{user.disabled ? "Desactivado" : user.role}</p>
+                  <p>{formatDate(user.createdAt)}</p>
+                </div>
+              </div>
+            ))}
+            {data && data.latestUsers.length === 0 && (
+              <EmptyState>Todavia no hay usuarios.</EmptyState>
+            )}
           </div>
+        </Panel>
+
+        <Panel title="Ultimos anuncios publicados" href="/admin/anuncios" linkLabel="Ver todos">
           <div className="divide-y divide-stone-100">
             {data?.latestListings.map((listing) => (
               <div key={listing.id} className="grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto]">
@@ -147,51 +356,71 @@ export default function AdminHome() {
                     {formatPrice(listing.priceCents)}
                   </p>
                   <p className="text-sm text-stone-500">
-                    {listing.status} · {formatDate(listing.createdAt)}
+                    {formatDate(listing.createdAt)}
                   </p>
                 </div>
               </div>
             ))}
             {data && data.latestListings.length === 0 && (
-              <p className="px-5 py-4 text-sm text-stone-500">
-                Todavia no hay anuncios.
-              </p>
+              <EmptyState>Todavia no hay anuncios publicados.</EmptyState>
             )}
           </div>
-        </div>
+        </Panel>
 
-        <div className="rounded-lg border border-stone-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
-            <h2 className="font-serif text-2xl">Ultimas altas</h2>
-            <Link
-              href="/admin/usuarios"
-              className="text-sm font-semibold text-green-800 hover:text-green-900"
-            >
-              Ver usuarios
-            </Link>
-          </div>
+        <Panel title="Ultimos reportes" href="/admin/reportes" linkLabel="Ver reportes">
           <div className="divide-y divide-stone-100">
-            {data?.latestUsers.map((user) => (
-              <div key={user.id} className="grid gap-1 px-5 py-4 sm:grid-cols-[1fr_auto]">
-                <div>
+            {data?.latestReports.map((report) => (
+              <div key={report.id} className="px-5 py-4">
+                <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold">
-                    {user.profile?.displayName || "Sin nombre publico"}
+                    {report.targetType === "listing" ? "Anuncio" : "Usuario"} · {report.reason}
                   </p>
-                  <p className="text-sm text-stone-500">{user.email}</p>
+                  <span className="rounded-full bg-[#f8f3ef] px-2 py-1 text-xs font-bold text-stone-600">
+                    {report.status}
+                  </span>
                 </div>
-                <div className="text-left text-sm text-stone-500 sm:text-right">
-                  <p>{user.role}</p>
-                  <p>{formatDate(user.createdAt)}</p>
-                </div>
+                <p className="mt-1 text-sm text-stone-600">{getReportTargetLabel(report)}</p>
+                <p className="mt-1 text-xs text-stone-500">
+                  Reporta: {report.reporter.displayName || `@${report.reporter.username}`} · {formatDate(report.createdAt)}
+                </p>
               </div>
             ))}
-            {data && data.latestUsers.length === 0 && (
-              <p className="px-5 py-4 text-sm text-stone-500">
-                Todavia no hay usuarios.
-              </p>
+            {data && data.latestReports.length === 0 && (
+              <EmptyState>No hay reportes recientes.</EmptyState>
             )}
           </div>
-        </div>
+        </Panel>
+      </section>
+
+      <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Panel title="Categorias mas usadas">
+          <RankingList
+            empty="Sin categorias suficientes."
+            items={data?.marketplace.topCategories || []}
+            suffix="anuncios"
+          />
+        </Panel>
+        <Panel title="Provincias y ubicaciones mas activas">
+          <RankingList
+            empty="Sin ubicaciones suficientes."
+            items={data?.marketplace.topLocations || []}
+            suffix="anuncios"
+          />
+        </Panel>
+        <Panel title="Anuncios mas favoritos">
+          <RankingList
+            empty="Todavia no hay favoritos."
+            items={data?.marketplace.topFavoriteListings || []}
+            suffix="favoritos"
+          />
+        </Panel>
+        <Panel title="Usuarios con mas anuncios">
+          <RankingList
+            empty="Todavia no hay vendedores activos."
+            items={data?.marketplace.topSellers || []}
+            suffix="anuncios"
+          />
+        </Panel>
       </section>
     </AdminLayout>
   );
