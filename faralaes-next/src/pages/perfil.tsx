@@ -22,7 +22,7 @@ type ProfileResponse = {
 
 export default function Perfil() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refresh } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
@@ -102,6 +102,10 @@ export default function Perfil() {
 
     if (res.ok) {
       setMensaje("Perfil guardado correctamente.");
+      await refresh();
+      window.setTimeout(() => {
+        router.replace("/catalogo");
+      }, 700);
     } else if (res.status === 401) {
       router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
     } else {

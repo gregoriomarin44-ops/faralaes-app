@@ -14,6 +14,13 @@ export type AuthUser = {
   username: string;
   displayName: string;
   role: "ADMIN" | "USER";
+  profile: {
+    displayName: string;
+    phone: string | null;
+    location: string | null;
+    bio: string | null;
+  } | null;
+  profileComplete: boolean;
 };
 
 type AuthContextValue = {

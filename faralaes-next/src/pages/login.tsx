@@ -2,15 +2,18 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
-import { useAuth } from "../lib/authContext";
+import { AuthUser, useAuth } from "../lib/authContext";
 
-const getRedirectTarget = (next: unknown) =>
+const getValidNext = (next: unknown) =>
   typeof next === "string" &&
   next.startsWith("/") &&
   !next.startsWith("//") &&
   !next.startsWith("/login")
     ? next
-    : "/perfil";
+    : "";
+
+const getRedirectTarget = (next: unknown, currentUser: AuthUser | null) =>
+  getValidNext(next) || (currentUser?.profileComplete ? "/catalogo" : "/perfil");
 
 export default function Login() {
   const router = useRouter();
@@ -38,7 +41,7 @@ export default function Login() {
 
     if (user) {
       setRedirecting(true);
-      router.replace(getRedirectTarget(router.query.next));
+      router.replace(getRedirectTarget(router.query.next, user));
     }
   }, [authLoading, router, router.isReady, router.query.next, user]);
 
@@ -87,8 +90,8 @@ export default function Login() {
       }
 
       setRedirecting(true);
-      await refresh();
-      await router.replace(getRedirectTarget(router.query.next));
+      const currentUser = await refresh();
+      await router.replace(getRedirectTarget(router.query.next, currentUser));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "No se ha podido iniciar sesion."
