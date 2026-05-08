@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { useState } from "react";
 import NavBar from "../components/NavBar";
 
@@ -293,6 +294,14 @@ export default function Login() {
                   ? "Entrar"
                   : "Crear cuenta"}
             </button>
+            {mode === "login" && (
+              <Link
+                href="/recuperar-password"
+                className="block text-center text-sm font-semibold text-green-800 transition hover:text-green-900"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            )}
           </form>
 
           {message && <p className="mt-4 text-sm text-green-700">{message}</p>}
