@@ -28,6 +28,8 @@ export const createPasswordResetToken = async (userId: string) => {
     }),
   ]);
 
+  console.log("token created", { userId, expiresAt: expiresAt.toISOString() });
+
   return token;
 };
 
@@ -44,6 +46,15 @@ export const sendPasswordResetEmail = async ({
   const transporter = createMailTransporter();
   const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
   const safeUrl = escapeHtml(resetUrl);
+
+  console.log("sending reset email", {
+    to: email,
+    from: fromEmail,
+    baseUrl,
+    smtpHost: process.env.SMTP_HOST,
+    smtpPort: process.env.SMTP_PORT,
+    smtpSecure: process.env.SMTP_SECURE,
+  });
 
   await transporter.sendMail({
     from: {
@@ -75,6 +86,8 @@ export const sendPasswordResetEmail = async ({
       </div>
     `,
   });
+
+  console.log("reset email sent", { to: email });
 };
 
 export const sendUserPasswordResetEmail = async ({

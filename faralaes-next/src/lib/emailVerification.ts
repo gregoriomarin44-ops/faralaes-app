@@ -28,7 +28,8 @@ export const createEmailVerificationToken = async (userId: string) => {
 };
 
 export const getAppBaseUrl = (req?: { headers?: { host?: string } }) => {
-  const configuredUrl = process.env.NEXTAUTH_URL?.trim();
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.NEXTAUTH_URL?.trim();
 
   if (configuredUrl) {
     return configuredUrl.replace(/\/$/, "");
