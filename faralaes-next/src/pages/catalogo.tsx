@@ -238,7 +238,7 @@ export default function Catalogo() {
 
       return 0;
     });
-  const ultimosAnuncios = productos.slice(0, 4);
+  const ultimosAnuncios = productosFiltrados.slice(0, 4);
   const idsUltimosAnuncios = new Set(ultimosAnuncios.map((producto) => producto.id));
   const categoriasFavoritas = new Set(
     productosFavoritos.map((producto) => producto.category).filter(Boolean)
@@ -250,7 +250,7 @@ export default function Catalogo() {
   );
   const idsFavoritos = new Set(favoritos);
   const recomendacionesRelacionadas = userId
-    ? productos.filter((producto) => {
+    ? productosFiltrados.filter((producto) => {
         if (idsUltimosAnuncios.has(producto.id) || idsFavoritos.has(producto.id)) {
           return false;
         }
@@ -263,7 +263,7 @@ export default function Catalogo() {
         return mismaCategoria || mismaUbicacion;
       })
     : [];
-  const recomendacionesFallback = productos.filter(
+  const recomendacionesFallback = productosFiltrados.filter(
     (producto) =>
       !idsUltimosAnuncios.has(producto.id) &&
       !idsFavoritos.has(producto.id) &&
@@ -309,40 +309,6 @@ export default function Catalogo() {
 
         {!loading && productos.length === 0 && (
           <p>No hay anuncios publicados.</p>
-        )}
-
-        {!loading && productos.length > 0 && (
-          <div className="mb-10 space-y-10">
-            {ultimosAnuncios.length > 0 && (
-              <section>
-                <h2 className="font-serif text-3xl text-gray-950">
-                  Últimos anuncios publicados
-                </h2>
-                <div className="mt-5 -mx-6 flex gap-5 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
-                  {ultimosAnuncios.map((producto) => (
-                    <div key={producto.id} className="min-w-[260px] sm:min-w-0">
-                      {renderProductoCard(producto)}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {puedeInteresarte.length > 0 && (
-              <section>
-                <h2 className="font-serif text-3xl text-gray-950">
-                  Puede interesarte
-                </h2>
-                <div className="mt-5 -mx-6 flex gap-5 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
-                  {puedeInteresarte.map((producto) => (
-                    <div key={producto.id} className="min-w-[260px] sm:min-w-0">
-                      {renderProductoCard(producto)}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
         )}
 
         {!loading && productos.length > 0 && (
@@ -428,9 +394,39 @@ export default function Catalogo() {
           <p>No se han encontrado anuncios con esos filtros.</p>
         )}
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {productosFiltrados.map((p) => renderProductoCard(p))}
-        </div>
+        {!loading && productosFiltrados.length > 0 && (
+          <div className="space-y-10">
+            {ultimosAnuncios.length > 0 && (
+              <section>
+                <h2 className="font-serif text-3xl text-gray-950">
+                  Últimos anuncios publicados
+                </h2>
+                <div className="mt-5 -mx-6 flex gap-5 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
+                  {ultimosAnuncios.map((producto) => (
+                    <div key={producto.id} className="min-w-[260px] sm:min-w-0">
+                      {renderProductoCard(producto)}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {puedeInteresarte.length > 0 && (
+              <section>
+                <h2 className="font-serif text-3xl text-gray-950">
+                  Puede interesarte
+                </h2>
+                <div className="mt-5 -mx-6 flex gap-5 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
+                  {puedeInteresarte.map((producto) => (
+                    <div key={producto.id} className="min-w-[260px] sm:min-w-0">
+                      {renderProductoCard(producto)}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
         </section>
       </main>
     </>
