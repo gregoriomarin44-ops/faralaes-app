@@ -3,6 +3,7 @@ import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import Footer from "../components/Footer";
+import { AuthProvider } from "../lib/authContext";
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -17,9 +18,9 @@ export default function App({ Component, pageProps }: AppProps) {
   }, []);
 
   return (
-    <>
+    <AuthProvider>
       <Component {...pageProps} />
       {showFooter && <Footer />}
-    </>
+    </AuthProvider>
   );
 }

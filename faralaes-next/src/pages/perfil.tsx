@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
+import { useAuth } from "../lib/authContext";
 import { getInitial } from "../lib/userIdentity";
 
 type Profile = {
@@ -21,6 +22,7 @@ type ProfileResponse = {
 
 export default function Perfil() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
@@ -32,10 +34,21 @@ export default function Perfil() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!router.isReady || authLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
+      return;
+    }
+
+    setLoading(true);
+
     fetch("/api/perfil")
       .then((res) => {
         if (res.status === 401) {
-          router.push("/login");
+          router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
           return null;
         }
 
@@ -62,7 +75,7 @@ export default function Perfil() {
         setError(err.message || "No se ha podido cargar tu perfil.");
       })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [authLoading, router, router.asPath, router.isReady, user]);
 
   const guardar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -90,7 +103,7 @@ export default function Perfil() {
     if (res.ok) {
       setMensaje("Perfil guardado correctamente.");
     } else if (res.status === 401) {
-      router.push("/login");
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
     } else {
       const data = await res.json().catch(() => null);
       setError(data?.error || "No se ha podido guardar tu perfil.");

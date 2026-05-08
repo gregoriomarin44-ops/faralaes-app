@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../../components/NavBar";
+import { useAuth } from "../../lib/authContext";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
@@ -39,6 +40,7 @@ type Producto = {
 
 export default function EditarProducto() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const { id } = router.query;
 
   const [titulo, setTitulo] = useState("");
@@ -59,7 +61,12 @@ export default function EditarProducto() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!router.isReady) return;
+    if (!router.isReady || authLoading) return;
+
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
+      return;
+    }
 
     if (!id || typeof id !== "string") {
       setError("Producto no encontrado.");
@@ -67,27 +74,15 @@ export default function EditarProducto() {
       return;
     }
 
-    Promise.all([
-      fetch("/api/me").then((res) => (res.ok ? res.json() : null)),
-      fetch(`/api/productos/${id}`).then((res) => {
+    fetch(`/api/productos/${id}`)
+      .then((res) => {
         if (!res.ok) {
           throw new Error("No se ha podido cargar el anuncio.");
         }
 
         return res.json();
-      }),
-    ])
-      .then((res) => {
-        const [user, producto] = res as [
-          { id: string } | null,
-          Producto,
-        ];
-
-        if (!user) {
-          router.push("/login");
-          return null;
-        }
-
+      })
+      .then((producto: Producto) => {
         if (producto.sellerId !== user.id) {
           throw new Error("No puedes editar un anuncio de otro usuario.");
         }
@@ -111,7 +106,7 @@ export default function EditarProducto() {
         setError(err.message || "No se ha podido cargar el anuncio.");
       })
       .finally(() => setLoading(false));
-  }, [id, router]);
+  }, [authLoading, id, router, router.asPath, router.isReady, user]);
 
   const guardar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -155,7 +150,7 @@ export default function EditarProducto() {
     if (res.ok) {
       setMensaje("Anuncio actualizado correctamente.");
     } else if (res.status === 401) {
-      router.push("/login");
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
     } else {
       const data = await res.json().catch(() => null);
       setError(data?.error || "No se ha podido guardar el anuncio.");

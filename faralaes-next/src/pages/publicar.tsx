@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
+import { useAuth } from "../lib/authContext";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
@@ -18,6 +19,7 @@ const precioAcentimos = (valor: string) => {
 
 export default function Publicar() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [titulo, setTitulo] = useState("");
   const [precio, setPrecio] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -30,6 +32,16 @@ export default function Publicar() {
   const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [mensaje, setMensaje] = useState("");
+
+  useEffect(() => {
+    if (!router.isReady || authLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
+    }
+  }, [authLoading, router, router.asPath, router.isReady, user]);
 
   const convertirImagenABase64 = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -85,6 +97,15 @@ export default function Publicar() {
   const publicar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
+      return;
+    }
+
     const priceCents = precioAcentimos(precio);
 
     if (priceCents === null) {
@@ -125,7 +146,7 @@ export default function Publicar() {
       setImagenes([]);
     } else if (res.status === 401) {
       setMensaje("Inicia sesion antes de publicar.");
-      router.push("/login");
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
     } else {
       setMensaje("Error al publicar.");
     }
@@ -138,6 +159,9 @@ export default function Publicar() {
         <section className="max-w-xl mx-auto bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
           <h1 className="font-serif text-4xl mb-6">Publicar anuncio</h1>
 
+          {authLoading && <p>Cargando sesion...</p>}
+
+          {!authLoading && user && (
           <form onSubmit={publicar} className="space-y-4">
             <input className="w-full border p-3 rounded" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título" required />
             <input className="w-full border p-3 rounded" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" type="text" inputMode="decimal" required />
@@ -223,6 +247,7 @@ export default function Publicar() {
               Publicar
             </button>
           </form>
+          )}
 
           {mensaje && <p className="mt-4">{mensaje}</p>}
         </section>

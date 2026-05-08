@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import { useAuth } from "../lib/authContext";
 
 const links = [
   { href: "/", label: "Inicio" },
@@ -13,65 +14,27 @@ const links = [
 
 export default function NavBar() {
   const router = useRouter();
-  const [userId, setUserId] = useState("");
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const { user, clear } = useAuth();
   const [conversationCount, setConversationCount] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    fetch("/api/me")
-      .then(async (res) => {
-        if (!res.ok) {
-          return null;
-        }
+    if (!user) {
+      setConversationCount(0);
+      return;
+    }
 
-        return (await res.json()) as {
-          id: string;
-          email: string;
-          username: string;
-          displayName: string;
-          role: "ADMIN" | "USER";
-        };
+    fetch("/api/conversaciones")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        setConversationCount(Array.isArray(data) ? data.length : 0);
       })
-      .then((user) => {
-        if (!user) {
-          setUserId("");
-          setUsername("");
-          setDisplayName("");
-          setConversationCount(0);
-          setIsAdmin(false);
-          return;
-        }
-
-        setUserId(user.id);
-        setUsername(user.username);
-        setDisplayName(user.displayName);
-        setIsAdmin(user.role === "ADMIN");
-
-        fetch("/api/conversaciones")
-          .then((res) => (res.ok ? res.json() : []))
-          .then((data) => {
-            setConversationCount(Array.isArray(data) ? data.length : 0);
-          })
-          .catch(() => setConversationCount(0));
-      })
-      .catch(() => {
-        setUserId("");
-        setUsername("");
-        setDisplayName("");
-        setConversationCount(0);
-        setIsAdmin(false);
-      });
-  }, []);
+      .catch(() => setConversationCount(0));
+  }, [user]);
 
   const salir = async () => {
     await fetch("/api/logout", { method: "POST" }).catch(() => null);
-    setUserId("");
-    setUsername("");
-    setDisplayName("");
+    clear();
     setConversationCount(0);
-    setIsAdmin(false);
     router.push("/catalogo");
   };
 
@@ -93,7 +56,7 @@ export default function NavBar() {
             </Link>
           ))}
 
-          {userId ? (
+          {user ? (
             <>
               <Link
                 href="/mensajes"
@@ -107,7 +70,7 @@ export default function NavBar() {
               >
                 Perfil
               </Link>
-              {isAdmin && (
+              {user.role === "ADMIN" && (
                 <Link
                   href="/admin"
                   className="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-[#f8f3ef] hover:text-green-700"
@@ -115,9 +78,9 @@ export default function NavBar() {
                   Admin
                 </Link>
               )}
-              {username && (
+              {user.username && (
                 <span className="whitespace-nowrap rounded-full bg-[#f8f3ef] px-4 py-2 text-sm font-semibold text-gray-600">
-                  {displayName || `@${username}`}
+                  {user.displayName || `@${user.username}`}
                 </span>
               )}
               <button

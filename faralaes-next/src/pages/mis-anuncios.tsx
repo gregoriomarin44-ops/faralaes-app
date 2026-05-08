@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
+import { useAuth } from "../lib/authContext";
 import { formatPrice } from "../lib/formatPrice";
 
 type Producto = {
@@ -21,15 +22,27 @@ type Producto = {
 
 export default function MisAnuncios() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!router.isReady || authLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
+      return;
+    }
+
+    setLoading(true);
+
     fetch("/api/productos?mine=true")
       .then((res) => {
         if (res.status === 401) {
-          router.push("/login");
+          router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
           return null;
         }
 
@@ -52,7 +65,7 @@ export default function MisAnuncios() {
         setError(err.message || "No se han podido cargar tus anuncios.");
       })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [authLoading, router, router.asPath, router.isReady, user]);
 
   const eliminarProducto = async (
     e: React.MouseEvent<HTMLButtonElement>,
@@ -78,7 +91,7 @@ export default function MisAnuncios() {
     }
 
     if (res.status === 401) {
-      router.push("/login");
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
       return;
     }
 

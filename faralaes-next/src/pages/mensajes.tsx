@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import NavBar from "../components/NavBar";
 import { formatPrice } from "../lib/formatPrice";
+import { useAuth } from "../lib/authContext";
 
 type Message = {
   id: string;
@@ -85,6 +86,7 @@ const conversationsEqual = (a: Conversation[], b: Conversation[]) =>
 
 export default function Mensajes() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [userId, setUserId] = useState("");
   const [conversaciones, setConversaciones] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -142,13 +144,25 @@ export default function Mensajes() {
   };
 
   useEffect(() => {
-    let currentUserId = "";
+    if (!router.isReady || authLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
+      return;
+    }
+
+    let active = true;
+    const currentUserId = user.id;
+    setUserId(currentUserId);
+    setLoading(true);
 
     const cargarConversaciones = (initial = false) => {
       fetch("/api/conversaciones")
         .then((res) => {
           if (res.status === 401) {
-            router.push("/login");
+            router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
             return null;
           }
 
@@ -159,7 +173,7 @@ export default function Mensajes() {
           return res.json();
         })
         .then((data: Conversation[] | null) => {
-          if (!data) {
+          if (!data || !active) {
             return;
           }
 
@@ -171,45 +185,27 @@ export default function Mensajes() {
             return;
           }
 
-        const queryId =
-          typeof router.query.conversationId === "string"
-            ? router.query.conversationId
-            : "";
-        setSelectedId(queryId || conversacionesOrdenadas[0]?.id || "");
+          const queryId =
+            typeof router.query.conversationId === "string"
+              ? router.query.conversationId
+              : "";
+          setSelectedId(queryId || conversacionesOrdenadas[0]?.id || "");
         })
         .catch((err: Error) => {
+          if (!active) {
+            return;
+          }
+
           setError(err.message || "No se han podido cargar tus mensajes.");
         })
         .finally(() => {
-          if (initial) {
+          if (initial && active) {
             setLoading(false);
           }
         });
     };
 
-    fetch("/api/me")
-      .then((res) => {
-        if (res.status === 401) {
-          router.push("/login");
-          return null;
-        }
-
-        return res.ok ? res.json() : null;
-      })
-      .then((user) => {
-        if (!user) {
-          setLoading(false);
-          return;
-        }
-
-        currentUserId = user.id;
-        setUserId(currentUserId);
-        cargarConversaciones(true);
-      })
-      .catch(() => {
-        setLoading(false);
-        router.push("/login");
-      });
+    cargarConversaciones(true);
 
     const intervalId = window.setInterval(() => {
       if (currentUserId) {
@@ -217,8 +213,18 @@ export default function Mensajes() {
       }
     }, 3000);
 
-    return () => window.clearInterval(intervalId);
-  }, [router]);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [
+    authLoading,
+    router,
+    router.asPath,
+    router.isReady,
+    router.query.conversationId,
+    user,
+  ]);
 
   const conversacionSeleccionada = useMemo(
     () => conversaciones.find((conversacion) => conversacion.id === selectedId),
