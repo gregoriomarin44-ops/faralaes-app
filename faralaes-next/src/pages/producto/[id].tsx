@@ -1,9 +1,14 @@
+import type { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import NavBar from "../../components/NavBar";
 import ReportModal from "../../components/ReportModal";
 import { formatPrice } from "../../lib/formatPrice";
+import { AUTH_COOKIE_NAME, verifySessionToken } from "../../lib/auth";
+import { prisma } from "../../lib/prisma";
+import { getCanonical, normalizeSlugText } from "../../lib/seo";
 import { getInitial } from "../../lib/userIdentity";
 
 type Producto = {
@@ -25,6 +30,7 @@ type Producto = {
     url: string;
   }[];
   seller?: {
+    id: string;
     username: string;
     displayName: string;
     profile?: {
@@ -34,15 +40,126 @@ type Producto = {
   } | null;
 };
 
-export default function ProductoDetalle() {
+type RelatedListing = {
+  id: string;
+  title: string;
+  priceCents: number;
+  location: string | null;
+  images?: {
+    url: string;
+  }[];
+};
+
+type ProductoDetalleProps = {
+  initialProducto: Producto | null;
+  relatedListings: RelatedListing[];
+};
+
+const categoryLabels: Record<string, { label: string; path: string }> = {
+  traje: { label: "Trajes de flamenca", path: "/trajes-flamenca" },
+  zapatos: { label: "Zapatos de flamenca", path: "/zapatos-flamenca" },
+  complementos: { label: "Complementos flamencos", path: "/complementos-flamencos" },
+  mantoncillo: { label: "Mantoncillos flamencos", path: "/complementos-flamencos" },
+};
+
+export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = async ({
+  params,
+  req,
+}) => {
+  const id = params?.id;
+
+  if (!id || typeof id !== "string") {
+    return { notFound: true };
+  }
+
+  const session = req.cookies[AUTH_COOKIE_NAME]
+    ? verifySessionToken(req.cookies[AUTH_COOKIE_NAME])
+    : null;
+  const currentUser = session
+    ? await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { role: true, disabled: true },
+      })
+    : null;
+  const isAdmin = currentUser?.role === "ADMIN" && !currentUser.disabled;
+
+  const producto = await prisma.listing.findFirst({
+    where: {
+      id,
+      ...(isAdmin ? {} : { status: "published" }),
+      seller: { disabled: false },
+    },
+    include: {
+      images: {
+        orderBy: { sortOrder: "asc" },
+        select: { url: true },
+      },
+      seller: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          profile: {
+            select: {
+              phone: true,
+              location: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!producto) {
+    return { notFound: true };
+  }
+
+  const relatedListings = await prisma.listing.findMany({
+    where: {
+      id: { not: producto.id },
+      status: "published",
+      seller: { disabled: false },
+      OR: [
+        { category: producto.category },
+        ...(producto.location ? [{ location: producto.location }] : []),
+      ],
+    },
+    take: 4,
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      priceCents: true,
+      location: true,
+      images: {
+        orderBy: { sortOrder: "asc" },
+        select: { url: true },
+      },
+    },
+  });
+
+  return {
+    props: {
+      initialProducto: JSON.parse(JSON.stringify(producto)),
+      relatedListings,
+    },
+  };
+};
+
+export default function ProductoDetalle({
+  initialProducto,
+  relatedListings,
+}: ProductoDetalleProps) {
   const router = useRouter();
   const { id } = router.query;
 
-  const [producto, setProducto] = useState<Producto | null>(null);
-  const [selectedImage, setSelectedImage] = useState("");
+  const [producto, setProducto] = useState<Producto | null>(initialProducto);
+  const [selectedImage, setSelectedImage] = useState(
+    initialProducto?.images?.[0]?.url || ""
+  );
   const [userId, setUserId] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialProducto);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -52,6 +169,10 @@ export default function ProductoDetalle() {
       .then((res) => (res.ok ? res.json() : null))
       .then((user) => setUserId(user?.id || ""))
       .catch(() => setUserId(""));
+
+    if (initialProducto) {
+      return;
+    }
 
     if (!id || typeof id !== "string") {
       setProducto(null);
@@ -86,7 +207,7 @@ export default function ProductoDetalle() {
       .finally(() => {
         setLoading(false);
       });
-  }, [id, router.isReady]);
+  }, [id, initialProducto, router.isReady]);
 
   const volverAlCatalogo = () => {
     router.push("/catalogo");
@@ -201,17 +322,82 @@ export default function ProductoDetalle() {
     !esPropio &&
     producto.whatsappContactAllowed &&
     producto.seller?.profile?.phone;
+  const categoryInfo = categoryLabels[producto.category] || {
+    label: producto.category,
+    path: "/catalogo",
+  };
+  const locationPath = producto.location
+    ? `${categoryInfo.path}/${normalizeSlugText(producto.location)}`
+    : "";
+  const productUrl = getCanonical(`/producto/${producto.id}`);
+  const metaDescription =
+    producto.description?.slice(0, 150) ||
+    `${producto.title} en Faralaes por ${formatPrice(producto.priceCents)}${producto.location ? ` en ${producto.location}` : ""}.`;
+  const breadcrumbItems = [
+    { href: "/", label: "Inicio" },
+    { href: categoryInfo.path, label: categoryInfo.label },
+    ...(producto.location && locationPath
+      ? [{ href: locationPath, label: producto.location }]
+      : []),
+    { href: `/producto/${producto.id}`, label: producto.title },
+  ];
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: producto.title,
+    description: metaDescription,
+    image: images.map((image) => image.url),
+    category: categoryInfo.label,
+    offers: {
+      "@type": "Offer",
+      price: (producto.priceCents / 100).toFixed(2),
+      priceCurrency: "EUR",
+      availability: "https://schema.org/InStock",
+      url: productUrl,
+    },
+  };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: breadcrumbItems.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.label,
+      item: getCanonical(item.href),
+    })),
+  };
 
   return (
     <>
-      {producto.status !== "published" && (
-        <Head>
+      <Head>
+        <title>{producto.title} | Faralaes</title>
+        <meta name="description" content={metaDescription} />
+        {producto.status !== "published" && (
           <meta name="robots" content="noindex,nofollow" />
-        </Head>
-      )}
+        )}
+        <link rel="canonical" href={productUrl} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+      </Head>
       <NavBar />
       <main className="min-h-screen bg-[#f8f3ef] px-4 py-8 sm:px-6 lg:py-12">
         <section className="mx-auto max-w-6xl">
+        <nav className="mb-5 flex flex-wrap gap-2 text-sm font-semibold text-gray-500">
+          {breadcrumbItems.map((item, index) => (
+            <span key={item.href} className="flex items-center gap-2">
+              {index > 0 && <span>/</span>}
+              <Link href={item.href} className="hover:text-green-800">
+                {item.label}
+              </Link>
+            </span>
+          ))}
+        </nav>
         <button
           type="button"
           onClick={volverAlCatalogo}
@@ -227,6 +413,7 @@ export default function ProductoDetalle() {
                 <img
                   src={selectedImage}
                   alt={producto.title}
+                  loading="eager"
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -251,6 +438,7 @@ export default function ProductoDetalle() {
                     <img
                       src={image.url}
                       alt={`${producto.title} ${index + 1}`}
+                      loading="lazy"
                       className="h-full w-full object-cover"
                     />
                   </button>
@@ -403,6 +591,59 @@ export default function ProductoDetalle() {
             </div>
           </div>
         </div>
+
+        <section className="mt-10 grid gap-6 lg:grid-cols-[1fr_1fr]">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="font-serif text-2xl text-gray-950">
+              Explora más en Faralaes
+            </h2>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                href={categoryInfo.path}
+                className="rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-green-700 hover:text-green-700"
+              >
+                Más {categoryInfo.label.toLowerCase()}
+              </Link>
+              {producto.location && locationPath && (
+                <Link
+                  href={locationPath}
+                  className="rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-green-700 hover:text-green-700"
+                >
+                  Más anuncios en {producto.location}
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="font-serif text-2xl text-gray-950">
+              Anuncios similares
+            </h2>
+            {relatedListings.length === 0 ? (
+              <p className="mt-4 text-sm text-gray-500">
+                No hay anuncios similares activos ahora mismo.
+              </p>
+            ) : (
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {relatedListings.map((related) => (
+                  <Link
+                    key={related.id}
+                    href={`/producto/${related.id}`}
+                    className="rounded-lg border border-gray-100 bg-[#f8f3ef] p-3 transition hover:border-green-700"
+                  >
+                    <p className="font-semibold text-gray-950">{related.title}</p>
+                    <p className="mt-1 text-sm font-bold text-red-700">
+                      {formatPrice(related.priceCents)}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {related.location || "Sin ubicacion"}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
         </section>
       </main>
       {showReportModal && (

@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /login
+Disallow: /favoritos
+Disallow: /mensajes
+Disallow: /mis-anuncios
+Disallow: /perfil
+Disallow: /publicar
+Disallow: /editar
+Disallow: /api
+
+Sitemap: https://faralaes.com/sitemap.xml
