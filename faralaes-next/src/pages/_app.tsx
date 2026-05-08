@@ -3,6 +3,7 @@ import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import Footer from "../components/Footer";
+import CookieBanner from "../components/CookieBanner";
 import { AuthProvider } from "../lib/authContext";
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -21,6 +22,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <AuthProvider>
       <Component {...pageProps} />
       {showFooter && <Footer />}
+      <CookieBanner />
     </AuthProvider>
   );
 }

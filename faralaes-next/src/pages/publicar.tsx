@@ -1,5 +1,6 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../lib/authContext";
 
@@ -32,6 +33,7 @@ export default function Publicar() {
   const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [mensaje, setMensaje] = useState("");
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
 
   useEffect(() => {
     if (!router.isReady || authLoading) {
@@ -106,6 +108,13 @@ export default function Publicar() {
       return;
     }
 
+    if (!acceptedLegal) {
+      setMensaje(
+        "Debes aceptar la Política de privacidad y las Condiciones de uso."
+      );
+      return;
+    }
+
     const priceCents = precioAcentimos(precio);
 
     if (priceCents === null) {
@@ -144,6 +153,7 @@ export default function Publicar() {
       setShippingAvailable(false);
       setContactoWhatsapp(false);
       setImagenes([]);
+      setAcceptedLegal(false);
     } else if (res.status === 401) {
       setMensaje("Inicia sesion antes de publicar.");
       router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
@@ -242,6 +252,33 @@ export default function Publicar() {
                 </div>
               )}
             </div>
+
+            <label className="flex items-start gap-3 rounded border border-gray-200 bg-[#f8f3ef] p-3 text-sm leading-6 text-gray-700">
+              <input
+                type="checkbox"
+                checked={acceptedLegal}
+                onChange={(e) => setAcceptedLegal(e.target.checked)}
+                required
+                className="mt-1"
+              />
+              <span>
+                He leído y acepto la{" "}
+                <Link
+                  href="/privacidad"
+                  className="font-semibold text-green-800 hover:text-green-900"
+                >
+                  Política de privacidad
+                </Link>{" "}
+                y las{" "}
+                <Link
+                  href="/condiciones"
+                  className="font-semibold text-green-800 hover:text-green-900"
+                >
+                  Condiciones de uso
+                </Link>
+                .
+              </span>
+            </label>
 
             <button className="w-full bg-green-700 text-white p-3 rounded font-semibold" type="submit">
               Publicar

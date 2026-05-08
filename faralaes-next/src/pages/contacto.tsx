@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import NavBar from "../components/NavBar";
 
 type FormStatus =
@@ -11,6 +12,7 @@ export default function Contacto() {
   const [email, setEmail] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [website, setWebsite] = useState("");
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [status, setStatus] = useState<FormStatus>({ type: "idle", message: "" });
 
@@ -18,6 +20,16 @@ export default function Contacto() {
     event.preventDefault();
     setEnviando(true);
     setStatus({ type: "idle", message: "" });
+
+    if (!acceptedLegal) {
+      setEnviando(false);
+      setStatus({
+        type: "error",
+        message:
+          "Debes aceptar la Política de privacidad y las Condiciones de uso.",
+      });
+      return;
+    }
 
     try {
       const res = await fetch("/api/contact", {
@@ -36,6 +48,7 @@ export default function Contacto() {
       setEmail("");
       setMensaje("");
       setWebsite("");
+      setAcceptedLegal(false);
       setStatus({
         type: "success",
         message: "Mensaje enviado. Te responderemos lo antes posible.",
@@ -130,6 +143,33 @@ export default function Contacto() {
                   />
                 </label>
               </div>
+
+              <label className="mt-5 flex items-start gap-3 rounded border border-gray-200 bg-[#f8f3ef] p-3 text-sm leading-6 text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={acceptedLegal}
+                  onChange={(event) => setAcceptedLegal(event.target.checked)}
+                  required
+                  className="mt-1"
+                />
+                <span>
+                  He leído y acepto la{" "}
+                  <Link
+                    href="/privacidad"
+                    className="font-semibold text-green-800 hover:text-green-900"
+                  >
+                    Política de privacidad
+                  </Link>{" "}
+                  y las{" "}
+                  <Link
+                    href="/condiciones"
+                    className="font-semibold text-green-800 hover:text-green-900"
+                  >
+                    Condiciones de uso
+                  </Link>
+                  .
+                </span>
+              </label>
 
               {status.type !== "idle" && (
                 <p

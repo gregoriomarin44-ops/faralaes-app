@@ -15,9 +15,10 @@ const userLinks = [
 ];
 
 const legalLinks = [
+  { href: "/aviso-legal", label: "Aviso legal" },
   { href: "/privacidad", label: "Privacidad" },
   { href: "/cookies", label: "Cookies" },
-  { href: "/terminos", label: "Términos" },
+  { href: "/condiciones", label: "Condiciones" },
 ];
 
 type FooterLink = {

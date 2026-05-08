@@ -30,6 +30,7 @@ export default function Perfil() {
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleteRequested, setDeleteRequested] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
@@ -182,6 +183,33 @@ export default function Perfil() {
 
           {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
           {mensaje && <p className="mt-4 text-sm text-green-700">{mensaje}</p>}
+        </section>
+
+        <section className="mx-auto mt-8 max-w-xl rounded-2xl border border-red-100 bg-white p-8 shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
+            Cuenta
+          </p>
+          <h2 className="mt-3 font-serif text-3xl text-gray-950">
+            Eliminación de cuenta
+          </h2>
+          <p className="mt-4 leading-7 text-gray-600">
+            Puedes solicitar la eliminación de tu cuenta. Se eliminarán tu
+            perfil, anuncios e imágenes asociadas cuando el flujo esté
+            confirmado por soporte.
+          </p>
+          <button
+            type="button"
+            onClick={() => setDeleteRequested(true)}
+            className="mt-5 rounded-full border border-red-700 bg-white px-5 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
+          >
+            Solicitar eliminación de cuenta
+          </button>
+          {deleteRequested && (
+            <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+              Solicitud preparada. El siguiente paso será confirmar tu identidad
+              y procesar la eliminación de forma segura.
+            </p>
+          )}
         </section>
       </main>
     </>

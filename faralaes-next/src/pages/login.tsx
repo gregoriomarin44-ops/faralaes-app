@@ -27,6 +27,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [message, setMessage] = useState("");
@@ -52,6 +53,14 @@ export default function Login() {
     setMessage("");
     setCanResendVerification(false);
     setVerificationEmail("");
+
+    if (mode === "register" && !acceptedLegal) {
+      setLoading(false);
+      setError(
+        "Debes aceptar la Política de privacidad y las Condiciones de uso."
+      );
+      return;
+    }
 
     try {
       const res = await fetch("/api/login", {
@@ -163,6 +172,7 @@ export default function Login() {
                   setMessage("");
                   setCanResendVerification(false);
                   setVerificationEmail("");
+                  setAcceptedLegal(false);
                 }}
                 className={`rounded-md px-3 py-2 transition ${
                   mode === "login"
@@ -327,16 +337,44 @@ export default function Login() {
             </div>
 
             {mode === "register" && (
-              <input
-                className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirmar contraseña"
-                type="password"
-                minLength={8}
-                autoComplete="new-password"
-                required
-              />
+              <>
+                <input
+                  className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirmar contraseña"
+                  type="password"
+                  minLength={8}
+                  autoComplete="new-password"
+                  required
+                />
+                <label className="flex items-start gap-3 rounded border border-gray-200 bg-[#f8f3ef] p-3 text-sm leading-6 text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={acceptedLegal}
+                    onChange={(e) => setAcceptedLegal(e.target.checked)}
+                    required
+                    className="mt-1"
+                  />
+                  <span>
+                    He leído y acepto la{" "}
+                    <Link
+                      href="/privacidad"
+                      className="font-semibold text-green-800 hover:text-green-900"
+                    >
+                      Política de privacidad
+                    </Link>{" "}
+                    y las{" "}
+                    <Link
+                      href="/condiciones"
+                      className="font-semibold text-green-800 hover:text-green-900"
+                    >
+                      Condiciones de uso
+                    </Link>
+                    .
+                  </span>
+                </label>
+              </>
             )}
 
             <button
