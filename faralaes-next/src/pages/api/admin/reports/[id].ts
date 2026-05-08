@@ -3,7 +3,7 @@ import { requireAdmin } from "../../../../lib/adminAuth";
 import { prisma } from "../../../../lib/prisma";
 import { isReportStatus, isUuid } from "../../../../lib/reports";
 
-const allowedActions = ["hide_listing", "disable_user"] as const;
+const allowedActions = ["hide_listing", "publish_listing", "disable_user"] as const;
 type ModerationAction = (typeof allowedActions)[number];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -59,6 +59,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await prisma.listing.update({
       where: { id: report.targetId },
       data: { status: "hidden" },
+    });
+  }
+
+  if (action === "publish_listing") {
+    if (report.targetType !== "listing") {
+      return res.status(400).json({ error: "El reporte no apunta a un anuncio." });
+    }
+
+    await prisma.listing.update({
+      where: { id: report.targetId },
+      data: { status: "published" },
     });
   }
 

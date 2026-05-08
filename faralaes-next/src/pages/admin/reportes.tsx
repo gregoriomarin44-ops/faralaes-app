@@ -85,7 +85,10 @@ export default function AdminReportes() {
 
   const patchReport = async (
     reportId: string,
-    body: { status?: Report["status"]; action?: "hide_listing" | "disable_user" }
+    body: {
+      status?: Report["status"];
+      action?: "hide_listing" | "publish_listing" | "disable_user";
+    }
   ) => {
     const res = await fetch(
       `/api/admin/reports/${reportId}?userId=${encodeURIComponent(session.userId)}`,
@@ -105,6 +108,27 @@ export default function AdminReportes() {
     loadReports();
   };
 
+  const getListingStatusBadge = (status: string) => {
+    if (status === "published") {
+      return {
+        className: "bg-green-50 text-green-800",
+        label: "Publicado",
+      };
+    }
+
+    if (status === "hidden") {
+      return {
+        className: "bg-red-50 text-red-800",
+        label: "Oculto",
+      };
+    }
+
+    return {
+      className: "bg-stone-100 text-stone-700",
+      label: status,
+    };
+  };
+
   const renderTarget = (report: Report) => {
     if (report.targetType === "listing") {
       const target = report.target as ListingTarget;
@@ -112,6 +136,8 @@ export default function AdminReportes() {
       if (!target) {
         return <span>Anuncio eliminado</span>;
       }
+
+      const badge = getListingStatusBadge(target.status);
 
       return (
         <div>
@@ -121,7 +147,11 @@ export default function AdminReportes() {
           >
             {target.title}
           </Link>
-          <p className="text-xs text-stone-500">Estado: {target.status}</p>
+          <span
+            className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-bold ${badge.className}`}
+          >
+            {badge.label}
+          </span>
         </div>
       );
     }
@@ -230,7 +260,26 @@ export default function AdminReportes() {
                         >
                           Resolver
                         </button>
-                        {report.targetType === "listing" && (
+                        {report.targetType === "listing" &&
+                          (report.target as ListingTarget)?.status ===
+                            "hidden" && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                patchReport(report.id, {
+                                  action: "publish_listing",
+                                })
+                              }
+                              className="rounded-full bg-green-700 px-3 py-1 text-xs font-bold text-white transition hover:bg-green-800"
+                            >
+                              Volver a publicar
+                            </button>
+                          )}
+                        {report.targetType === "listing" &&
+                          (report.target as ListingTarget)?.status !==
+                            "hidden" &&
+                          (report.target as ListingTarget)?.status ===
+                            "published" && (
                           <button
                             type="button"
                             onClick={() =>
@@ -240,7 +289,7 @@ export default function AdminReportes() {
                           >
                             Ocultar anuncio
                           </button>
-                        )}
+                          )}
                         {report.targetType === "user" && (
                           <button
                             type="button"

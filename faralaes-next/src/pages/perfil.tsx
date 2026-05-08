@@ -22,7 +22,7 @@ type ProfileResponse = {
 
 export default function Perfil() {
   const router = useRouter();
-  const { user, loading: authLoading, refresh } = useAuth();
+  const { user, loading: authLoading, refresh, clear } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
@@ -30,7 +30,9 @@ export default function Perfil() {
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deleteRequested, setDeleteRequested] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
@@ -117,6 +119,38 @@ export default function Perfil() {
     setSaving(false);
   };
 
+  const eliminarCuenta = async () => {
+    setError("");
+    setMensaje("");
+
+    if (deleteConfirmation !== "ELIMINAR") {
+      setError("Escribe ELIMINAR para confirmar la eliminacion.");
+      return;
+    }
+
+    setDeleting(true);
+
+    const res = await fetch("/api/account", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmation: deleteConfirmation }),
+    });
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      setError(data?.error || "No se ha podido eliminar la cuenta.");
+      setDeleting(false);
+      return;
+    }
+
+    setShowDeleteModal(false);
+    clear();
+    setMensaje(data?.message || "Tu cuenta ha sido eliminada correctamente.");
+    window.setTimeout(() => {
+      router.replace("/?accountDeleted=1");
+    }, 1200);
+  };
+
   return (
     <>
       <NavBar />
@@ -193,25 +227,67 @@ export default function Perfil() {
             Eliminación de cuenta
           </h2>
           <p className="mt-4 leading-7 text-gray-600">
-            Puedes solicitar la eliminación de tu cuenta. Se eliminarán tu
-            perfil, anuncios e imágenes asociadas cuando el flujo esté
-            confirmado por soporte.
+            Elimina definitivamente los datos personales de tu cuenta. Se
+            borrarán tu perfil, favoritos, reportes creados e imágenes; los
+            mensajes necesarios para conservar conversaciones de terceros se
+            anonimizarán.
           </p>
           <button
             type="button"
-            onClick={() => setDeleteRequested(true)}
+            onClick={() => {
+              setDeleteConfirmation("");
+              setShowDeleteModal(true);
+            }}
             className="mt-5 rounded-full border border-red-700 bg-white px-5 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
           >
-            Solicitar eliminación de cuenta
+            Eliminar mi cuenta
           </button>
-          {deleteRequested && (
-            <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
-              Solicitud preparada. El siguiente paso será confirmar tu identidad
-              y procesar la eliminación de forma segura.
-            </p>
-          )}
         </section>
       </main>
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+          <section className="w-full max-w-md rounded-2xl border border-red-100 bg-white p-6 shadow-2xl">
+            <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
+              Eliminacion definitiva
+            </p>
+            <h2 className="mt-3 font-serif text-3xl text-gray-950">
+              Eliminar mi cuenta
+            </h2>
+            <p className="mt-4 leading-7 text-gray-600">
+              Esta acción eliminará tu perfil, anuncios, favoritos, imágenes y
+              datos asociados. No se puede deshacer.
+            </p>
+            <label className="mt-5 block text-sm font-semibold text-gray-700">
+              Escribe ELIMINAR para confirmar
+              <input
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                className="mt-2 w-full rounded border border-gray-300 p-3 font-normal outline-none transition focus:border-red-700"
+                autoComplete="off"
+              />
+            </label>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="rounded-full border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-gray-700 transition hover:border-green-700 hover:text-green-700 disabled:cursor-not-allowed disabled:text-gray-400"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={eliminarCuenta}
+                disabled={deleting || deleteConfirmation !== "ELIMINAR"}
+                className="rounded-full bg-red-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-gray-400"
+              >
+                {deleting ? "Eliminando..." : "Eliminar mi cuenta"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </>
   );
 }

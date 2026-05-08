@@ -45,6 +45,11 @@ export default function Home() {
       <NavBar />
       <main className="min-h-screen bg-[#f8f3ef]">
         <section className="mx-auto max-w-6xl px-6 py-16 text-center md:py-20">
+          {router.query.accountDeleted === "1" && (
+            <p className="mx-auto mb-8 max-w-xl rounded-lg border border-green-100 bg-white px-4 py-3 text-sm font-semibold text-green-800 shadow-sm">
+              Tu cuenta ha sido eliminada correctamente.
+            </p>
+          )}
           <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
             Faralaes
           </p>
