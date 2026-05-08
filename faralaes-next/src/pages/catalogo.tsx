@@ -274,6 +274,16 @@ export default function Catalogo() {
   const puedeInteresarte = [
     ...recomendacionesRelacionadas,
     ...recomendacionesFallback,
+  ];
+  const idsPuedeInteresarte = new Set(
+    puedeInteresarte.map((producto) => producto.id)
+  );
+  const rellenoConRepetidos = productosFiltrados.filter(
+    (producto) => !idsPuedeInteresarte.has(producto.id)
+  );
+  const puedeInteresarteFinal = [
+    ...puedeInteresarte,
+    ...rellenoConRepetidos,
   ].slice(0, 4);
 
   return (
@@ -411,13 +421,13 @@ export default function Catalogo() {
               </section>
             )}
 
-            {puedeInteresarte.length > 0 && (
+            {puedeInteresarteFinal.length > 0 && (
               <section>
                 <h2 className="font-serif text-3xl text-gray-950">
                   Puede interesarte
                 </h2>
                 <div className="mt-5 -mx-6 flex gap-5 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
-                  {puedeInteresarte.map((producto) => (
+                  {puedeInteresarteFinal.map((producto) => (
                     <div key={producto.id} className="min-w-[260px] sm:min-w-0">
                       {renderProductoCard(producto)}
                     </div>
