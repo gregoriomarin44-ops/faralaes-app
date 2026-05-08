@@ -88,6 +88,8 @@ export const sendPasswordResetEmail = async ({
   });
 
   console.log("reset email sent", { to: email });
+
+  return resetUrl;
 };
 
 export const sendUserPasswordResetEmail = async ({
@@ -100,5 +102,7 @@ export const sendUserPasswordResetEmail = async ({
   userId: string;
 }) => {
   const token = await createPasswordResetToken(userId);
-  await sendPasswordResetEmail({ baseUrl, email, token });
+  const resetUrl = await sendPasswordResetEmail({ baseUrl, email, token });
+
+  return { resetUrl };
 };
