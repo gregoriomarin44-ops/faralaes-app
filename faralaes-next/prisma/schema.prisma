@@ -19,6 +19,7 @@ model User {
   displayName   String
   passwordHash  String?
   role          Role           @default(USER)
+  disabled      Boolean        @default(false)
   emailVerified Boolean        @default(false)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -30,6 +31,24 @@ model User {
   messages      Message[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens PasswordResetToken[]
+  reports       Report[]       @relation("ReporterReports")
+}
+
+model Report {
+  id             String   @id @default(uuid()) @db.Uuid
+  reporterUserId String   @db.Uuid
+  targetType     String
+  targetId       String   @db.Uuid
+  reason         String
+  details        String?
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+  reporter       User     @relation("ReporterReports", fields: [reporterUserId], references: [id], onDelete: Cascade)
+
+  @@index([reporterUserId])
+  @@index([targetType, targetId])
+  @@index([status, createdAt])
+  @@map("reports")
 }
 
 model EmailVerificationToken {

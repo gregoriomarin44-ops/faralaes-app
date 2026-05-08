@@ -19,6 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     publishedListings,
     pendingListings,
     totalUsers,
+    pendingReports,
     latestListings,
     latestUsers,
   ] = await Promise.all([
@@ -26,6 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     prisma.listing.count({ where: { status: "published" } }),
     prisma.listing.count({ where: { status: { in: ["pending", "draft"] } } }),
     prisma.user.count(),
+    prisma.report.count({ where: { status: "pending" } }),
     prisma.listing.findMany({
       take: 6,
       orderBy: { createdAt: "desc" },
@@ -52,6 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       publishedListings,
       pendingListings,
       totalUsers,
+      pendingReports,
     },
     latestListings,
     latestUsers,

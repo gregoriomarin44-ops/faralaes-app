@@ -33,6 +33,7 @@ type DashboardData = {
     publishedListings: number;
     pendingListings: number;
     totalUsers: number;
+    pendingReports: number;
   };
   latestListings: DashboardListing[];
   latestUsers: DashboardUser[];
@@ -75,6 +76,7 @@ export default function AdminHome() {
     { label: "Publicados", value: data?.totals.publishedListings ?? "-" },
     { label: "Pendientes/borrador", value: data?.totals.pendingListings ?? "-" },
     { label: "Usuarios registrados", value: data?.totals.totalUsers ?? "-" },
+    { label: "Reportes pendientes", value: data?.totals.pendingReports ?? "-" },
   ];
 
   return (
@@ -89,7 +91,7 @@ export default function AdminHome() {
         </p>
       )}
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {cards.map((card) => (
           <article
             key={card.label}
@@ -101,6 +103,23 @@ export default function AdminHome() {
             </p>
           </article>
         ))}
+      </section>
+
+      <section className="mt-6 rounded-lg border border-red-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-serif text-2xl">Reportes</h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Revisa avisos de anuncios y usuarios para actuar rapido.
+            </p>
+          </div>
+          <Link
+            href="/admin/reportes"
+            className="rounded-full bg-red-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-red-800"
+          >
+            Ver reportes
+          </Link>
+        </div>
       </section>
 
       <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">

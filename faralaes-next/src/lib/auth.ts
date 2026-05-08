@@ -89,9 +89,15 @@ export const getSessionUser = async (req: NextApiRequest) => {
     return null;
   }
 
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: session.userId },
   });
+
+  if (user?.disabled) {
+    return null;
+  }
+
+  return user;
 };
 
 export const requireSessionUser = async (

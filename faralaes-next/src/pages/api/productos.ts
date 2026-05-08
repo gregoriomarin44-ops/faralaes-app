@@ -63,6 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const productos = await prisma.listing.findMany({
         where: {
           status: "published",
+          seller: { disabled: false },
           ...(mine === "true" && user ? { sellerId: user.id } : {}),
         },
         orderBy: { createdAt: "desc" },

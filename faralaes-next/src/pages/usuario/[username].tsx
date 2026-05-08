@@ -1,7 +1,11 @@
 import type { GetServerSideProps } from "next";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { useState } from "react";
 import NavBar from "../../components/NavBar";
+import ReportModal from "../../components/ReportModal";
 import { formatPrice } from "../../lib/formatPrice";
+import { useAuth } from "../../lib/authContext";
 import { prisma } from "../../lib/prisma";
 import { getInitial, normalizeUsername } from "../../lib/userIdentity";
 
@@ -14,6 +18,7 @@ type PublicListing = {
 
 type PublicUserPageProps = {
   user: {
+    id: string;
     username: string;
     displayName: string;
     bio: string | null;
@@ -34,8 +39,10 @@ export const getServerSideProps: GetServerSideProps<
   const user = await prisma.user.findUnique({
     where: { username },
     select: {
+      id: true,
       username: true,
       displayName: true,
+      disabled: true,
       profile: {
         select: {
           bio: true,
@@ -58,13 +65,14 @@ export const getServerSideProps: GetServerSideProps<
     },
   });
 
-  if (!user) {
+  if (!user || user.disabled) {
     return { notFound: true };
   }
 
   return {
     props: {
       user: {
+        id: user.id,
         username: user.username,
         displayName: user.displayName,
         bio: user.profile?.bio || null,
@@ -76,11 +84,24 @@ export const getServerSideProps: GetServerSideProps<
 };
 
 export default function PublicUserPage({ user }: PublicUserPageProps) {
+  const router = useRouter();
+  const { user: currentUser } = useAuth();
+  const [showReportModal, setShowReportModal] = useState(false);
+
   if (!user) {
     return null;
   }
 
   const initial = getInitial(user.displayName, user.username);
+  const isOwnProfile = currentUser?.id === user.id;
+  const reportUser = () => {
+    if (!currentUser) {
+      router.push(`/login?next=${encodeURIComponent(router.asPath)}`);
+      return;
+    }
+
+    setShowReportModal(true);
+  };
 
   return (
     <>
@@ -88,7 +109,8 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
       <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
         <section className="mx-auto max-w-6xl">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
               <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-green-700 text-3xl font-bold text-white shadow-sm">
                 {initial}
               </div>
@@ -109,6 +131,16 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                   </div>
                 )}
               </div>
+              </div>
+              {!isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={reportUser}
+                  className="self-start rounded-full border border-red-700 bg-white px-5 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 sm:self-center"
+                >
+                  Reportar usuario
+                </button>
+              )}
             </div>
           </div>
 
@@ -165,6 +197,14 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
           )}
         </section>
       </main>
+      {showReportModal && (
+        <ReportModal
+          targetId={user.id}
+          targetType="user"
+          title="Reportar usuario"
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
     </>
   );
 }

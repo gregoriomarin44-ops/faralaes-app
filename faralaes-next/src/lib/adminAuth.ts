@@ -35,10 +35,11 @@ export async function getAdminUser(userId: unknown) {
       id: true,
       email: true,
       role: true,
+      disabled: true,
     },
   });
 
-  if (!user || user.role !== "ADMIN") {
+  if (!user || user.disabled || user.role !== "ADMIN") {
     return null;
   }
 

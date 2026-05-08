@@ -1,6 +1,8 @@
 import { useRouter } from "next/router";
+import Head from "next/head";
 import { useEffect, useState } from "react";
 import NavBar from "../../components/NavBar";
+import ReportModal from "../../components/ReportModal";
 import { formatPrice } from "../../lib/formatPrice";
 import { getInitial } from "../../lib/userIdentity";
 
@@ -17,6 +19,7 @@ type Producto = {
   condition: string | null;
   shippingAvailable: boolean;
   whatsappContactAllowed: boolean;
+  status: string;
   createdAt: string;
   images?: {
     url: string;
@@ -38,6 +41,7 @@ export default function ProductoDetalle() {
   const [producto, setProducto] = useState<Producto | null>(null);
   const [selectedImage, setSelectedImage] = useState("");
   const [userId, setUserId] = useState("");
+  const [showReportModal, setShowReportModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -112,6 +116,15 @@ export default function ProductoDetalle() {
 
     const conversacion = await res.json();
     router.push(`/mensajes?conversationId=${conversacion.id}`);
+  };
+
+  const reportarAnuncio = () => {
+    if (!userId) {
+      router.push(`/login?next=${encodeURIComponent(router.asPath)}`);
+      return;
+    }
+
+    setShowReportModal(true);
   };
 
   if (loading) {
@@ -191,6 +204,11 @@ export default function ProductoDetalle() {
 
   return (
     <>
+      {producto.status !== "published" && (
+        <Head>
+          <meta name="robots" content="noindex,nofollow" />
+        </Head>
+      )}
       <NavBar />
       <main className="min-h-screen bg-[#f8f3ef] px-4 py-8 sm:px-6 lg:py-12">
         <section className="mx-auto max-w-6xl">
@@ -369,6 +387,16 @@ export default function ProductoDetalle() {
               </button>
             )}
 
+            {!esPropio && (
+              <button
+                type="button"
+                onClick={reportarAnuncio}
+                className="mt-3 w-full rounded-full border border-red-700 bg-white px-6 py-3 text-center text-sm font-bold text-red-700 shadow-sm transition hover:bg-red-50"
+              >
+                Reportar anuncio
+              </button>
+            )}
+
             <div className="mt-6 space-y-1 text-xs text-gray-400">
               <p>Publicado el {publishedDate}</p>
               <p>ID del producto: {producto.id}</p>
@@ -377,6 +405,14 @@ export default function ProductoDetalle() {
         </div>
         </section>
       </main>
+      {showReportModal && (
+        <ReportModal
+          targetId={producto.id}
+          targetType="listing"
+          title="Reportar anuncio"
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
     </>
   );
 }
