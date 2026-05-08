@@ -1,10 +1,20 @@
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
+
+const getRedirectTarget = (next: unknown) =>
+  typeof next === "string" &&
+  next.startsWith("/") &&
+  !next.startsWith("//") &&
+  !next.startsWith("/login")
+    ? next
+    : "/perfil";
 
 export default function Login() {
   const router = useRouter();
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
@@ -19,6 +29,38 @@ export default function Login() {
   const [error, setError] = useState("");
   const [canResendVerification, setCanResendVerification] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return;
+    }
+
+    let active = true;
+
+    fetch("/api/me")
+      .then((res) => {
+        if (!active) {
+          return;
+        }
+
+        if (res.ok) {
+          setRedirecting(true);
+          router.replace(getRedirectTarget(router.query.next));
+          return;
+        }
+
+        setCheckingSession(false);
+      })
+      .catch(() => {
+        if (active) {
+          setCheckingSession(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [router, router.isReady, router.query.next]);
 
   const login = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -64,8 +106,8 @@ export default function Login() {
         return;
       }
 
-      const next = typeof router.query.next === "string" ? router.query.next : "";
-      router.push(next && next.startsWith("/") ? next : "/catalogo");
+      setRedirecting(true);
+      await router.replace(getRedirectTarget(router.query.next));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "No se ha podido iniciar sesion."
@@ -110,6 +152,12 @@ export default function Login() {
     <>
       <NavBar />
       <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
+        {(checkingSession || redirecting) && (
+          <div className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm font-semibold text-gray-600 shadow-sm">
+            Cargando...
+          </div>
+        )}
+        {!checkingSession && !redirecting && (
         <section className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
           <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
             Faralaes
@@ -347,6 +395,7 @@ export default function Login() {
             </button>
           )}
         </section>
+        )}
       </main>
     </>
   );
