@@ -39,7 +39,7 @@ export default function Home() {
         <title>Faralaes | Compra y venta de trajes de flamenca</title>
         <meta
           name="description"
-          content="Marketplace de moda flamenca para comprar y vender trajes de flamenca, vestidos de gitana y complementos flamencos de segunda mano en toda Andalucía."
+          content="Marketplace de compraventa flamenca para comprar y vender trajes de flamenca nuevos y de segunda mano, vestidos de gitana y complementos flamencos en toda Andalucía."
         />
       </Head>
       <NavBar />
@@ -50,12 +50,12 @@ export default function Home() {
           </p>
 
           <h1 className="mx-auto mt-4 max-w-4xl font-serif text-5xl leading-tight text-gray-950 md:text-6xl">
-            Compra y vende trajes de flamenca
+            Compra y vende trajes de flamenca nuevos y de segunda mano
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-gray-600">
-            Encuentra trajes de flamenca de segunda mano cerca de ti o publica
-            el tuyo gratis en menos de 1 minuto.
+            Encuentra trajes de flamenca nuevos y de segunda mano cerca de ti o
+            publica el tuyo gratis en menos de 1 minuto.
           </p>
 
           <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
