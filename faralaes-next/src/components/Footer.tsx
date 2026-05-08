@@ -3,6 +3,7 @@ import Link from "next/link";
 const mainLinks = [
   { href: "/", label: "Inicio" },
   { href: "/catalogo", label: "Catálogo" },
+  { href: "/como-funciona", label: "Cómo funciona" },
   { href: "/publicar", label: "Publicar anuncio" },
   { href: "/contacto", label: "Contacto" },
 ];
