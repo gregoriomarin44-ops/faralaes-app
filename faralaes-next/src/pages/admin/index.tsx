@@ -58,18 +58,33 @@ type ChartPoint = {
   value: number;
 };
 
+type Kpi = {
+  label: string;
+  tone?: "neutral" | "green" | "red";
+  value: number | string;
+};
+
 type DashboardData = {
+  range: 7 | 30 | 90;
   totals: {
     totalListings: number;
     publishedListings: number;
     hiddenListings: number;
-    publishedToday: number;
     totalUsers: number;
-    newUsersLast7Days: number;
     pendingReports: number;
     totalFavorites: number;
     totalMessages: number;
     disabledUsers: number;
+  };
+  period: {
+    publishedListings: number;
+    hiddenListings: number;
+    publishedToday: number;
+    newUsers: number;
+    pendingReports: number;
+    createdReports: number;
+    favorites: number;
+    messages: number;
   };
   latestListings: DashboardListing[];
   latestUsers: DashboardUser[];
@@ -166,20 +181,22 @@ function BarChart({ data }: { data: ChartPoint[] }) {
   const max = Math.max(...data.map((item) => item.value), 1);
 
   return (
-    <div className="flex h-52 items-end gap-3 px-5 pb-5 pt-6">
-      {data.map((item) => (
-        <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-          <div className="flex h-32 w-full items-end rounded bg-[#f8f3ef]">
-            <div
-              className="w-full rounded bg-green-700 transition-all"
-              style={{ height: `${Math.max((item.value / max) * 100, item.value ? 8 : 0)}%` }}
-              title={`${item.label}: ${item.value}`}
-            />
+    <div className="overflow-x-auto">
+      <div className="flex h-52 min-w-max items-end gap-3 px-5 pb-5 pt-6">
+        {data.map((item) => (
+          <div key={item.label} className="flex w-12 flex-col items-center gap-2">
+            <div className="flex h-32 w-full items-end rounded bg-[#f8f3ef]">
+              <div
+                className="w-full rounded bg-green-700 transition-all"
+                style={{ height: `${Math.max((item.value / max) * 100, item.value ? 8 : 0)}%` }}
+                title={`${item.label}: ${item.value}`}
+              />
+            </div>
+            <p className="text-xs font-semibold text-stone-500">{item.label}</p>
+            <p className="text-sm font-bold text-stone-950">{item.value}</p>
           </div>
-          <p className="text-xs font-semibold text-stone-500">{item.label}</p>
-          <p className="text-sm font-bold text-stone-950">{item.value}</p>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -218,6 +235,7 @@ function RankingList({
 
 export default function AdminHome() {
   const session = useAdminSession();
+  const [range, setRange] = useState<7 | 30 | 90>(7);
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState("");
 
@@ -226,7 +244,9 @@ export default function AdminHome() {
       return;
     }
 
-    fetch(`/api/admin/dashboard?userId=${encodeURIComponent(session.userId)}`)
+    fetch(
+      `/api/admin/dashboard?userId=${encodeURIComponent(session.userId)}&range=${range}`
+    )
       .then((res) => {
         if (!res.ok) {
           throw new Error("No se han podido cargar los datos del panel.");
@@ -239,31 +259,34 @@ export default function AdminHome() {
         setError("");
       })
       .catch((err: Error) => setError(err.message));
-  }, [session]);
+  }, [range, session]);
 
-  const kpis = [
+  const totalKpis: Kpi[] = [
     { label: "Usuarios totales", value: data?.totals.totalUsers ?? "-" },
-    {
-      label: "Nuevos usuarios 7 dias",
-      value: data?.totals.newUsersLast7Days ?? "-",
-      tone: "green" as const,
-    },
-    { label: "Anuncios publicados", value: data?.totals.publishedListings ?? "-" },
+    { label: "Anuncios publicados totales", value: data?.totals.publishedListings ?? "-" },
+    { label: "Favoritos totales", value: data?.totals.totalFavorites ?? "-" },
+    { label: "Mensajes totales", value: data?.totals.totalMessages ?? "-" },
+  ];
+
+  const periodKpis: Kpi[] = [
+    { label: "Nuevos usuarios", value: data?.period.newUsers ?? "-", tone: "green" as const },
+    { label: "Anuncios publicados", value: data?.period.publishedListings ?? "-", tone: "green" as const },
     {
       label: "Anuncios ocultos",
-      value: data?.totals.hiddenListings ?? "-",
+      value: data?.period.hiddenListings ?? "-",
       tone: "red" as const,
     },
     {
       label: "Reportes pendientes",
-      value: data?.totals.pendingReports ?? "-",
+      value: data?.period.pendingReports ?? "-",
       tone: "red" as const,
     },
-    { label: "Favoritos totales", value: data?.totals.totalFavorites ?? "-" },
-    { label: "Mensajes totales", value: data?.totals.totalMessages ?? "-" },
+    { label: "Reportes creados", value: data?.period.createdReports ?? "-", tone: "red" as const },
+    { label: "Favoritos", value: data?.period.favorites ?? "-" },
+    { label: "Mensajes", value: data?.period.messages ?? "-" },
     {
       label: "Publicados hoy",
-      value: data?.totals.publishedToday ?? "-",
+      value: data?.period.publishedToday ?? "-",
       tone: "green" as const,
     },
   ];
@@ -280,11 +303,49 @@ export default function AdminHome() {
         </p>
       )}
 
+      <section className="mb-6 rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="font-serif text-2xl">Rango temporal</h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Filtra actividad, rankings y graficas del panel.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 rounded-lg bg-[#f8f3ef] p-1">
+            {([7, 30, 90] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setRange(option)}
+                className={`rounded-md px-3 py-2 text-sm font-bold transition ${
+                  range === option
+                    ? "bg-white text-green-800 shadow-sm"
+                    : "text-stone-600 hover:text-green-800"
+                }`}
+              >
+                {option} dias
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {kpis.map((card) => (
+        {totalKpis.map((card) => (
           <KpiCard
             key={card.label}
             label={card.label}
+            value={card.value}
+            tone={card.tone}
+          />
+        ))}
+      </section>
+
+      <section className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {periodKpis.map((card) => (
+          <KpiCard
+            key={card.label}
+            label={`${card.label} (${range} dias)`}
             value={card.value}
             tone={card.tone}
           />

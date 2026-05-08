@@ -13,11 +13,23 @@ const addDays = (date: Date, days: number) => {
 
 const getDayKey = (date: Date) => date.toISOString().slice(0, 10);
 
-const getLast7Days = () => {
+const allowedRanges = [7, 30, 90] as const;
+type DashboardRange = (typeof allowedRanges)[number];
+
+const getRange = (value: unknown): DashboardRange => {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  const range = Number(rawValue);
+
+  return allowedRanges.includes(range as DashboardRange)
+    ? (range as DashboardRange)
+    : 7;
+};
+
+const getDays = (range: DashboardRange) => {
   const today = startOfDay(new Date());
 
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = addDays(today, index - 6);
+  return Array.from({ length: range }, (_, index) => {
+    const date = addDays(today, index - (range - 1));
 
     return {
       date,
@@ -30,7 +42,7 @@ const getLast7Days = () => {
   });
 };
 
-const countByDay = (items: { createdAt: Date }[], days: ReturnType<typeof getLast7Days>) => {
+const countByDay = (items: { createdAt: Date }[], days: ReturnType<typeof getDays>) => {
   const counts = new Map(days.map((day) => [day.key, 0]));
 
   items.forEach((item) => {
@@ -56,8 +68,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const days = getLast7Days();
-  const sevenDaysAgo = days[0].date;
+  const range = getRange(req.query.range);
+  const days = getDays(range);
+  const rangeStart = days[0].date;
   const today = startOfDay(new Date());
   const tomorrow = addDays(today, 1);
 
@@ -65,12 +78,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     totalListings,
     publishedListings,
     hiddenListings,
+    hiddenListingsInRange,
     publishedToday,
+    publishedListingsInRange,
     totalUsers,
-    newUsersLast7Days,
+    newUsersInRange,
     pendingReports,
+    pendingReportsInRange,
+    createdReportsInRange,
     totalFavorites,
+    favoritesInRange,
     totalMessages,
+    messagesInRange,
     disabledUsers,
     latestListings,
     latestUsers,
@@ -86,21 +105,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     prisma.listing.count({ where: { status: "published" } }),
     prisma.listing.count({ where: { status: "hidden" } }),
     prisma.listing.count({
+      where: { status: "hidden", updatedAt: { gte: rangeStart } },
+    }),
+    prisma.listing.count({
       where: {
         status: "published",
         createdAt: { gte: today, lt: tomorrow },
       },
     }),
+    prisma.listing.count({
+      where: { status: "published", createdAt: { gte: rangeStart } },
+    }),
     prisma.user.count(),
-    prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+    prisma.user.count({ where: { createdAt: { gte: rangeStart } } }),
     prisma.report.count({ where: { status: "pending" } }),
+    prisma.report.count({
+      where: { status: "pending", createdAt: { gte: rangeStart } },
+    }),
+    prisma.report.count({ where: { createdAt: { gte: rangeStart } } }),
     prisma.favorite.count(),
+    prisma.favorite.count({ where: { createdAt: { gte: rangeStart } } }),
     prisma.message.count(),
+    prisma.message.count({ where: { createdAt: { gte: rangeStart } } }),
     prisma.user.count({ where: { disabled: true } }),
     prisma.listing.findMany({
       take: 6,
       orderBy: { createdAt: "desc" },
-      where: { status: "published" },
+      where: { status: "published", createdAt: { gte: rangeStart } },
       include: {
         seller: {
           include: {
@@ -112,6 +143,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     prisma.user.findMany({
       take: 6,
       orderBy: { createdAt: "desc" },
+      where: { createdAt: { gte: rangeStart } },
       include: {
         profile: true,
       },
@@ -119,6 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     prisma.report.findMany({
       take: 6,
       orderBy: { createdAt: "desc" },
+      where: { createdAt: { gte: rangeStart } },
       include: {
         reporter: {
           select: {
@@ -129,11 +162,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     }),
     prisma.listing.findMany({
-      where: { createdAt: { gte: sevenDaysAgo } },
+      where: { createdAt: { gte: rangeStart } },
       select: { createdAt: true },
     }),
     prisma.user.findMany({
-      where: { createdAt: { gte: sevenDaysAgo } },
+      where: { createdAt: { gte: rangeStart } },
       select: { createdAt: true },
     }),
     prisma.listing.groupBy({
@@ -141,6 +174,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       where: {
         status: "published",
         category: { not: "" },
+        createdAt: { gte: rangeStart },
       },
       _count: { _all: true },
       orderBy: { _count: { category: "desc" } },
@@ -151,6 +185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       where: {
         status: "published",
         location: { not: null },
+        createdAt: { gte: rangeStart },
       },
       _count: { _all: true },
       orderBy: { _count: { location: "desc" } },
@@ -158,13 +193,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }),
     prisma.favorite.groupBy({
       by: ["listingId"],
+      where: { createdAt: { gte: rangeStart } },
       _count: { _all: true },
       orderBy: { _count: { listingId: "desc" } },
       take: 5,
     }),
     prisma.listing.groupBy({
       by: ["sellerId"],
-      where: { status: "published" },
+      where: { status: "published", createdAt: { gte: rangeStart } },
       _count: { _all: true },
       orderBy: { _count: { sellerId: "desc" } },
       take: 5,
@@ -215,17 +251,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const sellerById = new Map(topSellers.map((seller) => [seller.id, seller]));
 
   return res.status(200).json({
+    range,
     totals: {
       totalListings,
       publishedListings,
       hiddenListings,
-      publishedToday,
       totalUsers,
-      newUsersLast7Days,
       pendingReports,
       totalFavorites,
       totalMessages,
       disabledUsers,
+    },
+    period: {
+      publishedListings: publishedListingsInRange,
+      hiddenListings: hiddenListingsInRange,
+      publishedToday,
+      newUsers: newUsersInRange,
+      pendingReports: pendingReportsInRange,
+      createdReports: createdReportsInRange,
+      favorites: favoritesInRange,
+      messages: messagesInRange,
     },
     latestListings,
     latestUsers,
