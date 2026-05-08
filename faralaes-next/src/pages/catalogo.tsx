@@ -36,6 +36,7 @@ const precioAcentimos = (valor: string) => {
 
 export default function Catalogo() {
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [productosFavoritos, setProductosFavoritos] = useState<Producto[]>([]);
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [userId, setUserId] = useState("");
   const [busqueda, setBusqueda] = useState("");
@@ -68,6 +69,7 @@ export default function Catalogo() {
           if (!favoritosRes.ok) return;
 
           const favoritosData: Producto[] = await favoritosRes.json();
+          setProductosFavoritos(favoritosData);
           setFavoritos(favoritosData.map((producto) => producto.id));
         }
       } finally {
@@ -125,6 +127,68 @@ export default function Catalogo() {
     }
   };
 
+  const renderProductoCard = (p: Producto) => (
+    <article
+      key={p.id}
+      onClick={() => abrirProducto(p)}
+      className="cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-lg"
+    >
+      <div className="relative aspect-[4/5] overflow-hidden bg-gray-200">
+        {userId && p.sellerId === userId && (
+          <span className="absolute left-3 top-3 z-10 rounded-full bg-green-700 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
+            Tu anuncio
+          </span>
+        )}
+
+        <button
+          type="button"
+          onClick={(e) => toggleFavorito(e, p.id)}
+          className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-3xl leading-none shadow-md transition hover:scale-105"
+          aria-label={
+            favoritos.includes(p.id) ? "Quitar de favoritos" : "Guardar en favoritos"
+          }
+        >
+          <span className={favoritos.includes(p.id) ? "text-red-600" : "text-gray-500"}>
+            ♥
+          </span>
+        </button>
+
+        {p.images?.[0]?.url ? (
+          <img
+            src={p.images[0].url}
+            alt={p.title}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-gray-400">
+            Sin imagen
+          </div>
+        )}
+      </div>
+
+      <div className="p-5">
+        <h2 className="mb-2 font-serif text-xl">{p.title}</h2>
+
+        {p.description && (
+          <p className="mb-3 text-sm text-gray-600">{p.description}</p>
+        )}
+
+        <p className="mb-3 text-2xl font-semibold text-red-700">
+          {formatPrice(p.priceCents)}
+        </p>
+
+        <div className="space-y-1 text-sm text-gray-500">
+          <p>Categoría: {p.category}</p>
+          <p>Talla: {p.size || "Única"}</p>
+          <p>Color: {p.color || "Sin color"}</p>
+          <p>Ubicación: {p.location || "Sin ubicación"}</p>
+          <p>Estado: {p.condition || "No indicado"}</p>
+          {p.shippingAvailable && <p>Envío disponible</p>}
+        </div>
+      </div>
+    </article>
+  );
+
   const precioMinCents = precioAcentimos(precioMin);
   const precioMaxCents = precioAcentimos(precioMax);
   const productosFiltrados = productos
@@ -174,6 +238,43 @@ export default function Catalogo() {
 
       return 0;
     });
+  const ultimosAnuncios = productos.slice(0, 4);
+  const idsUltimosAnuncios = new Set(ultimosAnuncios.map((producto) => producto.id));
+  const categoriasFavoritas = new Set(
+    productosFavoritos.map((producto) => producto.category).filter(Boolean)
+  );
+  const ubicacionesFavoritas = new Set(
+    productosFavoritos
+      .map((producto) => producto.location?.trim().toLowerCase())
+      .filter((location): location is string => Boolean(location))
+  );
+  const idsFavoritos = new Set(favoritos);
+  const recomendacionesRelacionadas = userId
+    ? productos.filter((producto) => {
+        if (idsUltimosAnuncios.has(producto.id) || idsFavoritos.has(producto.id)) {
+          return false;
+        }
+
+        const mismaCategoria = categoriasFavoritas.has(producto.category);
+        const mismaUbicacion = producto.location
+          ? ubicacionesFavoritas.has(producto.location.trim().toLowerCase())
+          : false;
+
+        return mismaCategoria || mismaUbicacion;
+      })
+    : [];
+  const recomendacionesFallback = productos.filter(
+    (producto) =>
+      !idsUltimosAnuncios.has(producto.id) &&
+      !idsFavoritos.has(producto.id) &&
+      !recomendacionesRelacionadas.some(
+        (recomendacion) => recomendacion.id === producto.id
+      )
+  );
+  const puedeInteresarte = [
+    ...recomendacionesRelacionadas,
+    ...recomendacionesFallback,
+  ].slice(0, 4);
 
   return (
     <>
@@ -208,6 +309,40 @@ export default function Catalogo() {
 
         {!loading && productos.length === 0 && (
           <p>No hay anuncios publicados.</p>
+        )}
+
+        {!loading && productos.length > 0 && (
+          <div className="mb-10 space-y-10">
+            {ultimosAnuncios.length > 0 && (
+              <section>
+                <h2 className="font-serif text-3xl text-gray-950">
+                  Últimos anuncios publicados
+                </h2>
+                <div className="mt-5 -mx-6 flex gap-5 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
+                  {ultimosAnuncios.map((producto) => (
+                    <div key={producto.id} className="min-w-[260px] sm:min-w-0">
+                      {renderProductoCard(producto)}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {puedeInteresarte.length > 0 && (
+              <section>
+                <h2 className="font-serif text-3xl text-gray-950">
+                  Puede interesarte
+                </h2>
+                <div className="mt-5 -mx-6 flex gap-5 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
+                  {puedeInteresarte.map((producto) => (
+                    <div key={producto.id} className="min-w-[260px] sm:min-w-0">
+                      {renderProductoCard(producto)}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
         )}
 
         {!loading && productos.length > 0 && (
@@ -293,78 +428,8 @@ export default function Catalogo() {
           <p>No se han encontrado anuncios con esos filtros.</p>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {productosFiltrados.map((p) => (
-            <article
-              key={p.id}
-              onClick={() => abrirProducto(p)}
-              className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:shadow-lg transition"
-            >
-              <div className="relative aspect-[4/5] overflow-hidden bg-gray-200">
-                {userId && p.sellerId === userId && (
-                  <span className="absolute left-3 top-3 z-10 rounded-full bg-green-700 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
-                    Tu anuncio
-                  </span>
-                )}
-
-                <button
-                  type="button"
-                  onClick={(e) => toggleFavorito(e, p.id)}
-                  className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-3xl leading-none shadow-md transition hover:scale-105"
-                  aria-label={
-                    favoritos.includes(p.id)
-                      ? "Quitar de favoritos"
-                      : "Guardar en favoritos"
-                  }
-                >
-                  <span
-                    className={
-                      favoritos.includes(p.id)
-                        ? "text-red-600"
-                        : "text-gray-500"
-                    }
-                  >
-                    ♥
-                  </span>
-                </button>
-
-                {p.images?.[0]?.url ? (
-                  <img
-                    src={p.images[0].url}
-                    alt={p.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-gray-400">
-                    Sin imagen
-                  </div>
-                )}
-              </div>
-
-              <div className="p-5">
-                <h2 className="font-serif text-xl mb-2">{p.title}</h2>
-
-                {p.description && (
-                  <p className="text-sm text-gray-600 mb-3">
-                    {p.description}
-                  </p>
-                )}
-
-                <p className="text-2xl font-semibold text-red-700 mb-3">
-                  {formatPrice(p.priceCents)}
-                </p>
-
-                <div className="text-sm text-gray-500 space-y-1">
-                  <p>Categoría: {p.category}</p>
-                  <p>Talla: {p.size || "Única"}</p>
-                  <p>Color: {p.color || "Sin color"}</p>
-                  <p>Ubicación: {p.location || "Sin ubicación"}</p>
-                  <p>Estado: {p.condition || "No indicado"}</p>
-                  {p.shippingAvailable && <p>Envío disponible</p>}
-                </div>
-              </div>
-            </article>
-          ))}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {productosFiltrados.map((p) => renderProductoCard(p))}
         </div>
         </section>
       </main>
