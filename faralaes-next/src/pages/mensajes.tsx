@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import NavBar from "../components/NavBar";
 import { formatPrice } from "../lib/formatPrice";
 import { useAuth } from "../lib/authContext";
@@ -97,6 +97,8 @@ export default function Mensajes() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const shouldStickToBottomRef = useRef(true);
+  const lastScrolledConversationIdRef = useRef("");
+  const lastScrolledMessageCountRef = useRef(0);
 
   const isNearBottom = () => {
     const container = messagesContainerRef.current;
@@ -143,7 +145,7 @@ export default function Mensajes() {
     });
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!router.isReady || authLoading) {
       return;
     }
@@ -232,7 +234,26 @@ export default function Mensajes() {
   );
 
   useEffect(() => {
-    if (shouldStickToBottomRef.current) {
+    if (!conversacionSeleccionada) {
+      return;
+    }
+
+    const messageCount = conversacionSeleccionada.messages.length;
+    const conversationChanged =
+      lastScrolledConversationIdRef.current !== conversacionSeleccionada.id;
+    const hasNewMessages = messageCount > lastScrolledMessageCountRef.current;
+
+    if (conversationChanged) {
+      shouldStickToBottomRef.current = true;
+      lastScrolledConversationIdRef.current = conversacionSeleccionada.id;
+      lastScrolledMessageCountRef.current = messageCount;
+      requestAnimationFrame(() => scrollToBottom("auto"));
+      return;
+    }
+
+    lastScrolledMessageCountRef.current = messageCount;
+
+    if (hasNewMessages && shouldStickToBottomRef.current) {
       scrollToBottom("smooth");
     }
   }, [conversacionSeleccionada?.id, conversacionSeleccionada?.messages.length]);
