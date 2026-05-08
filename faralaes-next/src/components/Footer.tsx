@@ -34,11 +34,14 @@ function FooterColumn({
   title: string;
 }) {
   return (
-    <div>
+    <div className="text-center md:text-left">
       <h2 className="text-sm font-bold uppercase tracking-widest text-stone-500">
         {title}
       </h2>
-      <nav aria-label={`Footer ${title}`} className="mt-4 flex flex-col gap-3">
+      <nav
+        aria-label={`Footer ${title}`}
+        className="mt-4 flex flex-col items-center gap-3 md:items-start"
+      >
         {links.map((link) => (
           <Link
             key={link.href}
@@ -57,8 +60,8 @@ function FooterColumn({
 export default function Footer() {
   return (
     <footer className="border-t border-stone-200 bg-[#f8f3ef] text-stone-800">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 py-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-        <div>
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-10 md:py-12">
+        <div className="flex flex-col items-center text-center md:items-start md:text-left">
           <Link
             href="/"
             prefetch={false}
@@ -81,7 +84,7 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-stone-200 px-6 py-5">
-        <p className="mx-auto max-w-6xl text-sm text-stone-500">
+        <p className="mx-auto max-w-6xl text-center text-sm text-stone-500 md:text-left">
           © 2026 Faralaes. Todos los derechos reservados.
         </p>
       </div>
