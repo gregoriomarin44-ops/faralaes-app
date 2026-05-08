@@ -161,38 +161,64 @@ export default function Login() {
 
             {mode === "register" ? (
               <>
-                <input
-                  className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Nombre visible"
-                  type="text"
-                  autoComplete="name"
-                  required
-                />
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    @
-                  </span>
+                <div>
                   <input
-                    className="w-full rounded border border-gray-300 p-3 pl-8 outline-none transition focus:border-green-700"
-                    value={username}
-                    onChange={(e) =>
-                      setUsername(
-                        e.target.value
-                          .toLowerCase()
-                          .trimStart()
-                          .replace(/^@+/, "")
-                          .replace(/\s/g, "")
-                      )
-                    }
-                    placeholder="nombre_usuario"
+                    className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Nombre visible"
                     type="text"
-                    minLength={3}
-                    pattern="[a-z0-9_]+"
-                    autoComplete="username"
+                    autoComplete="name"
+                    aria-describedby="display-name-help"
                     required
                   />
+                  <p
+                    id="display-name-help"
+                    className="mt-2 text-xs leading-relaxed text-gray-500"
+                  >
+                    El nombre que verán otros usuarios. Puedes usar espacios y
+                    mayúsculas.
+                    <span className="mt-1 block text-gray-400">
+                      Ejemplo: María Flamenca Boutique
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      @
+                    </span>
+                    <input
+                      className="w-full rounded border border-gray-300 p-3 pl-8 outline-none transition focus:border-green-700"
+                      value={username}
+                      onChange={(e) =>
+                        setUsername(
+                          e.target.value
+                            .toLowerCase()
+                            .trimStart()
+                            .replace(/^@+/, "")
+                            .replace(/\s/g, "")
+                        )
+                      }
+                      placeholder="nombre_usuario"
+                      type="text"
+                      minLength={3}
+                      pattern="[a-z0-9_]+"
+                      autoComplete="username"
+                      aria-describedby="username-help"
+                      required
+                    />
+                  </div>
+                  <p
+                    id="username-help"
+                    className="mt-2 text-xs leading-relaxed text-gray-500"
+                  >
+                    Se usará en tu perfil público. Solo letras minúsculas,
+                    números y guion bajo.
+                    <span className="mt-1 block text-gray-400">
+                      Ejemplo: maria_flamenca
+                    </span>
+                  </p>
                 </div>
                 <input
                   className="w-full rounded border border-gray-300 p-3 outline-none transition focus:border-green-700"
