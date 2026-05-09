@@ -298,7 +298,7 @@ export default function Catalogo() {
             </p>
 
             <h1 className="text-4xl md:text-5xl font-serif mt-3 mb-4">
-              Prendas seleccionadas a mano
+              Compra y vende moda flamenca
             </h1>
 
             <p className="text-gray-600">
