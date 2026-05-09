@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../lib/authContext";
+import { categoryOptions, conditionOptions, usageOptions } from "../lib/listingOptions";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
@@ -27,6 +28,8 @@ export default function Publicar() {
   const [categoria, setCategoria] = useState("traje");
   const [talla, setTalla] = useState("");
   const [color, setColor] = useState("");
+  const [marca, setMarca] = useState("");
+  const [uso, setUso] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [estado, setEstado] = useState("muy_bueno");
   const [shippingAvailable, setShippingAvailable] = useState(false);
@@ -132,6 +135,8 @@ export default function Publicar() {
         category: categoria,
         size: talla || null,
         color: color || null,
+        brand: marca || null,
+        usage: uso || null,
         location: ubicacion || null,
         condition: estado,
         shippingAvailable,
@@ -148,6 +153,8 @@ export default function Publicar() {
       setCategoria("traje");
       setTalla("");
       setColor("");
+      setMarca("");
+      setUso("");
       setUbicacion("");
       setEstado("muy_bueno");
       setShippingAvailable(false);
@@ -178,21 +185,38 @@ export default function Publicar() {
             <textarea className="w-full border p-3 rounded" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
 
             <select className="w-full border p-3 rounded" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
-              <option value="traje">Traje</option>
-              <option value="zapatos">Zapatos</option>
-              <option value="mantoncillo">Mantoncillo</option>
-              <option value="complementos">Complementos</option>
+              {categoryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
 
-            <input className="w-full border p-3 rounded" value={talla} onChange={(e) => setTalla(e.target.value)} placeholder="Talla" />
-            <input className="w-full border p-3 rounded" value={color} onChange={(e) => setColor(e.target.value)} placeholder="Color" />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <input className="w-full border p-3 rounded" value={talla} onChange={(e) => setTalla(e.target.value)} placeholder="Talla, ej. 38, M" maxLength={20} />
+              <input className="w-full border p-3 rounded" value={color} onChange={(e) => setColor(e.target.value)} placeholder="Color" maxLength={40} />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <input className="w-full border p-3 rounded" value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Marca o diseñador" maxLength={80} />
+              <select className="w-full border p-3 rounded" value={uso} onChange={(e) => setUso(e.target.value)}>
+                <option value="">Tipo de uso</option>
+                {usageOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <input className="w-full border p-3 rounded" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} placeholder="Ubicación" />
 
             <select className="w-full border p-3 rounded" value={estado} onChange={(e) => setEstado(e.target.value)}>
-              <option value="nuevo">Nuevo</option>
-              <option value="muy_bueno">Muy bueno</option>
-              <option value="bueno">Bueno</option>
-              <option value="usado">Usado</option>
+              {conditionOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
 
             <label className="flex items-center gap-3 rounded border p-3 text-sm font-semibold text-gray-700">

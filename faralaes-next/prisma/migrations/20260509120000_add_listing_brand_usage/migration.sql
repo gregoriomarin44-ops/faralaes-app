@@ -1,0 +1,2 @@
+ALTER TABLE "Listing" ADD COLUMN "brand" TEXT;
+ALTER TABLE "Listing" ADD COLUMN "usage" TEXT;

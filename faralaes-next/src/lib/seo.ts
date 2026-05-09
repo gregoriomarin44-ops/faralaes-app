@@ -20,6 +20,54 @@ export const categorySeo = {
     singular: "complemento flamenco",
     title: "Complementos flamencos de segunda mano",
   },
+  "mantoncillos-flamencos": {
+    category: "mantoncillo",
+    plural: "mantoncillos flamencos",
+    singular: "mantoncillo flamenco",
+    title: "Mantoncillos flamencos de segunda mano",
+  },
+  "moda-flamenca-nina": {
+    category: "nina",
+    plural: "prendas flamencas de niña",
+    singular: "prenda flamenca de niña",
+    title: "Moda flamenca de niña de segunda mano",
+  },
+  "moda-flamenca-hombre": {
+    category: "hombre",
+    plural: "prendas flamencas de hombre",
+    singular: "prenda flamenca de hombre",
+    title: "Moda flamenca de hombre de segunda mano",
+  },
+  "flores-flamencas": {
+    category: "flores",
+    plural: "flores flamencas",
+    singular: "flor flamenca",
+    title: "Flores flamencas de segunda mano",
+  },
+  "pendientes-flamencos": {
+    category: "pendientes",
+    plural: "pendientes flamencos",
+    singular: "pendiente flamenco",
+    title: "Pendientes flamencos de segunda mano",
+  },
+  "peinetas-flamencas": {
+    category: "peinetas",
+    plural: "peinetas flamencas",
+    singular: "peineta flamenca",
+    title: "Peinetas flamencas de segunda mano",
+  },
+  "bolsos-flamencos": {
+    category: "bolsos",
+    plural: "bolsos flamencos",
+    singular: "bolso flamenco",
+    title: "Bolsos flamencos de segunda mano",
+  },
+  "moda-rociera": {
+    category: "moda_rociera",
+    plural: "moda rociera",
+    singular: "prenda rociera",
+    title: "Moda rociera de segunda mano",
+  },
 } as const;
 
 export type SeoCategorySlug = keyof typeof categorySeo;
@@ -31,6 +79,10 @@ export type SeoRoute = {
 };
 
 export const seoCategorySlugs = Object.keys(categorySeo) as SeoCategorySlug[];
+
+export const getSeoCategorySlugByCategory = (category: string) =>
+  seoCategorySlugs.find((slug) => categorySeo[slug].category === category) ||
+  null;
 
 const capitalize = (value: string) =>
   value

@@ -10,6 +10,11 @@ import { AUTH_COOKIE_NAME, verifySessionToken } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { getCanonical, normalizeSlugText } from "../../lib/seo";
 import { getInitial } from "../../lib/userIdentity";
+import {
+  getCategoryLabel,
+  getConditionLabel,
+  getUsageLabel,
+} from "../../lib/listingOptions";
 
 type Producto = {
   id: string;
@@ -20,6 +25,8 @@ type Producto = {
   category: string;
   size: string | null;
   color: string | null;
+  brand: string | null;
+  usage: string | null;
   location: string | null;
   condition: string | null;
   shippingAvailable: boolean;
@@ -59,7 +66,14 @@ const categoryLabels: Record<string, { label: string; path: string }> = {
   traje: { label: "Trajes de flamenca", path: "/trajes-flamenca" },
   zapatos: { label: "Zapatos de flamenca", path: "/zapatos-flamenca" },
   complementos: { label: "Complementos flamencos", path: "/complementos-flamencos" },
-  mantoncillo: { label: "Mantoncillos flamencos", path: "/complementos-flamencos" },
+  mantoncillo: { label: "Mantoncillos flamencos", path: "/mantoncillos-flamencos" },
+  nina: { label: "Moda flamenca de niña", path: "/moda-flamenca-nina" },
+  hombre: { label: "Moda flamenca de hombre", path: "/moda-flamenca-hombre" },
+  flores: { label: "Flores flamencas", path: "/flores-flamencas" },
+  pendientes: { label: "Pendientes flamencos", path: "/pendientes-flamencos" },
+  peinetas: { label: "Peinetas flamencas", path: "/peinetas-flamencas" },
+  bolsos: { label: "Bolsos flamencos", path: "/bolsos-flamencos" },
+  moda_rociera: { label: "Moda rociera", path: "/moda-rociera" },
 };
 
 export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = async ({
@@ -332,7 +346,7 @@ export default function ProductoDetalle({
   const productUrl = getCanonical(`/producto/${producto.id}`);
   const metaDescription =
     producto.description?.slice(0, 150) ||
-    `${producto.title} en Faralaes por ${formatPrice(producto.priceCents)}${producto.location ? ` en ${producto.location}` : ""}.`;
+    `${producto.title}${producto.brand ? ` de ${producto.brand}` : ""} en Faralaes por ${formatPrice(producto.priceCents)}${producto.location ? ` en ${producto.location}` : ""}.`;
   const breadcrumbItems = [
     { href: "/", label: "Inicio" },
     { href: categoryInfo.path, label: categoryInfo.label },
@@ -348,6 +362,21 @@ export default function ProductoDetalle({
     description: metaDescription,
     image: images.map((image) => image.url),
     category: categoryInfo.label,
+    brand: producto.brand ? { "@type": "Brand", name: producto.brand } : undefined,
+    additionalProperty: [
+      producto.size
+        ? { "@type": "PropertyValue", name: "Talla", value: producto.size }
+        : null,
+      producto.color
+        ? { "@type": "PropertyValue", name: "Color", value: producto.color }
+        : null,
+      producto.usage
+        ? { "@type": "PropertyValue", name: "Tipo de uso", value: getUsageLabel(producto.usage) }
+        : null,
+      producto.condition
+        ? { "@type": "PropertyValue", name: "Estado", value: getConditionLabel(producto.condition) }
+        : null,
+    ].filter(Boolean),
     offers: {
       "@type": "Offer",
       price: (producto.priceCents / 100).toFixed(2),
@@ -450,7 +479,7 @@ export default function ProductoDetalle({
           <div className="flex flex-col">
             <div className="border-b border-gray-100 pb-6">
               <p className="mb-3 text-xs font-bold uppercase tracking-widest text-red-700">
-                {producto.category}
+                {getCategoryLabel(producto.category)}
               </p>
 
               <h1 className="mb-4 text-3xl font-bold leading-tight text-gray-950 sm:text-4xl">
@@ -491,6 +520,18 @@ export default function ProductoDetalle({
                   </p>
                 </div>
                 <div className="rounded-xl bg-gray-50 p-3">
+                  <p className="text-gray-500">Marca o diseñador</p>
+                  <p className="font-semibold text-gray-900">
+                    {producto.brand || "No indicado"}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-3">
+                  <p className="text-gray-500">Tipo de uso</p>
+                  <p className="font-semibold text-gray-900">
+                    {getUsageLabel(producto.usage)}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-3">
                   <p className="text-gray-500">Ubicación</p>
                   <p className="font-semibold text-gray-900">
                     {producto.location || "Sin ubicación"}
@@ -499,7 +540,7 @@ export default function ProductoDetalle({
                 <div className="rounded-xl bg-gray-50 p-3">
                   <p className="text-gray-500">Estado</p>
                   <p className="font-semibold text-gray-900">
-                    {producto.condition || "No indicado"}
+                    {getConditionLabel(producto.condition)}
                   </p>
                 </div>
               </div>

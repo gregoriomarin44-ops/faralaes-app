@@ -2,6 +2,8 @@ import type { GetServerSideProps } from "next";
 import { prisma } from "../lib/prisma";
 import {
   buildSeoPath,
+  categorySeo,
+  getSeoCategorySlugByCategory,
   getCanonical,
   normalizeSlugText,
   seoCategorySlugs,
@@ -70,13 +72,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   const categoryPaths = seoCategorySlugs
     .filter((slug) =>
       categoryCounts.some((count) => {
-        const category =
-          slug === "trajes-flamenca"
-            ? "traje"
-            : slug === "zapatos-flamenca"
-              ? "zapatos"
-              : "complementos";
-        return count.category === category && count._count._all > 0;
+        return count.category === categorySeo[slug].category && count._count._all > 0;
       })
     )
     .map((categorySlug) => buildSeoPath({ categorySlug }));
@@ -84,14 +80,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   const locationPaths = locationCounts
     .filter((count) => count.location)
     .map((count) => {
-      const categorySlug =
-        count.category === "traje"
-          ? "trajes-flamenca"
-          : count.category === "zapatos"
-            ? "zapatos-flamenca"
-            : count.category === "complementos"
-              ? "complementos-flamencos"
-              : null;
+      const categorySlug = getSeoCategorySlugByCategory(count.category);
 
       return categorySlug && count.location
         ? buildSeoPath({
@@ -104,14 +93,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   const sizePaths = sizeCounts
     .filter((count) => count.size && count._count._all > 0)
     .map((count) => {
-      const categorySlug =
-        count.category === "traje"
-          ? "trajes-flamenca"
-          : count.category === "zapatos"
-            ? "zapatos-flamenca"
-            : count.category === "complementos"
-              ? "complementos-flamencos"
-              : null;
+      const categorySlug = getSeoCategorySlugByCategory(count.category);
 
       return categorySlug && count.size
         ? buildSeoPath({

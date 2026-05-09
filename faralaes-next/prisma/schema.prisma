@@ -95,6 +95,8 @@ model Listing {
   category               String
   size                   String?
   color                  String?
+  brand                  String?
+  usage                  String?
   location               String?
   condition              String?
   status                 String         @default("published")

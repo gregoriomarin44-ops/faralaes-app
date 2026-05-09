@@ -93,6 +93,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             category: "eliminado",
             size: null,
             color: null,
+            brand: null,
+            usage: null,
             location: null,
             condition: null,
             status: "deleted",

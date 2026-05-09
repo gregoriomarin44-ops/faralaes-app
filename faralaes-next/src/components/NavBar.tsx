@@ -2,15 +2,12 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "../lib/authContext";
+import { categoryOptions } from "../lib/listingOptions";
 
-const categoryLinks = [
-  { href: "/catalogo?categoria=traje", label: "Trajes" },
-  { href: "/catalogo?categoria=zapatos", label: "Zapatos" },
-  { href: "/catalogo?categoria=complementos", label: "Complementos" },
-  { href: "/catalogo?categoria=nina", label: "Niña" },
-  { href: "/catalogo?categoria=hombre", label: "Hombre" },
-  { href: "/catalogo?categoria=mantoncillo", label: "Mantones" },
-];
+const categoryLinks = categoryOptions.map((category) => ({
+  href: `/catalogo?categoria=${category.value}`,
+  label: category.label,
+}));
 
 const menuLinks = [
   { href: "/", label: "Inicio" },

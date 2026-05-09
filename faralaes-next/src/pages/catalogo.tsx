@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import NavBar from "../components/NavBar";
 import { formatPrice } from "../lib/formatPrice";
+import {
+  categoryOptions,
+  conditionOptions,
+  getCategoryLabel,
+  getConditionLabel,
+} from "../lib/listingOptions";
 
 type Producto = {
   id: string;
@@ -12,6 +18,8 @@ type Producto = {
   category: string;
   size: string | null;
   color: string | null;
+  brand: string | null;
+  usage: string | null;
   location: string | null;
   condition: string | null;
   shippingAvailable: boolean;
@@ -43,6 +51,8 @@ export default function Catalogo() {
   const [categoria, setCategoria] = useState("todas");
   const [ubicacion, setUbicacion] = useState("");
   const [talla, setTalla] = useState("");
+  const [color, setColor] = useState("");
+  const [estado, setEstado] = useState("todos");
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
   const [soloWhatsapp, setSoloWhatsapp] = useState(false);
@@ -187,12 +197,30 @@ export default function Catalogo() {
           {formatPrice(p.priceCents)}
         </p>
 
-        <div className="space-y-1 text-sm text-gray-500">
-          <p>Categoría: {p.category}</p>
-          <p>Talla: {p.size || "Única"}</p>
-          <p>Color: {p.color || "Sin color"}</p>
-          <p>Ubicación: {p.location || "Sin ubicación"}</p>
-          <p>Estado: {p.condition || "No indicado"}</p>
+        <div className="flex flex-wrap gap-2 text-xs font-semibold text-gray-600">
+          <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
+            {getCategoryLabel(p.category)}
+          </span>
+          {p.size && (
+            <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
+              Talla {p.size}
+            </span>
+          )}
+          {p.color && (
+            <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
+              {p.color}
+            </span>
+          )}
+          {p.brand && (
+            <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
+              {p.brand}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 space-y-1 text-sm text-gray-500">
+          <p>{p.location || "Sin ubicación"}</p>
+          <p>Estado: {getConditionLabel(p.condition)}</p>
           {p.shippingAvailable && <p>Envío disponible</p>}
         </div>
       </div>
@@ -218,6 +246,13 @@ export default function Catalogo() {
       const coincideTalla =
         !talla.trim() ||
         (producto.size || "").toLowerCase().includes(talla.trim().toLowerCase());
+      const coincideColor =
+        !color.trim() ||
+        (producto.color || "")
+          .toLowerCase()
+          .includes(color.trim().toLowerCase());
+      const coincideEstado =
+        estado === "todos" || producto.condition === estado;
       const coincidePrecioMin =
         precioMinCents === null || producto.priceCents >= precioMinCents;
       const coincidePrecioMax =
@@ -231,6 +266,8 @@ export default function Catalogo() {
         coincideCategoria &&
         coincideUbicacion &&
         coincideTalla &&
+        coincideColor &&
+        coincideEstado &&
         coincidePrecioMin &&
         coincidePrecioMax &&
         coincideWhatsapp &&
@@ -346,12 +383,11 @@ export default function Catalogo() {
                 onChange={(e) => setCategoria(e.target.value)}
               >
                 <option value="todas">Todas las categorías</option>
-                <option value="traje">Traje</option>
-                <option value="zapatos">Zapatos</option>
-                <option value="mantoncillo">Mantoncillo</option>
-                <option value="complementos">Complementos</option>
-                <option value="nina">Niña</option>
-                <option value="hombre">Hombre</option>
+                {categoryOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <input
                 className="rounded border border-gray-300 p-3"
@@ -365,6 +401,24 @@ export default function Catalogo() {
                 onChange={(e) => setTalla(e.target.value)}
                 placeholder="Talla"
               />
+              <input
+                className="rounded border border-gray-300 p-3"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                placeholder="Color"
+              />
+              <select
+                className="rounded border border-gray-300 p-3"
+                value={estado}
+                onChange={(e) => setEstado(e.target.value)}
+              >
+                <option value="todos">Todos los estados</option>
+                {conditionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
               <input
                 className="rounded border border-gray-300 p-3"
                 value={precioMin}
