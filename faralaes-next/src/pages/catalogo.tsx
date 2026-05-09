@@ -80,6 +80,16 @@ export default function Catalogo() {
     cargarCatalogo();
   }, []);
 
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    const queryBusqueda = router.query.q;
+    const queryCategoria = router.query.categoria;
+
+    setBusqueda(typeof queryBusqueda === "string" ? queryBusqueda : "");
+    setCategoria(typeof queryCategoria === "string" ? queryCategoria : "todas");
+  }, [router.isReady, router.query.q, router.query.categoria]);
+
   const abrirProducto = (producto: Producto) => {
     if (userId && producto.sellerId === userId) {
       router.push(`/editar/${producto.id}`);
@@ -340,6 +350,8 @@ export default function Catalogo() {
                 <option value="zapatos">Zapatos</option>
                 <option value="mantoncillo">Mantoncillo</option>
                 <option value="complementos">Complementos</option>
+                <option value="nina">Niña</option>
+                <option value="hombre">Hombre</option>
               </select>
               <input
                 className="rounded border border-gray-300 p-3"
