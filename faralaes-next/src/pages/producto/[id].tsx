@@ -267,9 +267,19 @@ export default function ProductoDetalle({
     return (
       <>
         <NavBar />
-        <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
-          <section className="mx-auto max-w-6xl">
-            <p className="text-center text-gray-600">Cargando anuncio...</p>
+        <main className="min-h-screen bg-[#f8f3ef] px-4 py-8 sm:px-6 lg:py-12">
+          <section className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1.12fr)_minmax(360px,0.88fr)] lg:gap-10">
+            <div className="skeleton aspect-[4/5] rounded-[1.75rem]" />
+            <div className="rounded-[1.75rem] border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="skeleton h-4 w-32 rounded-full" />
+              <div className="skeleton mt-5 h-12 w-4/5 rounded-full" />
+              <div className="skeleton mt-4 h-12 w-1/2 rounded-full" />
+              <div className="mt-8 grid grid-cols-2 gap-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="skeleton h-16 rounded-2xl" />
+                ))}
+              </div>
+            </div>
           </section>
         </main>
       </>
@@ -396,6 +406,70 @@ export default function ProductoDetalle({
       item: getCanonical(item.href),
     })),
   };
+  const detailItems = [
+    { label: "Talla", value: producto.size || "Única", icon: "T" },
+    { label: "Color", value: producto.color || "Sin color", icon: "C" },
+    {
+      label: "Marca",
+      value: producto.brand || "No indicado",
+      icon: "M",
+    },
+    { label: "Uso", value: getUsageLabel(producto.usage), icon: "U" },
+    {
+      label: "Ubicación",
+      value: producto.location || "Sin ubicación",
+      icon: "L",
+    },
+    {
+      label: "Estado",
+      value: getConditionLabel(producto.condition),
+      icon: "E",
+    },
+  ];
+  const primaryCta = esPropio ? (
+    <button
+      type="button"
+      onClick={() => router.push(`/editar/${producto.id}`)}
+      className="tap-feedback w-full rounded-full bg-stone-950 px-6 py-4 text-center font-bold text-white shadow-sm hover:bg-red-950"
+    >
+      Editar anuncio
+    </button>
+  ) : !userId ? (
+    <button
+      type="button"
+      onClick={() => router.push("/login")}
+      className="tap-feedback w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm hover:bg-green-800"
+    >
+      Entra para contactar
+    </button>
+  ) : !producto.whatsappContactAllowed ? (
+    <p className="rounded-2xl border border-gray-200 bg-white px-5 py-4 text-center font-semibold text-gray-700">
+      Este vendedor no permite contacto por WhatsApp
+    </p>
+  ) : !producto.seller?.profile?.phone ? (
+    <p className="rounded-2xl border border-gray-200 bg-white px-5 py-4 text-center font-semibold text-gray-700">
+      Este vendedor no tiene teléfono de WhatsApp configurado
+    </p>
+  ) : puedeWhatsapp ? (
+    <a
+      href={`https://wa.me/${sellerPhone}?text=${whatsappText}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="tap-feedback block w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-[0_12px_28px_rgba(21,128,61,0.24)] hover:bg-green-800"
+    >
+      Contactar por WhatsApp
+    </a>
+  ) : null;
+  const secondaryCta =
+    userId && !esPropio ? (
+      <button
+        type="button"
+        onClick={enviarMensaje}
+        className="tap-feedback w-full rounded-full border border-stone-300 bg-white px-6 py-4 text-center font-bold text-stone-800 shadow-sm hover:border-green-700 hover:text-green-700"
+      >
+        Enviar mensaje
+      </button>
+    ) : null;
 
   return (
     <>
@@ -416,13 +490,13 @@ export default function ProductoDetalle({
         />
       </Head>
       <NavBar />
-      <main className="min-h-screen bg-[#f8f3ef] px-4 py-8 sm:px-6 lg:py-12">
+      <main className="min-h-screen bg-[#f8f3ef] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-10">
         <section className="mx-auto max-w-6xl">
-        <nav className="mb-5 flex flex-wrap gap-2 text-sm font-semibold text-gray-500">
+        <nav className="mb-4 flex flex-wrap gap-2 text-xs font-semibold text-gray-400 sm:text-sm">
           {breadcrumbItems.map((item, index) => (
             <span key={item.href} className="flex items-center gap-2">
-              {index > 0 && <span>/</span>}
-              <Link href={item.href} className="hover:text-green-800">
+              {index > 0 && <span className="text-gray-300">/</span>}
+              <Link href={item.href} className="transition hover:text-green-800">
                 {item.label}
               </Link>
             </span>
@@ -431,36 +505,36 @@ export default function ProductoDetalle({
         <button
           type="button"
           onClick={volverAlCatalogo}
-          className="mb-6 rounded-full border border-gray-300 bg-white px-5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-green-700 hover:text-green-700"
+          className="tap-feedback mb-5 rounded-full border border-gray-300 bg-white px-5 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:border-green-700 hover:text-green-700"
         >
           Volver al catálogo
         </button>
 
-        <div className="grid gap-8 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:gap-10">
-          <div>
-            <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-2xl bg-gray-100">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.12fr)_minmax(360px,0.88fr)] lg:gap-10">
+          <div className="lg:sticky lg:top-32 lg:self-start">
+            <div className="group flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[1.75rem] border border-white bg-white shadow-sm sm:aspect-[5/6] lg:shadow-[0_24px_70px_rgba(34,24,20,0.12)]">
               {selectedImage ? (
                 <img
                   src={selectedImage}
                   alt={producto.title}
                   loading="eager"
-                  className="h-full w-full object-cover"
+                  className="motion-image h-full w-full object-cover transition duration-200 ease-out group-hover:scale-[1.015]"
                 />
               ) : (
-                <span className="text-gray-400">Sin imagen</span>
+                <div className="skeleton h-full w-full" aria-label="Sin imagen" />
               )}
             </div>
 
             {images.length > 1 && (
-              <div className="mt-4 grid grid-cols-5 gap-3 sm:grid-cols-6">
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-6 sm:overflow-visible">
                 {images.map((image, index) => (
                   <button
                     type="button"
                     key={`${image.url}-${index}`}
                     onClick={() => setSelectedImage(image.url)}
-                    className={`aspect-square overflow-hidden rounded-xl border bg-gray-100 transition ${
+                    className={`tap-feedback aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-2xl border bg-white shadow-sm sm:h-auto sm:w-auto ${
                       selectedImage === image.url
-                        ? "border-green-700 ring-2 ring-green-700/20"
+                        ? "border-stone-950 ring-2 ring-stone-950/10"
                         : "border-gray-200 hover:border-gray-400"
                     }`}
                     aria-label={`Ver imagen ${index + 1}`}
@@ -469,7 +543,7 @@ export default function ProductoDetalle({
                       src={image.url}
                       alt={`${producto.title} ${index + 1}`}
                       loading="lazy"
-                      className="h-full w-full object-cover"
+                      className="motion-image h-full w-full object-cover"
                     />
                   </button>
                 ))}
@@ -477,179 +551,130 @@ export default function ProductoDetalle({
             )}
           </div>
 
-          <div className="flex flex-col">
+          <div className="motion-card rounded-[1.75rem] border border-gray-200 bg-white p-5 shadow-sm sm:p-7 lg:p-8">
             <div className="border-b border-gray-100 pb-6">
               <p className="mb-3 text-xs font-bold uppercase tracking-widest text-red-700">
                 {getCategoryLabel(producto.category)}
               </p>
 
-              <h1 className="mb-4 text-3xl font-bold leading-tight text-gray-950 sm:text-4xl">
+              <h1 className="mb-4 font-serif text-[2rem] font-semibold leading-[1.05] text-gray-950 sm:text-5xl">
                 {producto.title}
               </h1>
 
-              <p className="text-4xl font-bold text-red-700">
+              <p className="text-5xl font-extrabold tracking-tight text-red-700 sm:text-6xl">
                 {formatPrice(producto.priceCents)}
+              </p>
+              <p className="mt-3 text-sm font-semibold text-gray-400">
+                Publicado el {publishedDate}
               </p>
             </div>
 
             {producto.description && (
               <div className="border-b border-gray-100 py-6">
-                <h2 className="mb-3 text-lg font-semibold text-gray-950">
+                <h2 className="mb-3 text-lg font-bold text-gray-950">
                   Descripción
                 </h2>
-                <p className="leading-relaxed text-gray-600">
+                <p className="text-[15px] leading-7 text-gray-600">
                   {producto.description}
                 </p>
               </div>
             )}
 
             <div className="border-b border-gray-100 py-6">
-              <h2 className="mb-4 text-lg font-semibold text-gray-950">
+              <h2 className="mb-4 text-lg font-bold text-gray-950">
                 Detalles
               </h2>
               <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                <div className="rounded-xl bg-gray-50 p-3">
-                  <p className="text-gray-500">Talla</p>
-                  <p className="font-semibold text-gray-900">
-                    {producto.size || "Única"}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-gray-50 p-3">
-                  <p className="text-gray-500">Color</p>
-                  <p className="font-semibold text-gray-900">
-                    {producto.color || "Sin color"}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-gray-50 p-3">
-                  <p className="text-gray-500">Marca o diseñador</p>
-                  <p className="font-semibold text-gray-900">
-                    {producto.brand || "No indicado"}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-gray-50 p-3">
-                  <p className="text-gray-500">Tipo de uso</p>
-                  <p className="font-semibold text-gray-900">
-                    {getUsageLabel(producto.usage)}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-gray-50 p-3">
-                  <p className="text-gray-500">Ubicación</p>
-                  <p className="font-semibold text-gray-900">
-                    {producto.location || "Sin ubicación"}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-gray-50 p-3">
-                  <p className="text-gray-500">Estado</p>
-                  <p className="font-semibold text-gray-900">
-                    {getConditionLabel(producto.condition)}
-                  </p>
-                </div>
+                {detailItems.map((item) => (
+                  <div
+                    key={item.label}
+                    className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-[0_8px_22px_rgba(34,24,20,0.04)]"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f8f3ef] text-xs font-black text-red-800">
+                      {item.icon}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        {item.label}
+                      </span>
+                      <span className="block truncate font-bold text-gray-950">
+                        {item.value}
+                      </span>
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
 
             {producto.seller && (
               <div className="border-b border-gray-100 py-6">
-                <h2 className="mb-4 text-lg font-semibold text-gray-950">
+                <h2 className="mb-4 text-lg font-bold text-gray-950">
                   Vendedor
                 </h2>
                 <button
                   type="button"
                   onClick={() => router.push(`/usuario/${sellerUsername}`)}
-                  className="flex w-full items-center gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-left transition hover:border-green-700 hover:bg-green-50"
+                  className="tap-feedback flex w-full items-center gap-4 rounded-3xl border border-gray-200 bg-white p-4 text-left shadow-[0_12px_32px_rgba(34,24,20,0.06)] hover:border-green-700"
                 >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-700 text-lg font-bold text-white">
-                    {sellerInitial}
+                  <span className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-stone-950 to-red-900 text-xl font-black text-white shadow-md">
+                    <span>{sellerInitial}</span>
+                    <span className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-green-600" />
                   </span>
-                  <span className="min-w-0">
-                    <span className="block font-semibold text-gray-950">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-base font-bold text-gray-950">
                       {sellerDisplayName}
                     </span>
                     <span className="block text-sm font-semibold text-gray-500">
                       @{sellerUsername}
                     </span>
+                    <span className="mt-1 block text-xs font-semibold text-green-700">
+                      Perfil verificado por Faralaes
+                    </span>
+                  </span>
+                  <span className="text-xl text-gray-300" aria-hidden="true">
+                    ›
                   </span>
                 </button>
               </div>
             )}
 
-            {esPropio ? (
-              <button
-                type="button"
-                onClick={() => router.push(`/editar/${producto.id}`)}
-                className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
-              >
-                Editar anuncio
-              </button>
-            ) : !userId ? (
-              <button
-                type="button"
-                onClick={() => router.push("/login")}
-                className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
-              >
-                Entra para contactar
-              </button>
-            ) : !producto.whatsappContactAllowed ? (
-              <p className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-center font-semibold text-gray-700">
-                Este vendedor no permite contacto por WhatsApp
-              </p>
-            ) : !producto.seller?.profile?.phone ? (
-              <p className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-center font-semibold text-gray-700">
-                Este vendedor no tiene teléfono de WhatsApp configurado
-              </p>
-            ) : puedeWhatsapp ? (
-              <a
-                href={`https://wa.me/${sellerPhone}?text=${whatsappText}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 w-full rounded-full bg-green-700 px-6 py-4 text-center font-bold text-white shadow-sm transition hover:bg-green-800"
-              >
-                Contactar por WhatsApp
-              </a>
-            ) : null}
-
-            {userId && !esPropio && (
-              <button
-                type="button"
-                onClick={enviarMensaje}
-                className="mt-3 w-full rounded-full border border-green-700 bg-white px-6 py-4 text-center font-bold text-green-700 shadow-sm transition hover:bg-green-50"
-              >
-                Enviar mensaje
-              </button>
-            )}
+            <div className="mt-6 hidden space-y-3 lg:block">
+              {primaryCta}
+              {secondaryCta}
+            </div>
 
             {!esPropio && (
               <button
                 type="button"
                 onClick={reportarAnuncio}
-                className="mt-3 w-full rounded-full border border-red-700 bg-white px-6 py-3 text-center text-sm font-bold text-red-700 shadow-sm transition hover:bg-red-50"
+                className="tap-feedback mt-3 w-full rounded-full border border-red-700 bg-white px-6 py-3 text-center text-sm font-bold text-red-700 shadow-sm hover:bg-red-50"
               >
                 Reportar anuncio
               </button>
             )}
 
             <div className="mt-6 space-y-1 text-xs text-gray-400">
-              <p>Publicado el {publishedDate}</p>
               <p>ID del producto: {producto.id}</p>
             </div>
           </div>
         </div>
 
         <section className="mt-10 grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="motion-card rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="font-serif text-2xl text-gray-950">
               Explora más en Faralaes
             </h2>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link
                 href={categoryInfo.path}
-                className="rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-green-700 hover:text-green-700"
+                className="tap-feedback rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-green-700 hover:text-green-700"
               >
                 Más {categoryInfo.label.toLowerCase()}
               </Link>
               {producto.location && locationPath && (
                 <Link
                   href={locationPath}
-                  className="rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-green-700 hover:text-green-700"
+                  className="tap-feedback rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-green-700 hover:text-green-700"
                 >
                   Más anuncios en {producto.location}
                 </Link>
@@ -657,7 +682,7 @@ export default function ProductoDetalle({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="motion-card rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="font-serif text-2xl text-gray-950">
               Anuncios similares
             </h2>
@@ -671,7 +696,7 @@ export default function ProductoDetalle({
                   <Link
                     key={related.id}
                     href={`/producto/${related.id}`}
-                    className="rounded-lg border border-gray-100 bg-[#f8f3ef] p-3 transition hover:border-green-700"
+                    className="tap-feedback rounded-2xl border border-gray-100 bg-white p-3 shadow-sm hover:border-green-700"
                   >
                     <p className="font-semibold text-gray-950">{related.title}</p>
                     <p className="mt-1 text-sm font-bold text-red-700">
@@ -688,6 +713,12 @@ export default function ProductoDetalle({
         </section>
         </section>
       </main>
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 py-3 shadow-[0_-16px_36px_rgba(34,24,20,0.12)] backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-6xl gap-2">
+          <div className="flex-1">{primaryCta}</div>
+          {secondaryCta && <div className="flex-1">{secondaryCta}</div>}
+        </div>
+      </div>
       {showReportModal && (
         <ReportModal
           targetId={producto.id}
