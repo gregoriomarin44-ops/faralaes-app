@@ -47,6 +47,7 @@ export default function Catalogo() {
   const [productosFavoritos, setProductosFavoritos] = useState<Producto[]>([]);
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [userId, setUserId] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [categoria, setCategoria] = useState("todas");
   const [ubicacion, setUbicacion] = useState("");
@@ -100,6 +101,17 @@ export default function Catalogo() {
     setCategoria(typeof queryCategoria === "string" ? queryCategoria : "todas");
   }, [router.isReady, router.query.q, router.query.categoria]);
 
+  useEffect(() => {
+    if (!filtersOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [filtersOpen]);
+
   const abrirProducto = (producto: Producto) => {
     if (userId && producto.sellerId === userId) {
       router.push(`/editar/${producto.id}`);
@@ -147,13 +159,174 @@ export default function Catalogo() {
     }
   };
 
+  const clearFilters = () => {
+    setCategoria("todas");
+    setUbicacion("");
+    setTalla("");
+    setColor("");
+    setEstado("todos");
+    setPrecioMin("");
+    setPrecioMax("");
+    setSoloWhatsapp(false);
+    setSoloEnvio(false);
+  };
+
+  const activeFilterCount = [
+    categoria !== "todas",
+    Boolean(ubicacion.trim()),
+    Boolean(talla.trim()),
+    Boolean(color.trim()),
+    estado !== "todos",
+    Boolean(precioMin.trim()),
+    Boolean(precioMax.trim()),
+    soloWhatsapp,
+    soloEnvio,
+  ].filter(Boolean).length;
+
+  const quickFilters = [
+    ...categoryOptions
+      .filter((option) =>
+        ["traje", "zapatos", "complementos", "nina", "moda_rociera"].includes(
+          option.value
+        )
+      )
+      .map((option) => ({
+        key: `category-${option.value}`,
+        label: option.value === "moda_rociera" ? "Rociera" : option.label,
+        active: categoria === option.value,
+        onClick: () =>
+          setCategoria((current) =>
+            current === option.value ? "todas" : option.value
+          ),
+      })),
+    {
+      key: "size-38",
+      label: "Talla 38",
+      active: talla.trim().toLowerCase() === "38",
+      onClick: () =>
+        setTalla((current) => (current.trim().toLowerCase() === "38" ? "" : "38")),
+    },
+    {
+      key: "color-negro",
+      label: "Negro",
+      active: color.trim().toLowerCase() === "negro",
+      onClick: () =>
+        setColor((current) =>
+          current.trim().toLowerCase() === "negro" ? "" : "Negro"
+        ),
+    },
+    {
+      key: "condition-new",
+      label: "Nuevo",
+      active: estado === "nuevo",
+      onClick: () =>
+        setEstado((current) => (current === "nuevo" ? "todos" : "nuevo")),
+    },
+  ];
+
+  const filterControls = (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <input
+        className="h-12 rounded border border-gray-300 px-3"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        placeholder="Buscar por título o descripción"
+      />
+      <select
+        className="h-12 rounded border border-gray-300 px-3"
+        value={categoria}
+        onChange={(e) => setCategoria(e.target.value)}
+      >
+        <option value="todas">Todas las categorías</option>
+        {categoryOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <input
+        className="h-12 rounded border border-gray-300 px-3"
+        value={ubicacion}
+        onChange={(e) => setUbicacion(e.target.value)}
+        placeholder="Ubicación"
+      />
+      <input
+        className="h-12 rounded border border-gray-300 px-3"
+        value={talla}
+        onChange={(e) => setTalla(e.target.value)}
+        placeholder="Talla"
+      />
+      <input
+        className="h-12 rounded border border-gray-300 px-3"
+        value={color}
+        onChange={(e) => setColor(e.target.value)}
+        placeholder="Color"
+      />
+      <select
+        className="h-12 rounded border border-gray-300 px-3"
+        value={estado}
+        onChange={(e) => setEstado(e.target.value)}
+      >
+        <option value="todos">Todos los estados</option>
+        {conditionOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <input
+        className="h-12 rounded border border-gray-300 px-3"
+        value={precioMin}
+        onChange={(e) => setPrecioMin(e.target.value)}
+        placeholder="Precio mínimo"
+        type="text"
+        inputMode="decimal"
+      />
+      <input
+        className="h-12 rounded border border-gray-300 px-3"
+        value={precioMax}
+        onChange={(e) => setPrecioMax(e.target.value)}
+        placeholder="Precio máximo"
+        type="text"
+        inputMode="decimal"
+      />
+      <select
+        className="hidden h-12 rounded border border-gray-300 px-3 md:block"
+        value={orden}
+        onChange={(e) => setOrden(e.target.value)}
+      >
+        <option value="recientes">Más recientes</option>
+        <option value="precio-asc">Precio menor</option>
+        <option value="precio-desc">Precio mayor</option>
+      </select>
+      <div className="flex flex-col justify-center gap-2 rounded border border-gray-200 p-3 md:col-span-2 lg:col-span-1">
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            checked={soloWhatsapp}
+            onChange={(e) => setSoloWhatsapp(e.target.checked)}
+          />
+          Solo con WhatsApp permitido
+        </label>
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            checked={soloEnvio}
+            onChange={(e) => setSoloEnvio(e.target.checked)}
+          />
+          Solo con envío disponible
+        </label>
+      </div>
+    </div>
+  );
+
   const renderProductoCard = (p: Producto) => (
     <article
       key={p.id}
       onClick={() => abrirProducto(p)}
-      className="cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-lg"
+      className="cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-gray-200">
+      <div className="relative aspect-[3/4] overflow-hidden bg-gray-200">
         {userId && p.sellerId === userId && (
           <span className="absolute left-3 top-3 z-10 rounded-full bg-green-700 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
             Tu anuncio
@@ -186,21 +359,22 @@ export default function Catalogo() {
         )}
       </div>
 
-      <div className="p-5">
-        <h2 className="mb-2 font-serif text-xl">{p.title}</h2>
+      <div className="p-4">
+        <h2 className="mb-1 line-clamp-2 min-h-[3.25rem] font-serif text-xl leading-tight text-gray-950">
+          {p.title}
+        </h2>
 
         {p.description && (
-          <p className="mb-3 text-sm text-gray-600">{p.description}</p>
+          <p className="mb-3 line-clamp-2 text-sm leading-5 text-gray-600">
+            {p.description}
+          </p>
         )}
 
-        <p className="mb-3 text-2xl font-semibold text-red-700">
+        <p className="mb-3 text-2xl font-bold text-red-700">
           {formatPrice(p.priceCents)}
         </p>
 
         <div className="flex flex-wrap gap-2 text-xs font-semibold text-gray-600">
-          <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
-            {getCategoryLabel(p.category)}
-          </span>
           {p.size && (
             <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
               Talla {p.size}
@@ -216,11 +390,15 @@ export default function Catalogo() {
               {p.brand}
             </span>
           )}
+          {p.condition && (
+            <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
+              {getConditionLabel(p.condition)}
+            </span>
+          )}
         </div>
 
-        <div className="mt-3 space-y-1 text-sm text-gray-500">
-          <p>{p.location || "Sin ubicación"}</p>
-          <p>Estado: {getConditionLabel(p.condition)}</p>
+        <div className="mt-3 flex items-center justify-between gap-3 text-sm text-gray-500">
+          <p className="min-w-0 truncate">{p.location || "Sin ubicación"}</p>
           {p.shippingAvailable && <p>Envío disponible</p>}
         </div>
       </div>
@@ -335,16 +513,66 @@ export default function Catalogo() {
 
   return (
     <>
+      {filtersOpen && (
+        <div className="fixed inset-0 z-[80] md:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/45"
+            aria-label="Cerrar filtros"
+            onClick={() => setFiltersOpen(false)}
+          />
+          <aside className="absolute inset-x-0 bottom-0 max-h-[86vh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-red-700">
+                  Filtros
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Afina el catálogo sin perder velocidad.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 text-2xl leading-none text-gray-700"
+                aria-label="Cerrar filtros"
+              >
+                ×
+              </button>
+            </div>
+
+            {filterControls}
+
+            <div className="sticky bottom-0 -mx-5 mt-5 flex gap-3 border-t border-gray-100 bg-white px-5 pb-1 pt-4">
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="h-12 flex-1 rounded-full border border-gray-300 bg-white px-4 text-sm font-bold text-gray-700"
+              >
+                Limpiar
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                className="h-12 flex-1 rounded-full bg-green-700 px-4 text-sm font-bold text-white"
+              >
+                Ver {productosFiltrados.length}
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       <NavBar />
-      <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
+      <main className="min-h-screen bg-[#f8f3ef] px-4 py-8 sm:px-6 lg:py-12">
         <section className="max-w-6xl mx-auto">
-        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between md:mb-10">
           <div>
             <p className="text-sm uppercase tracking-widest text-red-700 font-semibold">
               Catálogo
             </p>
 
-            <h1 className="text-4xl md:text-5xl font-serif mt-3 mb-4">
+            <h1 className="text-4xl md:text-5xl font-serif mt-3 mb-3 md:mb-4">
               Compra y vende moda flamenca
             </h1>
 
@@ -362,6 +590,55 @@ export default function Catalogo() {
           </button>
         </div>
 
+        {!loading && productos.length > 0 && (
+          <div className="sticky top-0 z-30 -mx-4 mb-6 border-y border-gray-200 bg-[#f8f3ef]/95 px-4 py-3 backdrop-blur md:hidden">
+            <div className="mb-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(true)}
+                className="h-11 shrink-0 rounded-full bg-stone-950 px-4 text-sm font-bold text-white"
+              >
+                Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              </button>
+              <select
+                className="h-11 min-w-0 flex-1 rounded-full border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700"
+                value={orden}
+                onChange={(e) => setOrden(e.target.value)}
+                aria-label="Ordenar catálogo"
+              >
+                <option value="recientes">Más recientes</option>
+                <option value="precio-asc">Precio menor</option>
+                <option value="precio-desc">Precio mayor</option>
+              </select>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="h-11 shrink-0 rounded-full border border-gray-300 bg-white px-3 text-sm font-bold text-gray-700"
+                >
+                  Limpiar
+                </button>
+              )}
+            </div>
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+              {quickFilters.map((filter) => (
+                <button
+                  key={filter.key}
+                  type="button"
+                  onClick={filter.onClick}
+                  className={`h-10 shrink-0 rounded-full border px-4 text-sm font-bold transition ${
+                    filter.active
+                      ? "border-red-800 bg-red-800 text-white"
+                      : "border-gray-200 bg-white text-gray-700"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading && <p>Cargando prendas...</p>}
 
         {!loading && productos.length === 0 && (
@@ -369,100 +646,22 @@ export default function Catalogo() {
         )}
 
         {!loading && productos.length > 0 && (
-          <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              <input
-                className="rounded border border-gray-300 p-3"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por título o descripción"
-              />
-              <select
-                className="rounded border border-gray-300 p-3"
-                value={categoria}
-                onChange={(e) => setCategoria(e.target.value)}
-              >
-                <option value="todas">Todas las categorías</option>
-                {categoryOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="rounded border border-gray-300 p-3"
-                value={ubicacion}
-                onChange={(e) => setUbicacion(e.target.value)}
-                placeholder="Ubicación"
-              />
-              <input
-                className="rounded border border-gray-300 p-3"
-                value={talla}
-                onChange={(e) => setTalla(e.target.value)}
-                placeholder="Talla"
-              />
-              <input
-                className="rounded border border-gray-300 p-3"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                placeholder="Color"
-              />
-              <select
-                className="rounded border border-gray-300 p-3"
-                value={estado}
-                onChange={(e) => setEstado(e.target.value)}
-              >
-                <option value="todos">Todos los estados</option>
-                {conditionOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="rounded border border-gray-300 p-3"
-                value={precioMin}
-                onChange={(e) => setPrecioMin(e.target.value)}
-                placeholder="Precio mínimo"
-                type="text"
-                inputMode="decimal"
-              />
-              <input
-                className="rounded border border-gray-300 p-3"
-                value={precioMax}
-                onChange={(e) => setPrecioMax(e.target.value)}
-                placeholder="Precio máximo"
-                type="text"
-                inputMode="decimal"
-              />
-              <select
-                className="rounded border border-gray-300 p-3"
-                value={orden}
-                onChange={(e) => setOrden(e.target.value)}
-              >
-                <option value="recientes">Más recientes</option>
-                <option value="precio-asc">Precio menor a mayor</option>
-                <option value="precio-desc">Precio mayor a menor</option>
-              </select>
-              <div className="flex flex-col justify-center gap-2 rounded border border-gray-200 p-3">
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={soloWhatsapp}
-                    onChange={(e) => setSoloWhatsapp(e.target.checked)}
-                  />
-                  Solo con WhatsApp permitido
-                </label>
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={soloEnvio}
-                    onChange={(e) => setSoloEnvio(e.target.checked)}
-                  />
-                  Solo con envío disponible
-                </label>
-              </div>
+          <div className="mb-8 hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:block">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <p className="text-sm font-bold uppercase tracking-widest text-gray-500">
+                Filtrar catálogo
+              </p>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-green-700 hover:text-green-700"
+                >
+                  Limpiar filtros
+                </button>
+              )}
             </div>
+            {filterControls}
           </div>
         )}
 
@@ -477,9 +676,9 @@ export default function Catalogo() {
                 <h2 className="font-serif text-3xl text-gray-950">
                   Últimos anuncios publicados
                 </h2>
-                <div className="mt-5 -mx-6 flex gap-5 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
+                <div className="mt-5 -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
                   {ultimosAnuncios.map((producto) => (
-                    <div key={producto.id} className="min-w-[260px] sm:min-w-0">
+                    <div key={producto.id} className="min-w-[230px] sm:min-w-0">
                       {renderProductoCard(producto)}
                     </div>
                   ))}
@@ -492,9 +691,9 @@ export default function Catalogo() {
                 <h2 className="font-serif text-3xl text-gray-950">
                   Puede interesarte
                 </h2>
-                <div className="mt-5 -mx-6 flex gap-5 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
+                <div className="mt-5 -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
                   {puedeInteresarteFinal.map((producto) => (
-                    <div key={producto.id} className="min-w-[260px] sm:min-w-0">
+                    <div key={producto.id} className="min-w-[230px] sm:min-w-0">
                       {renderProductoCard(producto)}
                     </div>
                   ))}
