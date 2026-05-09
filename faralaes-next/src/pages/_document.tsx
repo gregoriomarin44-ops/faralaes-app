@@ -11,7 +11,7 @@ export default function Document() {
         <meta name="theme-color" content="#8b1e24" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Faralaes" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </Head>
       <body>
         <Main />

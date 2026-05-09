@@ -20,7 +20,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: "Faralaes",
   url: SITE_URL,
-  logo: `${SITE_URL}/favicon-512.png`,
+  logo: `${SITE_URL}/icons/icon-512.png`,
 };
 
 export default function App({ Component, pageProps }: AppProps) {
