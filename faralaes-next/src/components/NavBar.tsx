@@ -56,6 +56,17 @@ export default function NavBar() {
     setSearch(typeof query === "string" ? query : "");
   }, [router.query.q]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [menuOpen]);
+
   const salir = async () => {
     await fetch("/api/logout", { method: "POST" }).catch(() => null);
     clear();
@@ -84,13 +95,105 @@ export default function NavBar() {
   ).trim();
   const avatarInitial = avatarLabel.charAt(0).toUpperCase() || "F";
 
+  const menuPanel = (
+    <div className="fixed right-4 top-20 z-[70] w-64 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl md:right-[max(1.5rem,calc((100vw-72rem)/2+1.5rem))] md:top-16">
+      <div className="border-b border-stone-100 px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-red-800">
+          Faralaes
+        </p>
+        <p className="mt-1 text-sm font-semibold text-stone-900">
+          {user ? "Tu cuenta" : "Marketplace flamenco"}
+        </p>
+      </div>
+
+      <div className="p-2">
+        {menuLinks.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            onClick={() => setMenuOpen(false)}
+            className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800"
+          >
+            {link.label}
+          </Link>
+        ))}
+        <Link
+          href="/favoritos"
+          onClick={() => setMenuOpen(false)}
+          className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800 sm:hidden"
+        >
+          Favoritos
+        </Link>
+        {user && (
+          <Link
+            href="/mensajes"
+            onClick={() => setMenuOpen(false)}
+            className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800 sm:hidden"
+          >
+            Mensajes{conversationCount > 0 ? ` (${conversationCount})` : ""}
+          </Link>
+        )}
+        {user ? (
+          <>
+            <Link
+              href="/perfil"
+              onClick={() => setMenuOpen(false)}
+              className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800"
+            >
+              Perfil
+            </Link>
+            {user.role === "ADMIN" && (
+              <Link
+                href="/admin"
+                onClick={() => setMenuOpen(false)}
+                className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800"
+              >
+                Admin
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={salir}
+              className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-800 transition hover:bg-red-50"
+            >
+              Salir
+            </button>
+          </>
+        ) : (
+          <Link
+            href="/login"
+            onClick={() => setMenuOpen(false)}
+            className="block rounded-xl px-3 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-50"
+          >
+            Entrar
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <header
-      className={`sticky top-0 z-50 border-b border-stone-200 bg-white/95 backdrop-blur transition-shadow ${
-        hasScrolled ? "shadow-[0_10px_30px_rgba(34,24,20,0.10)]" : "shadow-none"
-      }`}
-    >
-      <nav className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 md:px-6">
+    <>
+      {menuOpen && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[60] cursor-default bg-black/20 md:bg-black/10"
+            aria-label="Cerrar menú"
+            onClick={() => setMenuOpen(false)}
+          />
+          {menuPanel}
+        </>
+      )}
+
+      <header
+        className={`sticky top-0 z-50 border-b border-stone-200 bg-white/95 backdrop-blur transition-shadow ${
+          hasScrolled
+            ? "shadow-[0_10px_30px_rgba(34,24,20,0.10)]"
+            : "shadow-none"
+        }`}
+      >
+      <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 md:flex-nowrap md:px-6">
         <Link
           href="/"
           className="shrink-0 font-serif text-2xl font-semibold leading-none text-red-900 md:text-[1.7rem]"
@@ -101,7 +204,7 @@ export default function NavBar() {
 
         <form
           onSubmit={submitSearch}
-          className="order-3 flex min-w-0 flex-1 basis-full items-center rounded-full border border-stone-200 bg-[#faf7f4] px-3 py-2 text-sm shadow-inner transition focus-within:border-red-800 focus-within:bg-white md:order-none md:basis-auto md:px-4"
+          className="order-3 flex min-h-11 min-w-0 flex-1 basis-full items-center rounded-full border border-stone-200 bg-[#faf7f4] px-4 py-2.5 text-sm shadow-inner transition focus-within:border-red-800 focus-within:bg-white md:order-none md:min-h-0 md:basis-auto md:px-4 md:py-2"
         >
           <span className="mr-2 text-base text-stone-500" aria-hidden="true">
             &#128269;
@@ -161,83 +264,6 @@ export default function NavBar() {
                 </span>
               )}
             </button>
-
-            {menuOpen && (
-              <div className="absolute right-0 top-12 w-64 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl">
-                <div className="border-b border-stone-100 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-red-800">
-                    Faralaes
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-stone-900">
-                    {user ? "Tu cuenta" : "Marketplace flamenco"}
-                  </p>
-                </div>
-
-                <div className="p-2">
-                  {menuLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setMenuOpen(false)}
-                      className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800"
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                  <Link
-                    href="/favoritos"
-                    onClick={() => setMenuOpen(false)}
-                    className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800 sm:hidden"
-                  >
-                    Favoritos
-                  </Link>
-                  {user && (
-                    <Link
-                      href="/mensajes"
-                      onClick={() => setMenuOpen(false)}
-                      className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800 sm:hidden"
-                    >
-                      Mensajes{conversationCount > 0 ? ` (${conversationCount})` : ""}
-                    </Link>
-                  )}
-                  {user ? (
-                    <>
-                      <Link
-                        href="/perfil"
-                        onClick={() => setMenuOpen(false)}
-                        className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800"
-                      >
-                        Perfil
-                      </Link>
-                      {user.role === "ADMIN" && (
-                        <Link
-                          href="/admin"
-                          onClick={() => setMenuOpen(false)}
-                          className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800"
-                        >
-                          Admin
-                        </Link>
-                      )}
-                      <button
-                        type="button"
-                        onClick={salir}
-                        className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-800 transition hover:bg-red-50"
-                      >
-                        Salir
-                      </button>
-                    </>
-                  ) : (
-                    <Link
-                      href="/login"
-                      onClick={() => setMenuOpen(false)}
-                      className="block rounded-xl px-3 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-50"
-                    >
-                      Entrar
-                    </Link>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </nav>
@@ -255,6 +281,7 @@ export default function NavBar() {
           ))}
         </div>
       </div>
-    </header>
+      </header>
+    </>
   );
 }
