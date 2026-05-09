@@ -10,6 +10,7 @@ export const categoryOptions = [
   { value: "peinetas", label: "Peinetas" },
   { value: "bolsos", label: "Bolsos" },
   { value: "moda_rociera", label: "Moda rociera" },
+  { value: "otros", label: "Otros" },
 ] as const;
 
 export const usageOptions = [

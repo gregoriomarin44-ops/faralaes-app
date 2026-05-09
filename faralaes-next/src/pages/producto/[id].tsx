@@ -74,6 +74,7 @@ const categoryLabels: Record<string, { label: string; path: string }> = {
   peinetas: { label: "Peinetas flamencas", path: "/peinetas-flamencas" },
   bolsos: { label: "Bolsos flamencos", path: "/bolsos-flamencos" },
   moda_rociera: { label: "Moda rociera", path: "/moda-rociera" },
+  otros: { label: "Otros artículos flamencos", path: "/otros" },
 };
 
 export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = async ({

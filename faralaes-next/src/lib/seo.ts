@@ -68,6 +68,12 @@ export const categorySeo = {
     singular: "prenda rociera",
     title: "Moda rociera de segunda mano",
   },
+  otros: {
+    category: "otros",
+    plural: "otros artículos flamencos",
+    singular: "artículo flamenco",
+    title: "Otros artículos flamencos de segunda mano",
+  },
 } as const;
 
 export type SeoCategorySlug = keyof typeof categorySeo;
