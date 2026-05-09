@@ -70,7 +70,9 @@ export default function Publicar() {
     const seleccionadas = Array.from(files);
 
     if (seleccionadas.length > MAX_IMAGES) {
-      setMensaje("Puedes subir un máximo de 5 imágenes.");
+      setMensaje(
+        `Puedes subir un máximo de ${MAX_IMAGES} imágenes. Has seleccionado ${seleccionadas.length}.`
+      );
       setImagenes([]);
       return;
     }
@@ -257,22 +259,27 @@ export default function Publicar() {
                   >
                     Elegir imágenes
                   </label>
-                  <p className="text-sm text-gray-500 sm:text-right">
-                    {imagenes.length === 0
-                      ? "Ninguna imagen seleccionada"
-                      : imagenes.length === 1
-                        ? "1 imagen seleccionada"
-                        : `${imagenes.length} imágenes seleccionadas`}
-                  </p>
+                  <div className="text-sm text-gray-500 sm:text-right">
+                    <p>
+                      {imagenes.length === 0
+                        ? "Ninguna imagen seleccionada"
+                        : imagenes.length === 1
+                          ? "1 imagen seleccionada"
+                          : `${imagenes.length} imágenes seleccionadas`}
+                    </p>
+                    <p className="mt-0.5 text-xs font-semibold text-gray-400">
+                      Máx. {MAX_IMAGES} imágenes
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {imagenes.length > 0 && (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
                   {imagenes.map((imagen, index) => (
                     <div
                       key={`${imagen.slice(0, 40)}-${index}`}
-                      className="relative aspect-square overflow-hidden rounded border border-gray-200 bg-gray-100"
+                      className="relative aspect-square min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100"
                     >
                       <img
                         src={imagen}
@@ -286,7 +293,8 @@ export default function Publicar() {
                             prev.filter((_, imageIndex) => imageIndex !== index)
                           )
                         }
-                        className="absolute right-2 top-2 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-red-700 shadow"
+                        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-bold leading-none text-red-700 shadow"
+                        aria-label={`Eliminar imagen ${index + 1}`}
                       >
                         ×
                       </button>
