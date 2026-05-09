@@ -238,15 +238,34 @@ export default function Publicar() {
             </label>
 
             <div className="space-y-3">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => {
-                  seleccionarImagenes(e.target.files);
-                  e.target.value = "";
-                }}
-              />
+              <div className="rounded border border-gray-200 bg-white p-3">
+                <input
+                  id="listing-images"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  onChange={(e) => {
+                    seleccionarImagenes(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <label
+                    htmlFor="listing-images"
+                    className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full border border-gray-300 bg-[#f8f3ef] px-4 py-2 text-sm font-bold text-gray-800 transition hover:border-green-700 hover:text-green-700 sm:w-auto"
+                  >
+                    Elegir imágenes
+                  </label>
+                  <p className="text-sm text-gray-500 sm:text-right">
+                    {imagenes.length === 0
+                      ? "Ninguna imagen seleccionada"
+                      : imagenes.length === 1
+                        ? "1 imagen seleccionada"
+                        : `${imagenes.length} imágenes seleccionadas`}
+                  </p>
+                </div>
+              </div>
 
               {imagenes.length > 0 && (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
