@@ -320,11 +320,34 @@ export default function Catalogo() {
     </div>
   );
 
-  const renderProductoCard = (p: Producto) => (
+  const renderSkeletonCards = () => (
+    <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <article
+          key={index}
+          className="min-w-[230px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm sm:min-w-0"
+        >
+          <div className="skeleton aspect-[3/4] bg-gray-200" />
+          <div className="space-y-3 p-4">
+            <div className="skeleton h-5 w-4/5 rounded-full" />
+            <div className="skeleton h-4 w-3/5 rounded-full" />
+            <div className="skeleton h-7 w-1/2 rounded-full" />
+            <div className="flex gap-2">
+              <div className="skeleton h-7 w-16 rounded-full" />
+              <div className="skeleton h-7 w-20 rounded-full" />
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+
+  const renderProductoCard = (p: Producto, index = 0) => (
     <article
       key={p.id}
       onClick={() => abrirProducto(p)}
-      className="cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+      style={{ animationDelay: `${Math.min(index, 6) * 35}ms` }}
+      className="motion-card cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm hover:border-gray-300 hover:shadow-[0_16px_36px_rgba(34,24,20,0.12)]"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-gray-200">
         {userId && p.sellerId === userId && (
@@ -336,7 +359,7 @@ export default function Catalogo() {
         <button
           type="button"
           onClick={(e) => toggleFavorito(e, p.id)}
-          className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-3xl leading-none shadow-md transition hover:scale-105"
+          className="tap-feedback absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-3xl leading-none shadow-md hover:scale-105"
           aria-label={
             favoritos.includes(p.id) ? "Quitar de favoritos" : "Guardar en favoritos"
           }
@@ -350,7 +373,8 @@ export default function Catalogo() {
           <img
             src={p.images[0].url}
             alt={p.title}
-            className="h-full w-full object-cover"
+            loading="lazy"
+            className="motion-image h-full w-full object-cover"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-gray-400">
@@ -517,11 +541,11 @@ export default function Catalogo() {
         <div className="fixed inset-0 z-[80] md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-black/45"
+            className="motion-overlay absolute inset-0 bg-black/45"
             aria-label="Cerrar filtros"
             onClick={() => setFiltersOpen(false)}
           />
-          <aside className="absolute inset-x-0 bottom-0 max-h-[86vh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl">
+          <aside className="motion-drawer absolute inset-x-0 bottom-0 max-h-[86vh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-red-700">
@@ -534,7 +558,7 @@ export default function Catalogo() {
               <button
                 type="button"
                 onClick={() => setFiltersOpen(false)}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 text-2xl leading-none text-gray-700"
+                className="tap-feedback flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 text-2xl leading-none text-gray-700"
                 aria-label="Cerrar filtros"
               >
                 ×
@@ -547,14 +571,14 @@ export default function Catalogo() {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="h-12 flex-1 rounded-full border border-gray-300 bg-white px-4 text-sm font-bold text-gray-700"
+                className="tap-feedback h-12 flex-1 rounded-full border border-gray-300 bg-white px-4 text-sm font-bold text-gray-700"
               >
                 Limpiar
               </button>
               <button
                 type="button"
                 onClick={() => setFiltersOpen(false)}
-                className="h-12 flex-1 rounded-full bg-green-700 px-4 text-sm font-bold text-white"
+                className="tap-feedback h-12 flex-1 rounded-full bg-green-700 px-4 text-sm font-bold text-white"
               >
                 Ver {productosFiltrados.length}
               </button>
@@ -584,7 +608,7 @@ export default function Catalogo() {
           <button
             type="button"
             onClick={() => router.push("/mis-anuncios")}
-            className="rounded-full bg-green-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-green-800"
+            className="tap-feedback rounded-full bg-green-700 px-5 py-2 text-sm font-semibold text-white hover:bg-green-800"
           >
             Mis anuncios
           </button>
@@ -596,12 +620,12 @@ export default function Catalogo() {
               <button
                 type="button"
                 onClick={() => setFiltersOpen(true)}
-                className="h-11 shrink-0 rounded-full bg-stone-950 px-4 text-sm font-bold text-white"
+                className="tap-feedback h-11 shrink-0 rounded-full bg-stone-950 px-4 text-sm font-bold text-white"
               >
                 Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </button>
               <select
-                className="h-11 min-w-0 flex-1 rounded-full border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700"
+                className="tap-feedback h-11 min-w-0 flex-1 rounded-full border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700"
                 value={orden}
                 onChange={(e) => setOrden(e.target.value)}
                 aria-label="Ordenar catálogo"
@@ -614,7 +638,7 @@ export default function Catalogo() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="h-11 shrink-0 rounded-full border border-gray-300 bg-white px-3 text-sm font-bold text-gray-700"
+                  className="tap-feedback h-11 shrink-0 rounded-full border border-gray-300 bg-white px-3 text-sm font-bold text-gray-700"
                 >
                   Limpiar
                 </button>
@@ -626,7 +650,7 @@ export default function Catalogo() {
                   key={filter.key}
                   type="button"
                   onClick={filter.onClick}
-                  className={`h-10 shrink-0 rounded-full border px-4 text-sm font-bold transition ${
+                  className={`tap-feedback h-10 shrink-0 rounded-full border px-4 text-sm font-bold ${
                     filter.active
                       ? "border-red-800 bg-red-800 text-white"
                       : "border-gray-200 bg-white text-gray-700"
@@ -639,7 +663,18 @@ export default function Catalogo() {
           </div>
         )}
 
-        {loading && <p>Cargando prendas...</p>}
+        {loading && (
+          <div className="space-y-10">
+            <section>
+              <div className="skeleton h-9 w-64 rounded-full" />
+              <div className="mt-5">{renderSkeletonCards()}</div>
+            </section>
+            <section>
+              <div className="skeleton h-9 w-52 rounded-full" />
+              <div className="mt-5">{renderSkeletonCards()}</div>
+            </section>
+          </div>
+        )}
 
         {!loading && productos.length === 0 && (
           <p>No hay anuncios publicados.</p>
@@ -655,7 +690,7 @@ export default function Catalogo() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-green-700 hover:text-green-700"
+                  className="tap-feedback rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-green-700 hover:text-green-700"
                 >
                   Limpiar filtros
                 </button>
@@ -677,9 +712,9 @@ export default function Catalogo() {
                   Últimos anuncios publicados
                 </h2>
                 <div className="mt-5 -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
-                  {ultimosAnuncios.map((producto) => (
+                  {ultimosAnuncios.map((producto, index) => (
                     <div key={producto.id} className="min-w-[230px] sm:min-w-0">
-                      {renderProductoCard(producto)}
+                      {renderProductoCard(producto, index)}
                     </div>
                   ))}
                 </div>
@@ -692,9 +727,9 @@ export default function Catalogo() {
                   Puede interesarte
                 </h2>
                 <div className="mt-5 -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
-                  {puedeInteresarteFinal.map((producto) => (
+                  {puedeInteresarteFinal.map((producto, index) => (
                     <div key={producto.id} className="min-w-[230px] sm:min-w-0">
-                      {renderProductoCard(producto)}
+                      {renderProductoCard(producto, index)}
                     </div>
                   ))}
                 </div>

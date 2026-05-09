@@ -14,3 +14,119 @@ body {
 h1, h2, h3, h4 {
   font-family: 'Cormorant Garamond', Georgia, serif;
 }
+
+@layer utilities {
+  .tap-feedback {
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease,
+      background-color 180ms ease, color 180ms ease, opacity 180ms ease;
+  }
+
+  .tap-feedback:active {
+    transform: scale(0.98);
+  }
+
+  .motion-card {
+    animation: fade-up 220ms ease both;
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    will-change: transform;
+  }
+
+  .motion-card:hover {
+    transform: translateY(-3px);
+  }
+
+  .motion-card:active {
+    transform: translateY(-1px) scale(0.99);
+  }
+
+  .motion-overlay {
+    animation: fade-in 180ms ease both;
+  }
+
+  .motion-drawer {
+    animation: slide-up 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .motion-image {
+    animation: fade-in 220ms ease both;
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: #eee7e1;
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.58),
+      transparent
+    );
+    animation: skeleton-shimmer 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .motion-card,
+  .motion-card:hover,
+  .motion-card:active,
+  .tap-feedback:active {
+    transform: none;
+  }
+
+  .skeleton::after {
+    display: none;
+  }
+}
