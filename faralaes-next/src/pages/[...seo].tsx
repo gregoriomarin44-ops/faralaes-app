@@ -141,6 +141,18 @@ export default function SeoLanding({
           })),
         }
       : null;
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: page.faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
 
   return (
     <>
@@ -159,6 +171,10 @@ export default function SeoLanding({
             dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
           />
         )}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
       </Head>
       <NavBar />
       <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
@@ -267,6 +283,27 @@ export default function SeoLanding({
               ))}
             </div>
           )}
+
+          <section className="mt-12 border-t border-stone-200 pt-10">
+            <h2 className="font-serif text-3xl text-gray-950">
+              Preguntas frecuentes
+            </h2>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {page.faqs.map((faq) => (
+                <article
+                  key={faq.question}
+                  className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"
+                >
+                  <h3 className="font-semibold leading-6 text-gray-950">
+                    {faq.question}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-gray-600">
+                    {faq.answer}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </section>
         </section>
       </main>
     </>

@@ -191,10 +191,16 @@ export type SeoRoute = {
 
 export type SeoPage = SeoRoute & {
   canonical: string;
+  faqs: SeoFaq[];
   h1: string;
   introText: string;
   metaDescription: string;
   title: string;
+};
+
+export type SeoFaq = {
+  answer: string;
+  question: string;
 };
 
 export const seoCategorySlugs = Object.keys(categorySeo) as SeoCategorySlug[];
@@ -237,6 +243,47 @@ const categorySupportsColor = (categorySlug: SeoCategorySlug) =>
 
 const categorySupportsSize = (categorySlug: SeoCategorySlug) =>
   categorySeo[categorySlug].supportsSize;
+
+const capitalizeFirst = (value: string) =>
+  value.charAt(0).toUpperCase() + value.slice(1);
+
+const pickBySlug = <T,>(items: readonly T[], slug: string, offset = 0) => {
+  const score = slug.split("").reduce((total, character) => {
+    return total + character.charCodeAt(0);
+  }, offset);
+
+  return items[score % items.length];
+};
+
+const semanticVerbs = [
+  "compra",
+  "encuentra",
+  "descubre",
+  "explora",
+  "elige",
+] as const;
+
+const introOpeners = [
+  "En Faralaes reunimos anuncios actualizados",
+  "Esta selección agrupa anuncios publicados en Faralaes",
+  "Aquí puedes comparar anuncios de particulares y tiendas",
+  "Si buscas moda flamenca con encanto y buen precio, esta página reúne opciones",
+  "Para preparar feria, romería o cualquier evento flamenco, hemos organizado anuncios",
+] as const;
+
+const seoCtas = [
+  "Revisa fotos, tallas, estado y precio antes de contactar.",
+  "Guarda las opciones que encajen contigo y habla directamente con la persona vendedora.",
+  "Compara estilos, colores y ubicaciones sin depender de búsquedas genéricas.",
+  "Consulta cada ficha para ver detalles del anuncio y formas de contacto disponibles.",
+] as const;
+
+const flamencoReferences = [
+  "ferias, romerías y celebraciones flamencas",
+  "feria, camino del Rocío y eventos de moda flamenca",
+  "temporada de feria, romerías y actuaciones",
+  "looks flamencos completos, desde el traje hasta los complementos",
+] as const;
 
 export const buildSeoPath = (route: Pick<SeoRoute, "categorySlug"> & {
   citySlug?: string;
@@ -343,25 +390,91 @@ export const parseSeoRoute = (slug: string[] | string | undefined): SeoRoute | n
   return null;
 };
 
+const buildSeoFaqs = (route: SeoRoute): SeoFaq[] => {
+  const category = categorySeo[route.categorySlug];
+  const color = route.colorSlug ? findColorBySlug(route.colorSlug) : null;
+  const categoryText = category.plural;
+  const locationText = route.filters.location ? ` en ${route.filters.location}` : "";
+  const colorText = color ? ` ${color.text}` : "";
+  const sizeText = route.filters.size ? ` talla ${route.filters.size}` : "";
+  const scopedCategory = `${categoryText}${locationText}${colorText}${sizeText}`;
+  const firstQuestion =
+    route.kind === "city" && route.filters.location
+      ? `¿Dónde comprar ${categoryText} en ${route.filters.location}?`
+      : route.kind === "color" && color
+        ? `¿Dónde encontrar ${categoryText} ${color.text}?`
+        : route.kind === "size" && route.filters.size
+          ? `¿Hay ${categoryText} talla ${route.filters.size}?`
+          : `¿Hay ${categoryText} de segunda mano?`;
+
+  return [
+    {
+      question: firstQuestion,
+      answer: `En Faralaes puedes consultar anuncios de ${scopedCategory} publicados por particulares y tiendas. Cada ficha muestra fotos, precio, ubicación y detalles para ayudarte a comparar antes de contactar.`,
+    },
+    {
+      question: `¿Sirven estos anuncios para feria y romerías?`,
+      answer: `Sí. Las categorías de Faralaes están pensadas para moda flamenca, feria, romerías y eventos relacionados con el flamenco. Revisa la descripción de cada anuncio para confirmar estado, medidas y uso recomendado.`,
+    },
+    {
+      question: `¿Cómo contactar con vendedores de ${categoryText}?`,
+      answer: `Abre la ficha del anuncio que te interese y usa las opciones de contacto disponibles. Faralaes muestra la información esencial del producto para que puedas preguntar con contexto y cerrar los detalles directamente.`,
+    },
+  ];
+};
+
 export const buildSeoCopy = (route: SeoRoute, count: number) => {
   const category = categorySeo[route.categorySlug];
-  const locationText = route.filters.location ? ` en ${route.filters.location}` : "";
-  const sizeText = route.filters.size ? ` talla ${route.filters.size}` : "";
   const color = route.colorSlug ? findColorBySlug(route.colorSlug) : null;
-  const colorText = color ? ` ${color.text}` : "";
-  const h1 = `${category.title}${locationText}${colorText}${sizeText}`;
-  const title = `${h1} | Faralaes`;
-  const metaDescription = `Encuentra ${category.plural}${locationText}${colorText}${sizeText} en Faralaes. ${count} anuncio${count === 1 ? "" : "s"} publicado${count === 1 ? "" : "s"} por usuarias de moda flamenca.`;
+  const categoryName = capitalizeFirst(category.plural);
+  const reference = pickBySlug(flamencoReferences, route.slug);
+  const opener = pickBySlug(introOpeners, route.slug, 7);
+  const cta = pickBySlug(seoCtas, route.slug, 13);
+  const verb = pickBySlug(semanticVerbs, route.slug, 19);
+  const listingCountText =
+    count > 0
+      ? `Ahora mismo hay ${count} anuncio${count === 1 ? "" : "s"} activo${count === 1 ? "" : "s"} para esta búsqueda.`
+      : "Cuando no haya anuncios disponibles, mantenemos la página fuera de indexación hasta que vuelva a tener oferta útil.";
+
+  const h1 =
+    route.kind === "city" && route.filters.location
+      ? `${categoryName} en ${route.filters.location}`
+      : route.kind === "color" && color
+        ? `${categoryName} ${color.text}`
+        : route.kind === "size" && route.filters.size
+          ? `${categoryName} talla ${route.filters.size}`
+          : `${categoryName} nuevos y de segunda mano`;
+  const scopedDescription = `${category.plural}${route.filters.location ? ` en ${route.filters.location}` : ""}${color ? ` ${color.text}` : ""}${route.filters.size ? ` talla ${route.filters.size}` : ""}`;
+
+  const title =
+    route.kind === "category"
+      ? `${categoryName} nuevos y de segunda mano | Faralaes`
+      : `${h1} | Faralaes`;
+
+  const metaTemplates = [
+    `${capitalizeFirst(verb)} ${scopedDescription} para ${reference}. Anuncios de particulares y tiendas en Faralaes.`,
+    `Compra ${scopedDescription} nuevos y de segunda mano. Compara fotos, estado y precio antes de contactar directamente.`,
+    `Descubre anuncios de ${scopedDescription} para feria, romerías y eventos flamencos. Moda flamenca seleccionada en Faralaes.`,
+    `Encuentra moda flamenca de segunda mano: ${scopedDescription}, complementos y prendas para completar tu look flamenco.`,
+  ] as const;
+  const metaDescription = pickBySlug(metaTemplates, route.slug, count).slice(0, 160);
+
   const introText =
     route.kind === "city" && route.filters.location
-      ? `Explora ${category.plural} disponibles en ${route.filters.location}. Revisa fotos, estado, precio y opciones de contacto antes de decidir.`
+      ? `${opener} de ${category.plural} en ${route.filters.location}, pensados para quien quiere comprar cerca o valorar envíos antes de decidir. Puedes encontrar piezas para ${reference}, con estilos clásicos, opciones más actuales y anuncios de segunda mano que ayudan a alargar la vida de la moda flamenca. ${listingCountText} ${cta} Faralaes facilita descubrir prendas y complementos con contexto real: ubicación, talla, color, estado y precio visible desde la ficha.`
       : route.kind === "color" && color
-        ? `Consulta anuncios de ${category.plural} ${color.text}, una selección enfocada para encontrar color, precio y estilo sin pasar por filtros genéricos.`
+        ? `${opener} de ${category.plural} ${color.text}, una forma sencilla de empezar por el color cuando ya tienes claro el aire del conjunto. Esta landing ayuda a comparar opciones para ${reference}, desde piezas sobrias hasta combinaciones más llamativas dentro de la moda flamenca. ${listingCountText} ${cta} Cada anuncio enlaza a su ficha para ver imágenes, detalles y contacto sin generar filtros infinitos.`
         : route.kind === "size" && route.filters.size
-          ? `Consulta anuncios de ${category.plural} talla ${route.filters.size}, con prendas y complementos publicados por la comunidad de Faralaes.`
-          : `Descubre ${category.plural} de segunda mano en Faralaes, con anuncios pensados para feria, romerías y celebraciones.`;
+          ? `${opener} de ${category.plural} talla ${route.filters.size}, útil cuando la prioridad es encontrar una prenda que encaje desde el primer vistazo. Reúne anuncios para feria, romerías y eventos flamencos, con información práctica sobre estado, precio, color y ubicación. ${listingCountText} ${cta} Así puedes comparar alternativas reales sin perderte entre búsquedas internas o combinaciones poco útiles.`
+          : `${opener} de ${category.plural} nuevos y de segunda mano para preparar ${reference}. La selección está pensada para descubrir moda flamenca con fotos, precios y detalles claros, tanto si buscas una pieza principal como si quieres completar un conjunto. ${listingCountText} ${cta} También puedes seguir navegando por ciudad, color o talla cuando esas rutas tengan sentido para la categoría.`;
 
-  return { h1, introText, metaDescription, title };
+  return {
+    faqs: buildSeoFaqs(route),
+    h1,
+    introText,
+    metaDescription,
+    title,
+  };
 };
 
 export const getSeoPage = (slug: string[] | string | undefined, count = 0): SeoPage | null => {
