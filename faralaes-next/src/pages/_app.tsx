@@ -2,7 +2,7 @@ import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Footer from "../components/Footer";
 import CookieBanner from "../components/CookieBanner";
 import { AuthProvider } from "../lib/authContext";
@@ -26,6 +26,8 @@ const organizationJsonLd = {
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const showFooter = !router.pathname.startsWith("/admin");
+  const [showStartupSplash, setShowStartupSplash] = useState(true);
+  const [isStartupSplashLeaving, setIsStartupSplashLeaving] = useState(false);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -33,6 +35,20 @@ export default function App({ Component, pageProps }: AppProps) {
         console.error("No se ha podido registrar el service worker", error);
       });
     }
+  }, []);
+
+  useEffect(() => {
+    const leaveTimer = window.setTimeout(() => {
+      setIsStartupSplashLeaving(true);
+    }, 650);
+    const removeTimer = window.setTimeout(() => {
+      setShowStartupSplash(false);
+    }, 900);
+
+    return () => {
+      window.clearTimeout(leaveTimer);
+      window.clearTimeout(removeTimer);
+    };
   }, []);
 
   return (
@@ -47,6 +63,21 @@ export default function App({ Component, pageProps }: AppProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
       </Head>
+      {showStartupSplash && (
+        <div
+          aria-hidden="true"
+          className={`startup-splash${isStartupSplashLeaving ? " startup-splash--leaving" : ""}`}
+        >
+          <img
+            src="/apple-touch-icon.png"
+            alt=""
+            className="startup-splash__logo"
+            width="84"
+            height="84"
+          />
+          <span className="startup-splash__title">Faralaes</span>
+        </div>
+      )}
       <Component {...pageProps} />
       {showFooter && <Footer />}
       <CookieBanner />
