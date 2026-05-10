@@ -10,8 +10,9 @@ export default function Document() {
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#8b1e24" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Faralaes" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </Head>
       <body>
         <Main />

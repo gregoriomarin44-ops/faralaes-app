@@ -4,11 +4,17 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
 body {
   margin: 0;
   background: #f8f3ef;
   color: #241f1c;
   font-family: 'Inter', system-ui, sans-serif;
+}
+
+#__next {
+  min-height: 100%;
+  background: #f8f3ef;
 }
 
 h1, h2, h3, h4 {
