@@ -23,7 +23,6 @@ const DISMISS_DAYS = 7;
 const bannerVariants = {
   default: {
     title: "¡Que no se te escape!",
-    body: "Guarda favoritos y encuentra antes las mejores oportunidades flamencas.",
     trustLabel: "Moda flamenca de segunda mano",
   },
 };
@@ -116,53 +115,49 @@ export default function PwaInstallBanner({
 
   return (
     <aside
-      className="absolute inset-x-3 top-[calc(100%+0.5rem)] z-40 mx-auto max-w-md animate-[fade-up_220ms_ease_both] rounded-2xl border border-stone-100 bg-white p-3 shadow-[0_14px_38px_rgba(34,24,20,0.16)] md:hidden"
+      className="absolute inset-x-0 top-full z-40 animate-[fade-up_180ms_ease_both] border-b border-stone-200 bg-white shadow-[0_8px_18px_rgba(34,24,20,0.06)] md:hidden"
       aria-label="Instalar Faralaes"
     >
-      <div className="flex gap-3">
+      <div className="mx-auto flex h-[68px] max-w-md items-center gap-2.5 px-3">
         <img
           src="/icons/icon-192.png"
-          width="38"
-          height="38"
+          width="40"
+          height="40"
           alt=""
-          className="h-9 w-9 shrink-0 rounded-xl"
+          className="h-10 w-10 shrink-0 rounded-xl"
           loading="lazy"
           decoding="async"
         />
 
-        <div className="min-w-0 flex-1 pr-6">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-bold leading-tight text-stone-950">
             {content.title}
           </p>
-          <p className="mt-1 text-xs leading-snug text-stone-600">
-            {content.body}
-          </p>
-
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold leading-none text-stone-600">
+          <p className="mt-1 truncate text-[11px] font-semibold leading-tight text-stone-600">
             <span className="text-red-800" aria-hidden="true">
-              ★ ★ ★ ★ ★
-            </span>
-            <span>{content.trustLabel}</span>
-          </div>
+              ★★★★★
+            </span>{" "}
+            {content.trustLabel}
+          </p>
         </div>
 
         <button
           type="button"
+          onClick={installApp}
+          className="h-8 shrink-0 rounded-full border border-red-800 bg-red-50 px-3 text-xs font-bold text-red-800 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-800 focus:ring-offset-2"
+        >
+          Abrir app
+        </button>
+
+        <button
+          type="button"
           onClick={closeBanner}
-          className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full text-xl leading-none text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xl leading-none text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
           aria-label="Cerrar"
         >
           ×
         </button>
       </div>
-
-      <button
-        type="button"
-        onClick={installApp}
-        className="mt-3 h-10 w-full rounded-full bg-red-800 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-800 focus:ring-offset-2"
-      >
-        Instalar
-      </button>
     </aside>
   );
 }
