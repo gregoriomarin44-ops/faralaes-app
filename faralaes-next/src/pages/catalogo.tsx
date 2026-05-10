@@ -65,6 +65,7 @@ export default function Catalogo() {
   const [soloEnvio, setSoloEnvio] = useState(false);
   const [orden, setOrden] = useState("recientes");
   const [loading, setLoading] = useState(true);
+  const [urlFiltersReady, setUrlFiltersReady] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -104,7 +105,46 @@ export default function Catalogo() {
 
     setBusqueda(typeof queryBusqueda === "string" ? queryBusqueda : "");
     setCategoria(typeof queryCategoria === "string" ? queryCategoria : "todas");
+    setUrlFiltersReady(true);
   }, [router.isReady, router.query.q, router.query.categoria]);
+
+  useEffect(() => {
+    if (!router.isReady || !urlFiltersReady) return;
+
+    const nextQuery = {
+      ...router.query,
+      ...(busqueda.trim() ? { q: busqueda.trim() } : {}),
+      ...(categoria !== "todas" ? { categoria } : {}),
+    };
+
+    if (!busqueda.trim()) {
+      delete nextQuery.q;
+    }
+
+    if (categoria === "todas") {
+      delete nextQuery.categoria;
+    }
+
+    const nextQ = typeof nextQuery.q === "string" ? nextQuery.q : "";
+    const currentQ = typeof router.query.q === "string" ? router.query.q : "";
+    const nextCategoria =
+      typeof nextQuery.categoria === "string" ? nextQuery.categoria : "";
+    const currentCategoria =
+      typeof router.query.categoria === "string" ? router.query.categoria : "";
+
+    if (nextQ === currentQ && nextCategoria === currentCategoria) {
+      return;
+    }
+
+    router.replace(
+      {
+        pathname: router.pathname,
+        query: nextQuery,
+      },
+      undefined,
+      { shallow: true }
+    );
+  }, [busqueda, categoria, router, router.isReady, urlFiltersReady]);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -165,6 +205,7 @@ export default function Catalogo() {
   };
 
   const clearFilters = () => {
+    setBusqueda("");
     setCategoria("todas");
     setUbicacion("");
     setTalla("");
@@ -178,6 +219,7 @@ export default function Catalogo() {
   };
 
   const activeFilterCount = [
+    Boolean(busqueda.trim()),
     categoria !== "todas",
     Boolean(ubicacion.trim()),
     Boolean(talla.trim()),
@@ -189,49 +231,6 @@ export default function Catalogo() {
     soloWhatsapp,
     soloEnvio,
   ].filter(Boolean).length;
-
-  const quickFilters = [
-    ...categoryOptions
-      .filter((option) =>
-        ["traje", "zapatos", "complementos", "nina", "moda_rociera"].includes(
-          option.value
-        )
-      )
-      .map((option) => ({
-        key: `category-${option.value}`,
-        label: option.value === "moda_rociera" ? "Rociera" : option.label,
-        active: categoria === option.value,
-        onClick: () => {
-          setCategoria((current) =>
-            current === option.value ? "todas" : option.value
-          );
-          setAttributeFilters({});
-        },
-      })),
-    {
-      key: "size-38",
-      label: "Talla 38",
-      active: talla.trim().toLowerCase() === "38",
-      onClick: () =>
-        setTalla((current) => (current.trim().toLowerCase() === "38" ? "" : "38")),
-    },
-    {
-      key: "color-negro",
-      label: "Negro",
-      active: color.trim().toLowerCase() === "negro",
-      onClick: () =>
-        setColor((current) =>
-          current.trim().toLowerCase() === "negro" ? "" : "Negro"
-        ),
-    },
-    {
-      key: "condition-new",
-      label: "Nuevo",
-      active: estado === "nuevo",
-      onClick: () =>
-        setEstado((current) => (current === "nuevo" ? "todos" : "nuevo")),
-    },
-  ];
 
   const selectedAttributeSchema =
     categoria === "todas"
@@ -248,6 +247,14 @@ export default function Catalogo() {
       ...current,
       [key]: value,
     }));
+  };
+
+  const removeAttributeFilter = (key: string) => {
+    setAttributeFilters((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
   };
 
   const dynamicFilterControls =
@@ -378,6 +385,111 @@ export default function Catalogo() {
         <option value="precio-desc">Precio mayor</option>
       </select>
       <div className="flex flex-col justify-center gap-2 rounded border border-gray-200 p-3 md:col-span-2 lg:col-span-1">
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            checked={soloWhatsapp}
+            onChange={(e) => setSoloWhatsapp(e.target.checked)}
+          />
+          Solo con WhatsApp permitido
+        </label>
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            checked={soloEnvio}
+            onChange={(e) => setSoloEnvio(e.target.checked)}
+          />
+          Solo con envío disponible
+        </label>
+      </div>
+    </div>
+  );
+
+  const mobileFilterControls = (
+    <div className="space-y-4">
+      <input
+        className="h-12 w-full rounded border border-gray-300 px-3"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        placeholder="Buscar por título o descripción"
+      />
+      <select
+        className="h-12 w-full rounded border border-gray-300 px-3"
+        value={categoria}
+        onChange={(e) => setCategoryFilter(e.target.value)}
+      >
+        <option value="todas">Todas las categorías</option>
+        {categoryOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <input
+          className="h-12 rounded border border-gray-300 px-3"
+          value={precioMin}
+          onChange={(e) => setPrecioMin(e.target.value)}
+          placeholder="Precio mínimo"
+          type="text"
+          inputMode="decimal"
+        />
+        <input
+          className="h-12 rounded border border-gray-300 px-3"
+          value={precioMax}
+          onChange={(e) => setPrecioMax(e.target.value)}
+          placeholder="Precio máximo"
+          type="text"
+          inputMode="decimal"
+        />
+      </div>
+      <input
+        className="h-12 w-full rounded border border-gray-300 px-3"
+        value={ubicacion}
+        onChange={(e) => setUbicacion(e.target.value)}
+        placeholder="Ubicación"
+      />
+      {selectedAttributeSchema.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {dynamicFilterControls}
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <input
+          className="h-12 rounded border border-gray-300 px-3"
+          value={talla}
+          onChange={(e) => setTalla(e.target.value)}
+          placeholder="Talla"
+        />
+        <input
+          className="h-12 rounded border border-gray-300 px-3"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          placeholder="Color"
+        />
+      </div>
+      <select
+        className="h-12 w-full rounded border border-gray-300 px-3"
+        value={estado}
+        onChange={(e) => setEstado(e.target.value)}
+      >
+        <option value="todos">Todos los estados</option>
+        {conditionOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <select
+        className="h-12 w-full rounded border border-gray-300 px-3"
+        value={orden}
+        onChange={(e) => setOrden(e.target.value)}
+      >
+        <option value="recientes">Más recientes</option>
+        <option value="precio-asc">Precio menor</option>
+        <option value="precio-desc">Precio mayor</option>
+      </select>
+      <div className="space-y-2 rounded border border-gray-200 p-3">
         <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
           <input
             type="checkbox"
@@ -640,6 +752,104 @@ export default function Catalogo() {
     ...puedeInteresarte,
     ...rellenoConRepetidos,
   ].slice(0, 4);
+  const activeFilterChips = [
+    busqueda.trim()
+      ? {
+          key: "search",
+          label: `Buscar: ${busqueda.trim()}`,
+          onRemove: () => setBusqueda(""),
+        }
+      : null,
+    categoria !== "todas"
+      ? {
+          key: "category",
+          label: getCategoryLabel(categoria),
+          onRemove: () => setCategoryFilter("todas"),
+        }
+      : null,
+    ubicacion.trim()
+      ? {
+          key: "location",
+          label: ubicacion.trim(),
+          onRemove: () => setUbicacion(""),
+        }
+      : null,
+    talla.trim()
+      ? {
+          key: "size",
+          label: `Talla ${talla.trim()}`,
+          onRemove: () => setTalla(""),
+        }
+      : null,
+    color.trim()
+      ? {
+          key: "color",
+          label: color.trim(),
+          onRemove: () => setColor(""),
+        }
+      : null,
+    estado !== "todos"
+      ? {
+          key: "condition",
+          label: getConditionLabel(estado),
+          onRemove: () => setEstado("todos"),
+        }
+      : null,
+    precioMin.trim()
+      ? {
+          key: "price-min",
+          label: `Desde ${precioMin.trim()} €`,
+          onRemove: () => setPrecioMin(""),
+        }
+      : null,
+    precioMax.trim()
+      ? {
+          key: "price-max",
+          label: `Hasta ${precioMax.trim()} €`,
+          onRemove: () => setPrecioMax(""),
+        }
+      : null,
+    soloWhatsapp
+      ? {
+          key: "whatsapp",
+          label: "WhatsApp",
+          onRemove: () => setSoloWhatsapp(false),
+        }
+      : null,
+    soloEnvio
+      ? {
+          key: "shipping",
+          label: "Envío",
+          onRemove: () => setSoloEnvio(false),
+        }
+      : null,
+    ...selectedAttributeSchema
+      .map((field) => {
+        const value = attributeFilters[field.key];
+
+        if (!value) {
+          return null;
+        }
+
+        const labelValue =
+          field.type === "boolean" ? (value === "true" ? "Sí" : "No") : value;
+
+        return {
+          key: `attribute-${field.key}`,
+          label: `${field.label}: ${labelValue}`,
+          onRemove: () => removeAttributeFilter(field.key),
+        };
+      })
+      .filter(
+        (
+          chip
+        ): chip is { key: string; label: string; onRemove: () => void } =>
+          Boolean(chip)
+      ),
+  ].filter(
+    (chip): chip is { key: string; label: string; onRemove: () => void } =>
+      Boolean(chip)
+  );
 
   return (
     <>
@@ -671,7 +881,7 @@ export default function Catalogo() {
               </button>
             </div>
 
-            {filterControls}
+            {mobileFilterControls}
 
             <div className="sticky bottom-0 -mx-5 mt-5 flex gap-3 border-t border-gray-100 bg-white px-5 pb-1 pt-4">
               <button
@@ -679,14 +889,14 @@ export default function Catalogo() {
                 onClick={clearFilters}
                 className="tap-feedback h-12 flex-1 rounded-full border border-gray-300 bg-white px-4 text-sm font-bold text-gray-700"
               >
-                Limpiar
+                Limpiar filtros
               </button>
               <button
                 type="button"
                 onClick={() => setFiltersOpen(false)}
                 className="tap-feedback h-12 flex-1 rounded-full bg-green-700 px-4 text-sm font-bold text-white"
               >
-                Ver {productosFiltrados.length}
+                Aplicar filtros
               </button>
             </div>
           </aside>
@@ -722,24 +932,14 @@ export default function Catalogo() {
 
         {!loading && productos.length > 0 && (
           <div className="sticky top-0 z-30 -mx-4 mb-6 border-y border-gray-200 bg-[#f8f3ef]/95 px-4 py-3 backdrop-blur md:hidden">
-            <div className="mb-3 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setFiltersOpen(true)}
-                className="tap-feedback h-11 shrink-0 rounded-full bg-stone-950 px-4 text-sm font-bold text-white"
+                className="tap-feedback h-11 flex-1 rounded-full bg-stone-950 px-4 text-sm font-bold text-white"
               >
                 Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </button>
-              <select
-                className="tap-feedback h-11 min-w-0 flex-1 rounded-full border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700"
-                value={orden}
-                onChange={(e) => setOrden(e.target.value)}
-                aria-label="Ordenar catálogo"
-              >
-                <option value="recientes">Más recientes</option>
-                <option value="precio-asc">Precio menor</option>
-                <option value="precio-desc">Precio mayor</option>
-              </select>
               {activeFilterCount > 0 && (
                 <button
                   type="button"
@@ -750,22 +950,22 @@ export default function Catalogo() {
                 </button>
               )}
             </div>
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
-              {quickFilters.map((filter) => (
+          </div>
+        )}
+
+        {!loading && activeFilterChips.length > 0 && (
+          <div className="mb-6 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+            {activeFilterChips.map((chip) => (
                 <button
-                  key={filter.key}
+                  key={chip.key}
                   type="button"
-                  onClick={filter.onClick}
-                  className={`tap-feedback h-10 shrink-0 rounded-full border px-4 text-sm font-bold ${
-                    filter.active
-                      ? "border-red-800 bg-red-800 text-white"
-                      : "border-gray-200 bg-white text-gray-700"
-                  }`}
+                  onClick={chip.onRemove}
+                  className="tap-feedback h-10 shrink-0 rounded-full border border-red-100 bg-white px-4 text-sm font-bold text-red-800 shadow-sm hover:border-red-800"
+                  aria-label={`Quitar filtro ${chip.label}`}
                 >
-                  {filter.label}
+                  {chip.label} ×
                 </button>
               ))}
-            </div>
           </div>
         )}
 
