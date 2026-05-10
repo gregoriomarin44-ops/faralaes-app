@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import Head from "next/head";
 import NavBar from "../components/NavBar";
 import { formatPrice } from "../lib/formatPrice";
+import { getCanonical } from "../lib/seo";
 import {
   categoryOptions,
   conditionOptions,
@@ -853,6 +855,17 @@ export default function Catalogo() {
 
   return (
     <>
+      <Head>
+        <title>Catálogo de moda flamenca | Faralaes</title>
+        <meta
+          name="description"
+          content="Explora anuncios publicados de moda flamenca de segunda mano en Faralaes."
+        />
+        {Object.keys(router.query).length > 0 && (
+          <meta name="robots" content="noindex,follow" />
+        )}
+        <link rel="canonical" href={getCanonical("/catalogo")} />
+      </Head>
       {filtersOpen && (
         <div className="fixed inset-0 z-[80] md:hidden">
           <button

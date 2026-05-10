@@ -5,12 +5,11 @@ import NavBar from "../components/NavBar";
 import { formatPrice } from "../lib/formatPrice";
 import { prisma } from "../lib/prisma";
 import {
-  buildSeoCopy,
-  buildSeoPath,
   categorySeo,
   getCanonical,
-  parseSeoRoute,
-  SeoRoute,
+  getSeoLinksForCategory,
+  getSeoPage,
+  SeoPage,
 } from "../lib/seo";
 
 type SeoListing = {
@@ -20,36 +19,38 @@ type SeoListing = {
   priceCents: number;
   location: string | null;
   size: string | null;
+  color: string | null;
   images: { url: string }[];
 };
 
 type SeoPageProps = {
-  canonical: string;
-  copy: ReturnType<typeof buildSeoCopy>;
   listings: SeoListing[];
   noindex: boolean;
-  route: SeoRoute;
+  page: SeoPage;
 };
 
 export const getServerSideProps: GetServerSideProps<SeoPageProps> = async ({
   params,
+  query,
 }) => {
-  const route = parseSeoRoute(params?.seo);
+  const page = getSeoPage(params?.seo);
 
-  if (!route) {
+  if (!page) {
     return { notFound: true };
   }
 
-  const category = categorySeo[route.categorySlug];
   const where = {
-    category: category.category,
+    category: page.filters.category,
     status: "published",
     seller: { disabled: false },
-    ...(route.location
-      ? { location: { contains: route.location, mode: "insensitive" as const } }
+    ...(page.filters.location
+      ? { location: { contains: page.filters.location, mode: "insensitive" as const } }
       : {}),
-    ...(route.size
-      ? { size: { equals: route.size, mode: "insensitive" as const } }
+    ...(page.filters.color
+      ? { color: { equals: page.filters.color, mode: "insensitive" as const } }
+      : {}),
+    ...(page.filters.size
+      ? { size: { equals: page.filters.size, mode: "insensitive" as const } }
       : {}),
   };
 
@@ -64,43 +65,48 @@ export const getServerSideProps: GetServerSideProps<SeoPageProps> = async ({
       priceCents: true,
       location: true,
       size: true,
+      color: true,
       images: {
         orderBy: { sortOrder: "asc" },
         select: { url: true },
       },
     },
   });
-  const copy = buildSeoCopy(route, listings.length);
-  const path = buildSeoPath(route);
+  const pageWithCount = getSeoPage(params?.seo, listings.length);
+
+  if (!pageWithCount) {
+    return { notFound: true };
+  }
 
   return {
     props: {
-      canonical: getCanonical(path),
-      copy,
       listings,
-      noindex: listings.length === 0,
-      route,
+      noindex:
+        listings.length === 0 || Object.keys(query).some((key) => key !== "seo"),
+      page: pageWithCount,
     },
   };
 };
 
 export default function SeoLanding({
-  canonical,
-  copy,
   listings,
   noindex,
-  route,
+  page,
 }: SeoPageProps) {
-  const category = categorySeo[route.categorySlug];
+  const category = categorySeo[page.categorySlug];
   const breadcrumbItems = [
     { href: "/", label: "Inicio" },
-    { href: `/${route.categorySlug}`, label: category.plural },
-    ...(route.location
-      ? [{ href: buildSeoPath(route), label: route.location }]
-      : route.size
-        ? [{ href: buildSeoPath(route), label: `Talla ${route.size}` }]
+    { href: `/${page.categorySlug}`, label: category.plural },
+    ...(page.filters.location
+      ? [{ href: page.slug, label: page.filters.location }]
+      : page.filters.color
+        ? [{ href: page.slug, label: page.filters.color }]
+        : page.filters.size
+          ? [{ href: page.slug, label: `Talla ${page.filters.size}` }]
         : []),
   ];
+  const relatedSeoLinks =
+    page.kind === "category" ? getSeoLinksForCategory(page.categorySlug) : null;
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -111,18 +117,48 @@ export default function SeoLanding({
       item: getCanonical(item.href),
     })),
   };
+  const itemListJsonLd =
+    listings.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          itemListElement: listings.map((listing, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            url: getCanonical(`/producto/${listing.id}`),
+            item: {
+              "@type": "Product",
+              name: listing.title,
+              image: listing.images[0]?.url,
+              offers: {
+                "@type": "Offer",
+                price: (listing.priceCents / 100).toFixed(2),
+                priceCurrency: "EUR",
+                availability: "https://schema.org/InStock",
+                url: getCanonical(`/producto/${listing.id}`),
+              },
+            },
+          })),
+        }
+      : null;
 
   return (
     <>
       <Head>
-        <title>{copy.title}</title>
-        <meta name="description" content={copy.description} />
+        <title>{page.title}</title>
+        <meta name="description" content={page.metaDescription} />
         {noindex && <meta name="robots" content="noindex,follow" />}
-        <link rel="canonical" href={canonical} />
+        <link rel="canonical" href={page.canonical} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
         />
+        {itemListJsonLd && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+          />
+        )}
       </Head>
       <NavBar />
       <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
@@ -143,10 +179,41 @@ export default function SeoLanding({
               Faralaes
             </p>
             <h1 className="mt-3 font-serif text-4xl text-gray-950 md:text-5xl">
-              {copy.h1}
+              {page.h1}
             </h1>
-            <p className="mt-5 text-lg leading-8 text-gray-600">{copy.intro}</p>
+            <p className="mt-5 text-lg leading-8 text-gray-600">
+              {page.introText}
+            </p>
           </div>
+
+          {relatedSeoLinks && (
+            <section className="mt-10 grid gap-6 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm md:grid-cols-3">
+              {[
+                { title: "Por ciudad", links: relatedSeoLinks.cities },
+                { title: "Por color", links: relatedSeoLinks.colors },
+                { title: "Por talla", links: relatedSeoLinks.sizes },
+              ]
+                .filter((group) => group.links.length > 0)
+                .map((group) => (
+                  <div key={group.title}>
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-stone-500">
+                      {group.title}
+                    </h2>
+                    <div className="mt-4 flex flex-col gap-3">
+                      {group.links.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="text-sm font-semibold text-stone-700 hover:text-green-800"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </section>
+          )}
 
           {listings.length === 0 ? (
             <div className="mt-10 rounded-2xl border border-stone-200 bg-white p-8 text-stone-700 shadow-sm">
@@ -193,6 +260,7 @@ export default function SeoLanding({
                     <p className="mt-2 text-sm text-gray-500">
                       {listing.location || "Sin ubicacion"}
                       {listing.size ? ` · Talla ${listing.size}` : ""}
+                      {listing.color ? ` · ${listing.color}` : ""}
                     </p>
                   </div>
                 </Link>

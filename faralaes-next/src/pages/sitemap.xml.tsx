@@ -6,7 +6,10 @@ import {
   getSeoCategorySlugByCategory,
   getCanonical,
   normalizeSlugText,
+  seoCities,
+  seoColors,
   seoCategorySlugs,
+  seoSizes,
 } from "../lib/seo";
 
 const staticPaths = [
@@ -68,6 +71,15 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     },
     _count: { _all: true },
   });
+  const colorCounts = await prisma.listing.groupBy({
+    by: ["category", "color"],
+    where: {
+      status: "published",
+      seller: { disabled: false },
+      color: { not: null },
+    },
+    _count: { _all: true },
+  });
 
   const categoryPaths = seoCategorySlugs
     .filter((slug) =>
@@ -81,11 +93,14 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     .filter((count) => count.location)
     .map((count) => {
       const categorySlug = getSeoCategorySlugByCategory(count.category);
+      const city = seoCities.find(
+        (item) => item.slug === normalizeSlugText(count.location || "")
+      );
 
-      return categorySlug && count.location
+      return categorySlug && city
         ? buildSeoPath({
             categorySlug,
-            location: normalizeSlugText(count.location),
+            citySlug: city.slug,
           })
         : null;
     })
@@ -94,11 +109,30 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     .filter((count) => count.size && count._count._all > 0)
     .map((count) => {
       const categorySlug = getSeoCategorySlugByCategory(count.category);
+      const size = normalizeSlugText(count.size || "");
 
-      return categorySlug && count.size
+      return categorySlug &&
+        categorySeo[categorySlug].supportsSize &&
+        seoSizes.includes(size as (typeof seoSizes)[number])
         ? buildSeoPath({
             categorySlug,
-            size: count.size,
+            size,
+          })
+        : null;
+    })
+    .filter((path): path is string => Boolean(path));
+  const colorPaths = colorCounts
+    .filter((count) => count.color && count._count._all > 0)
+    .map((count) => {
+      const categorySlug = getSeoCategorySlugByCategory(count.category);
+      const color = seoColors.find(
+        (item) => normalizeSlugText(item.label) === normalizeSlugText(count.color || "")
+      );
+
+      return categorySlug && color
+        ? buildSeoPath({
+            categorySlug,
+            colorSlug: color.slug,
           })
         : null;
     })
@@ -108,6 +142,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     ...staticPaths.map((path) => renderUrl(path)),
     ...categoryPaths.map((path) => renderUrl(path)),
     ...Array.from(new Set(locationPaths)).map((path) => renderUrl(path)),
+    ...Array.from(new Set(colorPaths)).map((path) => renderUrl(path)),
     ...Array.from(new Set(sizePaths)).map((path) => renderUrl(path)),
     ...listings.map((listing) =>
       renderUrl(`/producto/${listing.id}`, listing.updatedAt.toISOString())

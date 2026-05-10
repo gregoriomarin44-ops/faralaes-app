@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { primarySeoFooterLinks } from "../lib/seo";
 
 const mainLinks = [
   { href: "/", label: "Inicio" },
@@ -61,7 +62,7 @@ function FooterColumn({
 export default function Footer() {
   return (
     <footer className="border-t border-stone-200 bg-[#f8f3ef] text-stone-800">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-10 md:py-12">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] md:gap-10 md:py-12">
         <div className="flex flex-col items-center text-center md:items-start md:text-left">
           <Link
             href="/"
@@ -80,6 +81,7 @@ export default function Footer() {
         </div>
 
         <FooterColumn title="Principal" links={mainLinks} />
+        <FooterColumn title="Moda flamenca" links={primarySeoFooterLinks} />
         <FooterColumn title="Usuario" links={userLinks} />
         <FooterColumn title="Legal" links={legalLinks} />
       </div>

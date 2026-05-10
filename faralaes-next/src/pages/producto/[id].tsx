@@ -8,7 +8,7 @@ import ReportModal from "../../components/ReportModal";
 import { formatPrice } from "../../lib/formatPrice";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
-import { getCanonical, normalizeSlugText } from "../../lib/seo";
+import { getCanonical, getSeoProductLinks } from "../../lib/seo";
 import { getInitial } from "../../lib/userIdentity";
 import {
   getCategoryLabel,
@@ -354,18 +354,32 @@ export default function ProductoDetalle({
     label: producto.category,
     path: "/catalogo",
   };
-  const locationPath = producto.location
-    ? `${categoryInfo.path}/${normalizeSlugText(producto.location)}`
-    : "";
+  const productSeoLinks = getSeoProductLinks({
+    category: producto.category,
+    color: producto.color,
+    location: producto.location,
+    size: producto.size,
+  });
+  const categoryPath = productSeoLinks[0]?.href || categoryInfo.path;
+  const locationLink = productSeoLinks.find((link) =>
+    link.label.includes(" en ")
+  );
+  const sizeLink = productSeoLinks.find((link) => link.label.includes(" talla "));
+  const colorLink = productSeoLinks.find(
+    (link) =>
+      link.href !== categoryPath &&
+      !link.label.includes(" en ") &&
+      !link.label.includes(" talla ")
+  );
   const productUrl = getCanonical(`/producto/${producto.id}`);
   const metaDescription =
     producto.description?.slice(0, 150) ||
     `${producto.title}${producto.brand ? ` de ${producto.brand}` : ""} en Faralaes por ${formatPrice(producto.priceCents)}${producto.location ? ` en ${producto.location}` : ""}.`;
   const breadcrumbItems = [
     { href: "/", label: "Inicio" },
-    { href: categoryInfo.path, label: categoryInfo.label },
-    ...(producto.location && locationPath
-      ? [{ href: locationPath, label: producto.location }]
+    { href: categoryPath, label: categoryInfo.label },
+    ...(producto.location && locationLink
+      ? [{ href: locationLink.href, label: producto.location }]
       : []),
     { href: `/producto/${producto.id}`, label: producto.title },
   ];
@@ -698,17 +712,33 @@ export default function ProductoDetalle({
             </h2>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link
-                href={categoryInfo.path}
+                href={categoryPath}
                 className="tap-feedback rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-green-700 hover:text-green-700"
               >
                 Más {categoryInfo.label.toLowerCase()}
               </Link>
-              {producto.location && locationPath && (
+              {producto.location && locationLink && (
                 <Link
-                  href={locationPath}
+                  href={locationLink.href}
                   className="tap-feedback rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-green-700 hover:text-green-700"
                 >
                   Más anuncios en {producto.location}
+                </Link>
+              )}
+              {producto.size && sizeLink && (
+                <Link
+                  href={sizeLink.href}
+                  className="tap-feedback rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-green-700 hover:text-green-700"
+                >
+                  Más talla {producto.size}
+                </Link>
+              )}
+              {producto.color && colorLink && (
+                <Link
+                  href={colorLink.href}
+                  className="tap-feedback rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-green-700 hover:text-green-700"
+                >
+                  Más en {producto.color}
                 </Link>
               )}
             </div>
