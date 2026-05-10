@@ -204,6 +204,15 @@ export default function Publicar() {
     }));
   };
 
+  const selectedCategoryLabel =
+    categoryOptions.find((option) => option.value === categoria)?.label || "";
+
+  const selectCategory = (value: string) => {
+    setCategoria(value);
+    setAttributes({});
+    setMensaje("");
+  };
+
   const renderAttributeFields = () => {
     const schema = getCategoryAttributeSchema(categoria);
 
@@ -214,7 +223,7 @@ export default function Publicar() {
     return (
       <fieldset className="space-y-3 rounded-xl border border-gray-200 bg-[#f8f3ef] p-4">
         <legend className="px-1 text-sm font-bold text-gray-800">
-          Características de {categoryOptions.find((option) => option.value === categoria)?.label.toLowerCase()}
+          Características de {selectedCategoryLabel.toLowerCase()}
         </legend>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {schema.map((field) => {
@@ -285,28 +294,54 @@ export default function Publicar() {
 
           {authLoading && <p>Cargando sesion...</p>}
 
-          {!authLoading && user && (
+          {!authLoading && user && !categoria && (
+            <div className="space-y-5">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
+                  ¿Qué quieres anunciar?
+                </p>
+                <p className="mt-2 text-sm leading-6 text-gray-600">
+                  Elige el tipo de artículo para mostrar solo los campos que
+                  necesita esa categoría.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {categoryOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => selectCategory(option.value)}
+                    className="tap-feedback min-h-24 rounded-xl border border-gray-200 bg-[#f8f3ef] px-3 py-4 text-center font-bold text-gray-900 shadow-sm transition hover:border-green-700 hover:bg-white hover:text-green-800 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-offset-2"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!authLoading && user && categoria && (
           <form onSubmit={publicar} className="space-y-4">
+            <div className="rounded-xl border border-red-100 bg-[#f8f3ef] p-4">
+              <p className="text-sm font-semibold text-gray-600">
+                Estás anunciando:{" "}
+                <span className="font-bold text-red-800">
+                  {selectedCategoryLabel}
+                </span>
+              </p>
+              <button
+                type="button"
+                onClick={() => selectCategory("")}
+                className="mt-3 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-green-700 hover:text-green-700"
+              >
+                Cambiar tipo de artículo
+              </button>
+            </div>
+
             <input className="w-full border p-3 rounded" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título" required />
             <input className="w-full border p-3 rounded" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" type="text" inputMode="decimal" required />
             <textarea className="w-full border p-3 rounded" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
-
-            <select
-              className="w-full border p-3 rounded"
-              value={categoria}
-              onChange={(e) => {
-                setCategoria(e.target.value);
-                setAttributes({});
-              }}
-              required
-            >
-              <option value="">Elige categoría</option>
-              {categoryOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
 
             {renderAttributeFields()}
 
