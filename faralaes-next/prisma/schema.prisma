@@ -99,6 +99,7 @@ model Listing {
   usage                  String?
   location               String?
   condition              String?
+  attributes             Json?
   status                 String         @default("published")
   shippingAvailable      Boolean        @default(false)
   whatsappContactAllowed Boolean        @default(false)

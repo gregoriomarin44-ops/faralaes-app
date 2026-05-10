@@ -5,8 +5,11 @@ import { formatPrice } from "../lib/formatPrice";
 import {
   categoryOptions,
   conditionOptions,
+  formatAttributeValue,
   getCategoryLabel,
+  getCategoryAttributeSchema,
   getConditionLabel,
+  normalizeAttributesForCategory,
 } from "../lib/listingOptions";
 
 type Producto = {
@@ -22,6 +25,7 @@ type Producto = {
   usage: string | null;
   location: string | null;
   condition: string | null;
+  attributes: Record<string, string | number | boolean> | null;
   shippingAvailable: boolean;
   whatsappContactAllowed: boolean;
   images?: {
@@ -54,6 +58,7 @@ export default function Catalogo() {
   const [talla, setTalla] = useState("");
   const [color, setColor] = useState("");
   const [estado, setEstado] = useState("todos");
+  const [attributeFilters, setAttributeFilters] = useState<Record<string, string>>({});
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
   const [soloWhatsapp, setSoloWhatsapp] = useState(false);
@@ -165,6 +170,7 @@ export default function Catalogo() {
     setTalla("");
     setColor("");
     setEstado("todos");
+    setAttributeFilters({});
     setPrecioMin("");
     setPrecioMax("");
     setSoloWhatsapp(false);
@@ -177,6 +183,7 @@ export default function Catalogo() {
     Boolean(talla.trim()),
     Boolean(color.trim()),
     estado !== "todos",
+    ...Object.values(attributeFilters).map((value) => Boolean(value)),
     Boolean(precioMin.trim()),
     Boolean(precioMax.trim()),
     soloWhatsapp,
@@ -194,10 +201,12 @@ export default function Catalogo() {
         key: `category-${option.value}`,
         label: option.value === "moda_rociera" ? "Rociera" : option.label,
         active: categoria === option.value,
-        onClick: () =>
+        onClick: () => {
           setCategoria((current) =>
             current === option.value ? "todas" : option.value
-          ),
+          );
+          setAttributeFilters({});
+        },
       })),
     {
       key: "size-38",
@@ -224,6 +233,74 @@ export default function Catalogo() {
     },
   ];
 
+  const selectedAttributeSchema =
+    categoria === "todas"
+      ? []
+      : getCategoryAttributeSchema(categoria).filter((field) => field.filterable);
+
+  const setCategoryFilter = (value: string) => {
+    setCategoria(value);
+    setAttributeFilters({});
+  };
+
+  const setAttributeFilter = (key: string, value: string) => {
+    setAttributeFilters((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  const dynamicFilterControls =
+    selectedAttributeSchema.length > 0
+      ? selectedAttributeSchema.map((field) => {
+          const value = attributeFilters[field.key] || "";
+
+          if (field.type === "boolean") {
+            return (
+              <select
+                key={field.key}
+                className="h-12 rounded border border-gray-300 px-3"
+                value={value}
+                onChange={(e) => setAttributeFilter(field.key, e.target.value)}
+              >
+                <option value="">{field.label}</option>
+                <option value="true">Sí</option>
+                <option value="false">No</option>
+              </select>
+            );
+          }
+
+          if (field.type === "select") {
+            return (
+              <select
+                key={field.key}
+                className="h-12 rounded border border-gray-300 px-3"
+                value={value}
+                onChange={(e) => setAttributeFilter(field.key, e.target.value)}
+              >
+                <option value="">{field.label}</option>
+                {field.options?.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            );
+          }
+
+          return (
+            <input
+              key={field.key}
+              className="h-12 rounded border border-gray-300 px-3"
+              value={value}
+              onChange={(e) => setAttributeFilter(field.key, e.target.value)}
+              placeholder={field.label}
+              type={field.type === "number" ? "number" : "text"}
+            />
+          );
+        })
+      : null;
+
   const filterControls = (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-4">
       <input
@@ -235,7 +312,7 @@ export default function Catalogo() {
       <select
         className="h-12 rounded border border-gray-300 px-3"
         value={categoria}
-        onChange={(e) => setCategoria(e.target.value)}
+        onChange={(e) => setCategoryFilter(e.target.value)}
       >
         <option value="todas">Todas las categorías</option>
         {categoryOptions.map((option) => (
@@ -244,6 +321,7 @@ export default function Catalogo() {
           </option>
         ))}
       </select>
+      {dynamicFilterControls}
       <input
         className="h-12 rounded border border-gray-300 px-3"
         value={ubicacion}
@@ -455,6 +533,33 @@ export default function Catalogo() {
           .includes(color.trim().toLowerCase());
       const coincideEstado =
         estado === "todos" || producto.condition === estado;
+      const productoAttributes = normalizeAttributesForCategory(
+        producto.category,
+        producto.attributes
+      );
+      const coincideAttributes =
+        categoria === "todas" ||
+        selectedAttributeSchema.every((field) => {
+          const selectedValue = attributeFilters[field.key];
+
+          if (!selectedValue) {
+            return true;
+          }
+
+          const attributeValue = productoAttributes[field.key];
+
+          if (attributeValue === undefined) {
+            return false;
+          }
+
+          if (field.type === "boolean") {
+            return String(attributeValue) === selectedValue;
+          }
+
+          return formatAttributeValue(field, attributeValue)
+            .toLowerCase()
+            .includes(selectedValue.toLowerCase());
+        });
       const coincidePrecioMin =
         precioMinCents === null || producto.priceCents >= precioMinCents;
       const coincidePrecioMax =
@@ -470,6 +575,7 @@ export default function Catalogo() {
         coincideTalla &&
         coincideColor &&
         coincideEstado &&
+        coincideAttributes &&
         coincidePrecioMin &&
         coincidePrecioMax &&
         coincideWhatsapp &&

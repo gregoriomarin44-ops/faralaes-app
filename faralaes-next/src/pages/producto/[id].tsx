@@ -13,6 +13,7 @@ import { getInitial } from "../../lib/userIdentity";
 import {
   getCategoryLabel,
   getConditionLabel,
+  getDisplayAttributes,
   getUsageLabel,
 } from "../../lib/listingOptions";
 
@@ -29,6 +30,7 @@ type Producto = {
   usage: string | null;
   location: string | null;
   condition: string | null;
+  attributes: Record<string, string | number | boolean> | null;
   shippingAvailable: boolean;
   whatsappContactAllowed: boolean;
   status: string;
@@ -66,6 +68,7 @@ const categoryLabels: Record<string, { label: string; path: string }> = {
   traje: { label: "Trajes de flamenca", path: "/trajes-flamenca" },
   zapatos: { label: "Zapatos de flamenca", path: "/zapatos-flamenca" },
   complementos: { label: "Complementos flamencos", path: "/complementos-flamencos" },
+  abanicos: { label: "Abanicos flamencos", path: "/abanicos-flamencos" },
   mantoncillo: { label: "Mantoncillos flamencos", path: "/mantoncillos-flamencos" },
   nina: { label: "Moda flamenca de niña", path: "/moda-flamenca-nina" },
   hombre: { label: "Moda flamenca de hombre", path: "/moda-flamenca-hombre" },
@@ -366,6 +369,7 @@ export default function ProductoDetalle({
       : []),
     { href: `/producto/${producto.id}`, label: producto.title },
   ];
+  const attributeItems = getDisplayAttributes(producto.category, producto.attributes);
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -387,6 +391,11 @@ export default function ProductoDetalle({
       producto.condition
         ? { "@type": "PropertyValue", name: "Estado", value: getConditionLabel(producto.condition) }
         : null,
+      ...attributeItems.map((item) => ({
+        "@type": "PropertyValue",
+        name: item.label,
+        value: item.value,
+      })),
     ].filter(Boolean),
     offers: {
       "@type": "Offer",
@@ -605,6 +614,29 @@ export default function ProductoDetalle({
                 ))}
               </div>
             </div>
+
+            {attributeItems.length > 0 && (
+              <div className="border-b border-gray-100 py-6">
+                <h2 className="mb-4 text-lg font-bold text-gray-950">
+                  Características
+                </h2>
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                  {attributeItems.map((item) => (
+                    <div
+                      key={item.key}
+                      className="rounded-2xl border border-gray-200 bg-[#f8f3ef] p-3"
+                    >
+                      <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {item.label}
+                      </span>
+                      <span className="mt-1 block font-bold text-gray-950">
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {producto.seller && (
               <div className="border-b border-gray-100 py-6">

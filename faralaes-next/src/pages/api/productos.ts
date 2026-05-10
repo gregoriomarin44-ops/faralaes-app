@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireSessionUser, requireVerifiedSessionUser } from "../../lib/auth";
+import { normalizeAttributesForCategory } from "../../lib/listingOptions";
 import { prisma } from "../../lib/prisma";
 
 const MAX_IMAGES = 5;
@@ -89,6 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         usage,
         location,
         condition,
+        attributes,
         shippingAvailable,
         whatsappContactAllowed,
         images,
@@ -123,6 +125,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           usage: usage || null,
           location: location || null,
           condition: condition || null,
+          attributes: normalizeAttributesForCategory(category, attributes),
           shippingAvailable: Boolean(shippingAvailable),
           whatsappContactAllowed: Boolean(whatsappContactAllowed),
           status: "published",
@@ -159,6 +162,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         usage,
         location,
         condition,
+        attributes,
         shippingAvailable,
         whatsappContactAllowed,
         images,
@@ -218,6 +222,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           usage: usage || null,
           location: location || null,
           condition: condition || null,
+          attributes: normalizeAttributesForCategory(category, attributes),
           shippingAvailable: Boolean(shippingAvailable),
           whatsappContactAllowed: Boolean(whatsappContactAllowed),
           ...(nuevasImagenes !== null

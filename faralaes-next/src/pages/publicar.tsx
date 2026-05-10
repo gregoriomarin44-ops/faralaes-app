@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../lib/authContext";
-import { categoryOptions, conditionOptions, usageOptions } from "../lib/listingOptions";
+import {
+  categoryOptions,
+  conditionOptions,
+  getCategoryAttributeSchema,
+  usageOptions,
+} from "../lib/listingOptions";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
@@ -25,7 +30,8 @@ export default function Publicar() {
   const [titulo, setTitulo] = useState("");
   const [precio, setPrecio] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [categoria, setCategoria] = useState("traje");
+  const [categoria, setCategoria] = useState("");
+  const [attributes, setAttributes] = useState<Record<string, string | boolean>>({});
   const [talla, setTalla] = useState("");
   const [color, setColor] = useState("");
   const [marca, setMarca] = useState("");
@@ -127,6 +133,24 @@ export default function Publicar() {
       return;
     }
 
+    if (!categoria) {
+      setMensaje("Elige una categoría para el anuncio.");
+      return;
+    }
+
+    const missingAttribute = getCategoryAttributeSchema(categoria).find(
+      (field) =>
+        field.required &&
+        (attributes[field.key] === undefined ||
+          attributes[field.key] === "" ||
+          attributes[field.key] === false)
+    );
+
+    if (missingAttribute) {
+      setMensaje(`Completa el campo "${missingAttribute.label}".`);
+      return;
+    }
+
     const res = await fetch("/api/productos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -141,6 +165,7 @@ export default function Publicar() {
         usage: uso || null,
         location: ubicacion || null,
         condition: estado,
+        attributes,
         shippingAvailable,
         whatsappContactAllowed: contactoWhatsapp,
         images: imagenes,
@@ -152,7 +177,8 @@ export default function Publicar() {
       setTitulo("");
       setPrecio("");
       setDescripcion("");
-      setCategoria("traje");
+      setCategoria("");
+      setAttributes({});
       setTalla("");
       setColor("");
       setMarca("");
@@ -171,6 +197,85 @@ export default function Publicar() {
     }
   };
 
+  const updateAttribute = (key: string, value: string | boolean) => {
+    setAttributes((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  const renderAttributeFields = () => {
+    const schema = getCategoryAttributeSchema(categoria);
+
+    if (!categoria || schema.length === 0) {
+      return null;
+    }
+
+    return (
+      <fieldset className="space-y-3 rounded-xl border border-gray-200 bg-[#f8f3ef] p-4">
+        <legend className="px-1 text-sm font-bold text-gray-800">
+          Características de {categoryOptions.find((option) => option.value === categoria)?.label.toLowerCase()}
+        </legend>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {schema.map((field) => {
+            const value = attributes[field.key];
+
+            if (field.type === "boolean") {
+              return (
+                <label
+                  key={field.key}
+                  className="flex min-h-12 items-center gap-3 rounded border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={value === true}
+                    onChange={(e) => updateAttribute(field.key, e.target.checked)}
+                  />
+                  {field.label}
+                </label>
+              );
+            }
+
+            if (field.type === "select") {
+              return (
+                <label key={field.key} className="block text-sm font-semibold text-gray-700">
+                  <span className="mb-1 block">{field.label}</span>
+                  <select
+                    className="w-full rounded border border-gray-300 bg-white p-3"
+                    value={typeof value === "string" ? value : ""}
+                    onChange={(e) => updateAttribute(field.key, e.target.value)}
+                    required={field.required}
+                  >
+                    <option value="">No indicado</option>
+                    {field.options?.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              );
+            }
+
+            return (
+              <label key={field.key} className="block text-sm font-semibold text-gray-700">
+                <span className="mb-1 block">{field.label}</span>
+                <input
+                  className="w-full rounded border border-gray-300 bg-white p-3"
+                  value={typeof value === "string" ? value : ""}
+                  onChange={(e) => updateAttribute(field.key, e.target.value)}
+                  placeholder={field.label}
+                  type={field.type === "number" ? "number" : "text"}
+                  required={field.required}
+                />
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
+    );
+  };
+
   return (
     <>
       <NavBar />
@@ -186,13 +291,24 @@ export default function Publicar() {
             <input className="w-full border p-3 rounded" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" type="text" inputMode="decimal" required />
             <textarea className="w-full border p-3 rounded" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
 
-            <select className="w-full border p-3 rounded" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+            <select
+              className="w-full border p-3 rounded"
+              value={categoria}
+              onChange={(e) => {
+                setCategoria(e.target.value);
+                setAttributes({});
+              }}
+              required
+            >
+              <option value="">Elige categoría</option>
               {categoryOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
+
+            {renderAttributeFields()}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <input className="w-full border p-3 rounded" value={talla} onChange={(e) => setTalla(e.target.value)} placeholder="Talla, ej. 38, M" maxLength={20} />

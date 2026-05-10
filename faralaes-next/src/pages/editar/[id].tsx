@@ -2,7 +2,13 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import NavBar from "../../components/NavBar";
 import { useAuth } from "../../lib/authContext";
-import { categoryOptions, conditionOptions, usageOptions } from "../../lib/listingOptions";
+import {
+  categoryOptions,
+  conditionOptions,
+  getCategoryAttributeSchema,
+  normalizeAttributesForCategory,
+  usageOptions,
+} from "../../lib/listingOptions";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
@@ -34,6 +40,7 @@ type Producto = {
   usage: string | null;
   location: string | null;
   condition: string | null;
+  attributes: Record<string, string | number | boolean> | null;
   shippingAvailable: boolean;
   whatsappContactAllowed: boolean;
   images?: {
@@ -50,6 +57,7 @@ export default function EditarProducto() {
   const [precio, setPrecio] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState("traje");
+  const [attributes, setAttributes] = useState<Record<string, string | boolean>>({});
   const [talla, setTalla] = useState("");
   const [color, setColor] = useState("");
   const [marca, setMarca] = useState("");
@@ -96,6 +104,12 @@ export default function EditarProducto() {
         setPrecio(centimosAPrecio(producto.priceCents));
         setDescripcion(producto.description || "");
         setCategoria(producto.category);
+        setAttributes(
+          normalizeAttributesForCategory(producto.category, producto.attributes) as Record<
+            string,
+            string | boolean
+          >
+        );
         setTalla(producto.size || "");
         setColor(producto.color || "");
         setMarca(producto.brand || "");
@@ -135,6 +149,20 @@ export default function EditarProducto() {
       return;
     }
 
+    const missingAttribute = getCategoryAttributeSchema(categoria).find(
+      (field) =>
+        field.required &&
+        (attributes[field.key] === undefined ||
+          attributes[field.key] === "" ||
+          attributes[field.key] === false)
+    );
+
+    if (missingAttribute) {
+      setError(`Completa el campo "${missingAttribute.label}".`);
+      setSaving(false);
+      return;
+    }
+
     const res = await fetch("/api/productos", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -150,6 +178,7 @@ export default function EditarProducto() {
         usage: uso || null,
         location: ubicacion || null,
         condition: estado,
+        attributes,
         shippingAvailable: envioDisponible,
         whatsappContactAllowed: contactoWhatsapp,
         ...(imagenesCambiadas ? { images: imagenes } : {}),
@@ -218,6 +247,85 @@ export default function EditarProducto() {
     }
   };
 
+  const updateAttribute = (key: string, value: string | boolean) => {
+    setAttributes((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  const renderAttributeFields = () => {
+    const schema = getCategoryAttributeSchema(categoria);
+
+    if (!categoria || schema.length === 0) {
+      return null;
+    }
+
+    return (
+      <fieldset className="space-y-3 rounded-xl border border-gray-200 bg-[#f8f3ef] p-4">
+        <legend className="px-1 text-sm font-bold text-gray-800">
+          Características de {categoryOptions.find((option) => option.value === categoria)?.label.toLowerCase()}
+        </legend>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {schema.map((field) => {
+            const value = attributes[field.key];
+
+            if (field.type === "boolean") {
+              return (
+                <label
+                  key={field.key}
+                  className="flex min-h-12 items-center gap-3 rounded border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={value === true}
+                    onChange={(e) => updateAttribute(field.key, e.target.checked)}
+                  />
+                  {field.label}
+                </label>
+              );
+            }
+
+            if (field.type === "select") {
+              return (
+                <label key={field.key} className="block text-sm font-semibold text-gray-700">
+                  <span className="mb-1 block">{field.label}</span>
+                  <select
+                    className="w-full rounded border border-gray-300 bg-white p-3"
+                    value={typeof value === "string" ? value : ""}
+                    onChange={(e) => updateAttribute(field.key, e.target.value)}
+                    required={field.required}
+                  >
+                    <option value="">No indicado</option>
+                    {field.options?.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              );
+            }
+
+            return (
+              <label key={field.key} className="block text-sm font-semibold text-gray-700">
+                <span className="mb-1 block">{field.label}</span>
+                <input
+                  className="w-full rounded border border-gray-300 bg-white p-3"
+                  value={typeof value === "string" ? value : ""}
+                  onChange={(e) => updateAttribute(field.key, e.target.value)}
+                  placeholder={field.label}
+                  type={field.type === "number" ? "number" : "text"}
+                  required={field.required}
+                />
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
+    );
+  };
+
   return (
     <>
       <NavBar />
@@ -261,7 +369,10 @@ export default function EditarProducto() {
               <select
                 className="w-full rounded border p-3"
                 value={categoria}
-                onChange={(e) => setCategoria(e.target.value)}
+                onChange={(e) => {
+                  setCategoria(e.target.value);
+                  setAttributes({});
+                }}
               >
                 {categoryOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -269,6 +380,7 @@ export default function EditarProducto() {
                   </option>
                 ))}
               </select>
+              {renderAttributeFields()}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input
                   className="w-full rounded border p-3"
