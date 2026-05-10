@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "../lib/authContext";
 import { categoryOptions } from "../lib/listingOptions";
+import PwaInstallBanner from "./PwaInstallBanner";
 
 const categoryLinks = categoryOptions.map((category) => ({
   href: `/catalogo?categoria=${category.value}`,
@@ -278,6 +279,7 @@ export default function NavBar() {
           ))}
         </div>
       </div>
+      <PwaInstallBanner />
       </header>
     </>
   );
