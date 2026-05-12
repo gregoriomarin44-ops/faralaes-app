@@ -27,6 +27,21 @@ const precioAcentimos = (valor: string) => {
 const centimosAPrecio = (centimos: number) =>
   (centimos / 100).toFixed(2).replace(".", ",");
 
+const getStringAttribute = (
+  attributes: Record<string, string | boolean>,
+  keys: string[]
+) => {
+  for (const key of keys) {
+    const value = attributes[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+};
+
 type Producto = {
   id: string;
   sellerId: string;
@@ -72,6 +87,12 @@ export default function EditarProducto() {
   const [saving, setSaving] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
+
+  const schema = getCategoryAttributeSchema(categoria);
+  const hasDynamicSizeField = schema.some((field) =>
+    ["talla", "talla_edad", "numero"].includes(field.key)
+  );
+  const hasDynamicColorField = schema.some((field) => field.key === "color");
 
   useEffect(() => {
     if (!router.isReady || authLoading) return;
@@ -172,8 +193,11 @@ export default function EditarProducto() {
         description: descripcion,
         priceCents,
         category: categoria,
-        size: talla || null,
-        color: color || null,
+        size:
+          getStringAttribute(attributes, ["talla", "talla_edad", "numero"]) ||
+          talla ||
+          null,
+        color: getStringAttribute(attributes, ["color"]) || color || null,
         brand: marca || null,
         usage: uso || null,
         location: ubicacion || null,
@@ -263,8 +287,6 @@ export default function EditarProducto() {
   };
 
   const renderAttributeFields = () => {
-    const schema = getCategoryAttributeSchema(categoria);
-
     if (!categoria || schema.length === 0) {
       return null;
     }
@@ -389,22 +411,28 @@ export default function EditarProducto() {
                 ))}
               </select>
               {renderAttributeFields()}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <input
-                  className="w-full rounded border p-3"
-                  value={talla}
-                  onChange={(e) => setTalla(e.target.value)}
-                  placeholder="Talla, ej. 38, M"
-                  maxLength={20}
-                />
-                <input
-                  className="w-full rounded border p-3"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  placeholder="Color"
-                  maxLength={40}
-                />
-              </div>
+              {(!hasDynamicSizeField || !hasDynamicColorField) && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {!hasDynamicSizeField && (
+                    <input
+                      className="w-full rounded border p-3"
+                      value={talla}
+                      onChange={(e) => setTalla(e.target.value)}
+                      placeholder="Talla, ej. 38, M"
+                      maxLength={20}
+                    />
+                  )}
+                  {!hasDynamicColorField && (
+                    <input
+                      className="w-full rounded border p-3"
+                      value={color}
+                      onChange={(e) => setColor(e.target.value)}
+                      placeholder="Color"
+                      maxLength={40}
+                    />
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input
                   className="w-full rounded border p-3"

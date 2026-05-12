@@ -24,6 +24,21 @@ const precioAcentimos = (valor: string) => {
   return Math.round(numero * 100);
 };
 
+const getStringAttribute = (
+  attributes: Record<string, string | boolean>,
+  keys: string[]
+) => {
+  for (const key of keys) {
+    const value = attributes[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+};
+
 export default function Publicar() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -43,6 +58,12 @@ export default function Publicar() {
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [mensaje, setMensaje] = useState("");
   const [acceptedLegal, setAcceptedLegal] = useState(false);
+
+  const schema = getCategoryAttributeSchema(categoria);
+  const hasDynamicSizeField = schema.some((field) =>
+    ["talla", "talla_edad", "numero"].includes(field.key)
+  );
+  const hasDynamicColorField = schema.some((field) => field.key === "color");
 
   useEffect(() => {
     if (!router.isReady || authLoading) {
@@ -159,8 +180,11 @@ export default function Publicar() {
         description: descripcion,
         priceCents,
         category: categoria,
-        size: talla || null,
-        color: color || null,
+        size:
+          getStringAttribute(attributes, ["talla", "talla_edad", "numero"]) ||
+          talla ||
+          null,
+        color: getStringAttribute(attributes, ["color"]) || color || null,
         brand: marca || null,
         usage: uso || null,
         location: ubicacion || null,
@@ -214,8 +238,6 @@ export default function Publicar() {
   };
 
   const renderAttributeFields = () => {
-    const schema = getCategoryAttributeSchema(categoria);
-
     if (!categoria || schema.length === 0) {
       return null;
     }
@@ -345,10 +367,16 @@ export default function Publicar() {
 
             {renderAttributeFields()}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <input className="w-full border p-3 rounded" value={talla} onChange={(e) => setTalla(e.target.value)} placeholder="Talla, ej. 38, M" maxLength={20} />
-              <input className="w-full border p-3 rounded" value={color} onChange={(e) => setColor(e.target.value)} placeholder="Color" maxLength={40} />
-            </div>
+            {(!hasDynamicSizeField || !hasDynamicColorField) && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {!hasDynamicSizeField && (
+                  <input className="w-full border p-3 rounded" value={talla} onChange={(e) => setTalla(e.target.value)} placeholder="Talla, ej. 38, M" maxLength={20} />
+                )}
+                {!hasDynamicColorField && (
+                  <input className="w-full border p-3 rounded" value={color} onChange={(e) => setColor(e.target.value)} placeholder="Color" maxLength={40} />
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <input className="w-full border p-3 rounded" value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Marca o diseñador" maxLength={80} />
