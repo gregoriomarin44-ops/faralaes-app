@@ -50,6 +50,46 @@ const prepararImagenes = (images: unknown): { images: string[]; error: string | 
   return { images: imagenes, error: null };
 };
 
+const añadirResumenReviews = async <T extends { sellerId: string }>(productos: T[]) => {
+  const sellerIds = Array.from(new Set(productos.map((producto) => producto.sellerId)));
+
+  if (sellerIds.length === 0) {
+    return productos.map((producto) => ({
+      ...producto,
+      sellerRatingAverage: null,
+      sellerReviewCount: 0,
+    }));
+  }
+
+  const reviewGroups = await prisma.review.groupBy({
+    by: ["reviewedUserId"],
+    where: {
+      reviewedUserId: { in: sellerIds },
+    },
+    _avg: { rating: true },
+    _count: { _all: true },
+  });
+  const reviewsBySeller = new Map(
+    reviewGroups.map((group) => [
+      group.reviewedUserId,
+      {
+        average: group._avg.rating,
+        count: group._count._all,
+      },
+    ])
+  );
+
+  return productos.map((producto) => {
+    const reviewSummary = reviewsBySeller.get(producto.sellerId);
+
+    return {
+      ...producto,
+      sellerRatingAverage: reviewSummary?.average || null,
+      sellerReviewCount: reviewSummary?.count || 0,
+    };
+  });
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === "GET") {
@@ -75,7 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       });
 
-      return res.status(200).json(productos);
+      return res.status(200).json(await añadirResumenReviews(productos));
     }
 
     if (req.method === "POST") {

@@ -18,6 +18,8 @@ export type ListingCardItem = {
   sellerVerified?: boolean;
   sellerFeatured?: boolean;
   listingFeatured?: boolean;
+  sellerRatingAverage?: number | null;
+  sellerReviewCount?: number;
   images?: {
     url: string;
   }[];
@@ -136,6 +138,12 @@ export default function ListingCard({
             1/{imageCount}
           </span>
         )}
+
+        {listing.sellerRatingAverage && listing.sellerReviewCount ? (
+          <span className="absolute bottom-2.5 right-2.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-black text-stone-900 shadow-sm backdrop-blur">
+            ⭐ {listing.sellerRatingAverage.toFixed(1)}
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col px-3.5 py-3">

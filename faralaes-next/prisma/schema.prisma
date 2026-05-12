@@ -32,6 +32,8 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens PasswordResetToken[]
   reports       Report[]       @relation("ReporterReports")
+  reviewsGiven  Review[]       @relation("ReviewerReviews")
+  reviewsReceived Review[]     @relation("ReviewedUserReviews")
 }
 
 model Report {
@@ -109,6 +111,26 @@ model Listing {
   images                 ListingImage[]
   favorites              Favorite[]
   conversations          Conversation[]
+  reviews                Review[]
+}
+
+model Review {
+  id             String   @id @default(uuid()) @db.Uuid
+  rating         Int
+  comment        String?
+  reviewerId     String   @db.Uuid
+  reviewedUserId String   @db.Uuid
+  listingId      String?  @db.Uuid
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  reviewer       User     @relation("ReviewerReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewedUser   User     @relation("ReviewedUserReviews", fields: [reviewedUserId], references: [id], onDelete: Cascade)
+  listing        Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@unique([reviewerId, reviewedUserId, listingId])
+  @@index([reviewedUserId, createdAt])
+  @@index([reviewerId])
+  @@index([listingId])
 }
 
 model ListingImage {

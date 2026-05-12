@@ -1,7 +1,7 @@
 import type { GetServerSideProps } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import NavBar from "../../components/NavBar";
 import ReportModal from "../../components/ReportModal";
 import { formatPrice } from "../../lib/formatPrice";
@@ -23,6 +23,22 @@ type PublicUserPageProps = {
     displayName: string;
     bio: string | null;
     location: string | null;
+    reviewAverage: number | null;
+    reviewCount: number;
+    reviews: {
+      id: string;
+      rating: number;
+      comment: string | null;
+      createdAt: string;
+      reviewer: {
+        username: string;
+        displayName: string;
+      };
+      listing: {
+        id: string;
+        title: string;
+      } | null;
+    }[];
     listings: PublicListing[];
   } | null;
 };
@@ -62,12 +78,36 @@ export const getServerSideProps: GetServerSideProps<
           },
         },
       },
+      reviewsReceived: {
+        orderBy: { createdAt: "desc" },
+        take: 8,
+        include: {
+          reviewer: {
+            select: {
+              username: true,
+              displayName: true,
+            },
+          },
+          listing: {
+            select: {
+              id: true,
+              title: true,
+            },
+          },
+        },
+      },
     },
   });
 
   if (!user || user.disabled) {
     return { notFound: true };
   }
+
+  const reviewSummary = await prisma.review.aggregate({
+    where: { reviewedUserId: user.id },
+    _avg: { rating: true },
+    _count: { _all: true },
+  });
 
   return {
     props: {
@@ -77,6 +117,9 @@ export const getServerSideProps: GetServerSideProps<
         displayName: user.displayName,
         bio: user.profile?.bio || null,
         location: user.profile?.location || null,
+        reviewAverage: reviewSummary._avg.rating || null,
+        reviewCount: reviewSummary._count._all,
+        reviews: JSON.parse(JSON.stringify(user.reviewsReceived)),
         listings: user.listings,
       },
     },
@@ -87,6 +130,13 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
   const router = useRouter();
   const { user: currentUser } = useAuth();
   const [showReportModal, setShowReportModal] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [reviewMessage, setReviewMessage] = useState("");
+  const [reviewError, setReviewError] = useState("");
+  const [reviews, setReviews] = useState(user?.reviews || []);
+  const [reviewAverage, setReviewAverage] = useState(user?.reviewAverage || null);
+  const [reviewCount, setReviewCount] = useState(user?.reviewCount || 0);
 
   if (!user) {
     return null;
@@ -101,6 +151,44 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
     }
 
     setShowReportModal(true);
+  };
+  const submitReview = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setReviewMessage("");
+    setReviewError("");
+
+    if (!currentUser) {
+      router.push(`/login?next=${encodeURIComponent(router.asPath)}`);
+      return;
+    }
+
+    const res = await fetch("/api/reviews/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reviewedUserId: user.id,
+        rating,
+        comment,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setReviewError(data?.error || "No se ha podido publicar la valoración.");
+      return;
+    }
+
+    setComment("");
+    setRating(5);
+    setReviewMessage("Valoración publicada correctamente.");
+
+    const reviewsRes = await fetch(`/api/reviews/user/${user.id}`);
+    if (reviewsRes.ok) {
+      const data = await reviewsRes.json();
+      setReviews(data.reviews || []);
+      setReviewAverage(data.average || null);
+      setReviewCount(data.count || 0);
+    }
   };
 
   return (
@@ -130,6 +218,12 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                     {user.bio && <p>{user.bio}</p>}
                   </div>
                 )}
+                {reviewCount > 0 && (
+                  <p className="mt-4 text-sm font-bold text-amber-700">
+                    ⭐ {reviewAverage?.toFixed(1)} · {reviewCount}{" "}
+                    {reviewCount === 1 ? "reseña" : "reseñas"}
+                  </p>
+                )}
               </div>
               </div>
               {!isOwnProfile && (
@@ -143,6 +237,119 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
               )}
             </div>
           </div>
+
+          <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
+                Valoraciones
+              </p>
+              <h2 className="mt-2 font-serif text-3xl text-gray-950">
+                Confianza en Faralaes
+              </h2>
+              {reviewCount > 0 ? (
+                <div className="mt-4">
+                  <p className="text-4xl font-black text-amber-700">
+                    ⭐ {reviewAverage?.toFixed(1)}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-gray-500">
+                    Basado en {reviewCount} {reviewCount === 1 ? "reseña" : "reseñas"}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-gray-600">
+                  Este perfil todavía no tiene valoraciones.
+                </p>
+              )}
+
+              {!isOwnProfile && (
+                <form onSubmit={submitReview} className="mt-6 space-y-3">
+                  <label className="block text-sm font-bold text-gray-700">
+                    Estrellas
+                    <select
+                      value={rating}
+                      onChange={(event) => setRating(Number(event.target.value))}
+                      className="mt-2 h-11 w-full rounded border border-gray-300 bg-white px-3"
+                    >
+                      {[5, 4, 3, 2, 1].map((value) => (
+                        <option key={value} value={value}>
+                          {"⭐".repeat(value)} {value}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-sm font-bold text-gray-700">
+                    Comentario opcional
+                    <textarea
+                      value={comment}
+                      onChange={(event) => setComment(event.target.value)}
+                      className="mt-2 min-h-24 w-full rounded border border-gray-300 p-3"
+                      maxLength={600}
+                      placeholder="Cuenta cómo fue tu experiencia"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    className="w-full rounded-full bg-green-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-green-800"
+                  >
+                    Publicar valoración
+                  </button>
+                  {reviewMessage && (
+                    <p className="text-sm font-semibold text-green-700">{reviewMessage}</p>
+                  )}
+                  {reviewError && (
+                    <p className="text-sm font-semibold text-red-700">{reviewError}</p>
+                  )}
+                </form>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h2 className="font-serif text-3xl text-gray-950">
+                Últimas reseñas
+              </h2>
+              {reviews.length === 0 ? (
+                <p className="mt-4 text-sm text-gray-600">
+                  Aún no hay reseñas publicadas.
+                </p>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {reviews.map((review) => (
+                    <article
+                      key={review.id}
+                      className="rounded-xl border border-gray-100 bg-[#f8f3ef] p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-gray-950">
+                            {review.reviewer.displayName}
+                          </p>
+                          <p className="text-xs font-semibold text-gray-500">
+                            @{review.reviewer.username}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-sm font-black text-amber-700">
+                          ⭐ {review.rating}
+                        </p>
+                      </div>
+                      {review.comment && (
+                        <p className="mt-3 text-sm leading-6 text-gray-700">
+                          {review.comment}
+                        </p>
+                      )}
+                      {review.listing && (
+                        <Link
+                          href={`/producto/${review.listing.id}`}
+                          className="mt-3 inline-flex text-xs font-bold text-green-800 hover:text-green-900"
+                        >
+                          {review.listing.title}
+                        </Link>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
 
           <div className="mt-10 flex items-end justify-between gap-4">
             <div>
