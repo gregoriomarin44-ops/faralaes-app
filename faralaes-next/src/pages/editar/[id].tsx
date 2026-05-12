@@ -217,9 +217,12 @@ export default function EditarProducto() {
     if (!files?.length) return;
 
     const seleccionadas = Array.from(files);
+    const totalImagenes = imagenes.length + seleccionadas.length;
 
-    if (seleccionadas.length > MAX_IMAGES) {
-      setError("Puedes subir un máximo de 5 imágenes.");
+    if (totalImagenes > MAX_IMAGES) {
+      setError(
+        `Puedes subir un máximo de ${MAX_IMAGES} imágenes. Ahora tienes ${imagenes.length} y has seleccionado ${seleccionadas.length}.`
+      );
       return;
     }
 
@@ -236,7 +239,7 @@ export default function EditarProducto() {
       const nuevasImagenes = await Promise.all(
         seleccionadas.map((file) => convertirImagenABase64(file))
       );
-      setImagenes(nuevasImagenes);
+      setImagenes((prev) => [...prev, ...nuevasImagenes]);
       setImagenesCambiadas(true);
     } catch (error) {
       setError(
@@ -245,6 +248,11 @@ export default function EditarProducto() {
           : "No se han podido leer las imágenes seleccionadas."
       );
     }
+  };
+
+  const eliminarImagen = (index: number) => {
+    setImagenes((prev) => prev.filter((_, imageIndex) => imageIndex !== index));
+    setImagenesCambiadas(true);
   };
 
   const updateAttribute = (key: string, value: string | boolean) => {
@@ -453,43 +461,60 @@ export default function EditarProducto() {
               </label>
 
               <div className="space-y-3">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => {
-                    seleccionarImagenes(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
+                <div className="rounded border border-gray-200 bg-white p-3">
+                  <input
+                    id="edit-listing-images"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="sr-only"
+                    onChange={(e) => {
+                      seleccionarImagenes(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <label
+                      htmlFor="edit-listing-images"
+                      className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full border border-gray-300 bg-[#f8f3ef] px-4 py-2 text-sm font-bold text-gray-800 transition hover:border-green-700 hover:text-green-700 sm:w-auto"
+                    >
+                      Añadir imágenes
+                    </label>
+                    <div className="text-sm text-gray-500 sm:text-right">
+                      <p>
+                        {imagenes.length === 0
+                          ? "Ninguna imagen"
+                          : imagenes.length === 1
+                            ? "1 imagen"
+                            : `${imagenes.length} imágenes`}
+                      </p>
+                      <p className="mt-0.5 text-xs font-semibold text-gray-400">
+                        Máx. {MAX_IMAGES} imágenes
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
                 {imagenes.length > 0 && (
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
                     {imagenes.map((imagen, index) => (
                       <div
                         key={`${imagen.slice(0, 40)}-${index}`}
-                        className="relative aspect-square overflow-hidden rounded border border-gray-200 bg-gray-100"
+                        className="relative aspect-square min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100"
                       >
                         <img
                           src={imagen}
                           alt={`Imagen ${index + 1}`}
                           className="h-full w-full object-cover"
                         />
-                        {imagenesCambiadas && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setImagenes((prev) =>
-                                prev.filter(
-                                  (_, imageIndex) => imageIndex !== index
-                                )
-                              )
-                            }
-                            className="absolute right-2 top-2 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-red-700 shadow"
-                          >
-                            ×
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => eliminarImagen(index)}
+                          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-bold leading-none text-red-700 shadow"
+                          aria-label={`Eliminar imagen ${index + 1}`}
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
                   </div>
