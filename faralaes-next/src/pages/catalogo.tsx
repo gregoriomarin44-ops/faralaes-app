@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import NavBar from "../components/NavBar";
@@ -33,6 +33,13 @@ type Producto = {
   images?: {
     url: string;
   }[];
+};
+
+type CatalogDisplayState = {
+  productosFiltrados: Producto[];
+  ultimosAnuncios: Producto[];
+  puedeInteresarteFinal: Producto[];
+  totalProductos: number;
 };
 
 const precioAcentimos = (valor: string) => {
@@ -228,10 +235,13 @@ export default function Catalogo() {
     setSoloEnvio(false);
   };
 
-  const selectedAttributeSchema =
-    categoria === "todas"
-      ? []
-      : getCategoryAttributeSchema(categoria).filter((field) => field.filterable);
+  const selectedAttributeSchema = useMemo(
+    () =>
+      categoria === "todas"
+        ? []
+        : getCategoryAttributeSchema(categoria).filter((field) => field.filterable),
+    [categoria]
+  );
   const hidesGeneralSizeFilter = hasDynamicSizeField(selectedAttributeSchema);
   const hidesGeneralColorFilter = hasDynamicColorField(selectedAttributeSchema);
 
@@ -585,8 +595,7 @@ export default function Catalogo() {
     <article
       key={p.id}
       onClick={() => abrirProducto(p)}
-      style={{ animationDelay: `${Math.min(index, 6) * 35}ms` }}
-      className="motion-card cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm hover:border-gray-300 hover:shadow-[0_16px_36px_rgba(34,24,20,0.12)]"
+      className="cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:border-gray-300 hover:shadow-[0_16px_36px_rgba(34,24,20,0.12)]"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-gray-200">
         {userId && p.sellerId === userId && (
@@ -613,7 +622,7 @@ export default function Catalogo() {
             src={p.images[0].url}
             alt={p.title}
             loading="lazy"
-            className="motion-image h-full w-full object-cover"
+            className="h-full w-full object-cover"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-gray-400">
@@ -671,139 +680,209 @@ export default function Catalogo() {
   const precioMinCents = precioAcentimos(precioMin);
   const precioMaxCents = precioAcentimos(precioMax);
   const catalogReady = !loading && urlFiltersReady;
-  const productosFiltrados = productos
-    .filter((producto) => {
-      const texto = busqueda.trim().toLowerCase();
-      const coincideTexto =
-        !texto ||
-        producto.title.toLowerCase().includes(texto) ||
-        (producto.description || "").toLowerCase().includes(texto);
-      const coincideCategoria =
-        categoria === "todas" || producto.category === categoria;
-      const coincideUbicacion =
-        !ubicacion.trim() ||
-        (producto.location || "")
-          .toLowerCase()
-          .includes(ubicacion.trim().toLowerCase());
-      const coincideTalla =
-        hidesGeneralSizeFilter ||
-        !talla.trim() ||
-        (producto.size || "").toLowerCase().includes(talla.trim().toLowerCase());
-      const coincideColor =
-        hidesGeneralColorFilter ||
-        !color.trim() ||
-        (producto.color || "")
-          .toLowerCase()
-          .includes(color.trim().toLowerCase());
-      const coincideEstado =
-        estado === "todos" || producto.condition === estado;
-      const productoAttributes = normalizeAttributesForCategory(
-        producto.category,
-        producto.attributes
-      );
-      const coincideAttributes =
-        categoria === "todas" ||
-        selectedAttributeSchema.every((field) => {
-          const selectedValue = attributeFilters[field.key];
+  const currentCatalogState = useMemo<CatalogDisplayState>(() => {
+    const productosFiltrados = productos
+      .filter((producto) => {
+        const texto = busqueda.trim().toLowerCase();
+        const coincideTexto =
+          !texto ||
+          producto.title.toLowerCase().includes(texto) ||
+          (producto.description || "").toLowerCase().includes(texto);
+        const coincideCategoria =
+          categoria === "todas" || producto.category === categoria;
+        const coincideUbicacion =
+          !ubicacion.trim() ||
+          (producto.location || "")
+            .toLowerCase()
+            .includes(ubicacion.trim().toLowerCase());
+        const coincideTalla =
+          hidesGeneralSizeFilter ||
+          !talla.trim() ||
+          (producto.size || "").toLowerCase().includes(talla.trim().toLowerCase());
+        const coincideColor =
+          hidesGeneralColorFilter ||
+          !color.trim() ||
+          (producto.color || "")
+            .toLowerCase()
+            .includes(color.trim().toLowerCase());
+        const coincideEstado =
+          estado === "todos" || producto.condition === estado;
+        const productoAttributes = normalizeAttributesForCategory(
+          producto.category,
+          producto.attributes
+        );
+        const coincideAttributes =
+          categoria === "todas" ||
+          selectedAttributeSchema.every((field) => {
+            const selectedValue = attributeFilters[field.key];
 
-          if (!selectedValue) {
-            return true;
-          }
+            if (!selectedValue) {
+              return true;
+            }
 
-          const attributeValue = productoAttributes[field.key];
+            const attributeValue = productoAttributes[field.key];
 
-          if (attributeValue === undefined) {
+            if (attributeValue === undefined) {
+              return false;
+            }
+
+            if (field.type === "boolean") {
+              return String(attributeValue) === selectedValue;
+            }
+
+            return formatAttributeValue(field, attributeValue)
+              .toLowerCase()
+              .includes(selectedValue.toLowerCase());
+          });
+        const coincidePrecioMin =
+          precioMinCents === null || producto.priceCents >= precioMinCents;
+        const coincidePrecioMax =
+          precioMaxCents === null || producto.priceCents <= precioMaxCents;
+        const coincideWhatsapp =
+          !soloWhatsapp || producto.whatsappContactAllowed;
+        const coincideEnvio = !soloEnvio || producto.shippingAvailable;
+
+        return (
+          coincideTexto &&
+          coincideCategoria &&
+          coincideUbicacion &&
+          coincideTalla &&
+          coincideColor &&
+          coincideEstado &&
+          coincideAttributes &&
+          coincidePrecioMin &&
+          coincidePrecioMax &&
+          coincideWhatsapp &&
+          coincideEnvio
+        );
+      })
+      .sort((a, b) => {
+        if (orden === "precio-asc") {
+          return a.priceCents - b.priceCents;
+        }
+
+        if (orden === "precio-desc") {
+          return b.priceCents - a.priceCents;
+        }
+
+        return 0;
+      });
+    const ultimosAnuncios = productosFiltrados.slice(0, 4);
+    const idsUltimosAnuncios = new Set(
+      ultimosAnuncios.map((producto) => producto.id)
+    );
+    const categoriasFavoritas = new Set(
+      productosFavoritos.map((producto) => producto.category).filter(Boolean)
+    );
+    const ubicacionesFavoritas = new Set(
+      productosFavoritos
+        .map((producto) => producto.location?.trim().toLowerCase())
+        .filter((location): location is string => Boolean(location))
+    );
+    const idsFavoritos = new Set(favoritos);
+    const recomendacionesRelacionadas = userId
+      ? productosFiltrados.filter((producto) => {
+          if (
+            idsUltimosAnuncios.has(producto.id) ||
+            idsFavoritos.has(producto.id)
+          ) {
             return false;
           }
 
-          if (field.type === "boolean") {
-            return String(attributeValue) === selectedValue;
-          }
+          const mismaCategoria = categoriasFavoritas.has(producto.category);
+          const mismaUbicacion = producto.location
+            ? ubicacionesFavoritas.has(producto.location.trim().toLowerCase())
+            : false;
 
-          return formatAttributeValue(field, attributeValue)
-            .toLowerCase()
-            .includes(selectedValue.toLowerCase());
-        });
-      const coincidePrecioMin =
-        precioMinCents === null || producto.priceCents >= precioMinCents;
-      const coincidePrecioMax =
-        precioMaxCents === null || producto.priceCents <= precioMaxCents;
-      const coincideWhatsapp =
-        !soloWhatsapp || producto.whatsappContactAllowed;
-      const coincideEnvio = !soloEnvio || producto.shippingAvailable;
+          return mismaCategoria || mismaUbicacion;
+        })
+      : [];
+    const recomendacionesFallback = productosFiltrados.filter(
+      (producto) =>
+        !idsUltimosAnuncios.has(producto.id) &&
+        !idsFavoritos.has(producto.id) &&
+        !recomendacionesRelacionadas.some(
+          (recomendacion) => recomendacion.id === producto.id
+        )
+    );
+    const puedeInteresarte = [
+      ...recomendacionesRelacionadas,
+      ...recomendacionesFallback,
+    ];
+    const idsPuedeInteresarte = new Set(
+      puedeInteresarte.map((producto) => producto.id)
+    );
+    const rellenoConRepetidos = productosFiltrados.filter(
+      (producto) => !idsPuedeInteresarte.has(producto.id)
+    );
+    const puedeInteresarteFinal = [
+      ...puedeInteresarte,
+      ...rellenoConRepetidos,
+    ].slice(0, 4);
 
-      return (
-        coincideTexto &&
-        coincideCategoria &&
-        coincideUbicacion &&
-        coincideTalla &&
-        coincideColor &&
-        coincideEstado &&
-        coincideAttributes &&
-        coincidePrecioMin &&
-        coincidePrecioMax &&
-        coincideWhatsapp &&
-        coincideEnvio
-      );
-    })
-    .sort((a, b) => {
-      if (orden === "precio-asc") {
-        return a.priceCents - b.priceCents;
-      }
+    return {
+      productosFiltrados,
+      ultimosAnuncios,
+      puedeInteresarteFinal,
+      totalProductos: productos.length,
+    };
+  }, [
+    attributeFilters,
+    busqueda,
+    categoria,
+    color,
+    estado,
+    favoritos,
+    hidesGeneralColorFilter,
+    hidesGeneralSizeFilter,
+    orden,
+    precioMaxCents,
+    precioMinCents,
+    productos,
+    productosFavoritos,
+    selectedAttributeSchema,
+    soloEnvio,
+    soloWhatsapp,
+    talla,
+    ubicacion,
+    userId,
+  ]);
+  const [displayedCatalogState, setDisplayedCatalogState] =
+    useState<CatalogDisplayState | null>(null);
+  const [resultsPending, setResultsPending] = useState(false);
 
-      if (orden === "precio-desc") {
-        return b.priceCents - a.priceCents;
-      }
+  useEffect(() => {
+    if (!catalogReady) {
+      return;
+    }
 
-      return 0;
+    if (!displayedCatalogState) {
+      setDisplayedCatalogState(currentCatalogState);
+      return;
+    }
+
+    if (displayedCatalogState === currentCatalogState) {
+      setResultsPending(false);
+      return;
+    }
+
+    setResultsPending(true);
+
+    const frameId = window.requestAnimationFrame(() => {
+      setDisplayedCatalogState(currentCatalogState);
+      setResultsPending(false);
     });
-  const ultimosAnuncios = productosFiltrados.slice(0, 4);
-  const idsUltimosAnuncios = new Set(ultimosAnuncios.map((producto) => producto.id));
-  const categoriasFavoritas = new Set(
-    productosFavoritos.map((producto) => producto.category).filter(Boolean)
-  );
-  const ubicacionesFavoritas = new Set(
-    productosFavoritos
-      .map((producto) => producto.location?.trim().toLowerCase())
-      .filter((location): location is string => Boolean(location))
-  );
-  const idsFavoritos = new Set(favoritos);
-  const recomendacionesRelacionadas = userId
-    ? productosFiltrados.filter((producto) => {
-        if (idsUltimosAnuncios.has(producto.id) || idsFavoritos.has(producto.id)) {
-          return false;
-        }
 
-        const mismaCategoria = categoriasFavoritas.has(producto.category);
-        const mismaUbicacion = producto.location
-          ? ubicacionesFavoritas.has(producto.location.trim().toLowerCase())
-          : false;
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [catalogReady, currentCatalogState, displayedCatalogState]);
 
-        return mismaCategoria || mismaUbicacion;
-      })
-    : [];
-  const recomendacionesFallback = productosFiltrados.filter(
-    (producto) =>
-      !idsUltimosAnuncios.has(producto.id) &&
-      !idsFavoritos.has(producto.id) &&
-      !recomendacionesRelacionadas.some(
-        (recomendacion) => recomendacion.id === producto.id
-      )
-  );
-  const puedeInteresarte = [
-    ...recomendacionesRelacionadas,
-    ...recomendacionesFallback,
-  ];
-  const idsPuedeInteresarte = new Set(
-    puedeInteresarte.map((producto) => producto.id)
-  );
-  const rellenoConRepetidos = productosFiltrados.filter(
-    (producto) => !idsPuedeInteresarte.has(producto.id)
-  );
-  const puedeInteresarteFinal = [
-    ...puedeInteresarte,
-    ...rellenoConRepetidos,
-  ].slice(0, 4);
+  const visibleCatalogState = displayedCatalogState || currentCatalogState;
+  const productosFiltrados = visibleCatalogState.productosFiltrados;
+  const ultimosAnuncios = visibleCatalogState.ultimosAnuncios;
+  const puedeInteresarteFinal = visibleCatalogState.puedeInteresarteFinal;
+  const visibleTotalProductos = visibleCatalogState.totalProductos;
   const activeFilterChips = [
     busqueda.trim()
       ? {
@@ -981,7 +1060,7 @@ export default function Catalogo() {
 
             <p className="text-gray-600">
               {catalogReady
-                ? `Mostrando ${productosFiltrados.length} de ${productos.length} prendas publicadas.`
+                ? `Mostrando ${productosFiltrados.length} de ${visibleTotalProductos} prendas publicadas.`
                 : "Preparando el catálogo..."}
             </p>
           </div>
@@ -1074,24 +1153,37 @@ export default function Catalogo() {
         )}
 
         {catalogReady && (
-          <div className="min-h-[900px] space-y-10 sm:min-h-[1120px] lg:min-h-[1180px]">
-            <section className="min-h-[500px] sm:min-h-[620px] lg:min-h-[660px]">
-              <h2 className="font-serif text-3xl text-gray-950">
-                Últimos anuncios publicados
-              </h2>
-              {ultimosAnuncios.length > 0
-                ? renderProductGrid(ultimosAnuncios)
-                : renderEmptyResults()}
-            </section>
+          <div className="relative min-h-[900px] sm:min-h-[1120px] lg:min-h-[1180px]">
+            <div
+              className={`space-y-10 transition-opacity duration-150 ${
+                resultsPending ? "opacity-70" : "opacity-100"
+              }`}
+            >
+              <section className="min-h-[500px] sm:min-h-[620px] lg:min-h-[660px]">
+                <h2 className="font-serif text-3xl text-gray-950">
+                  Últimos anuncios publicados
+                </h2>
+                {ultimosAnuncios.length > 0
+                  ? renderProductGrid(ultimosAnuncios)
+                  : renderEmptyResults()}
+              </section>
 
-            <section className="min-h-[500px] sm:min-h-[620px] lg:min-h-[660px]">
-              <h2 className="font-serif text-3xl text-gray-950">
-                Puede interesarte
-              </h2>
-              {puedeInteresarteFinal.length > 0
-                ? renderProductGrid(puedeInteresarteFinal)
-                : renderEmptyResults()}
+              <section className="min-h-[500px] sm:min-h-[620px] lg:min-h-[660px]">
+                <h2 className="font-serif text-3xl text-gray-950">
+                  Puede interesarte
+                </h2>
+                {puedeInteresarteFinal.length > 0
+                  ? renderProductGrid(puedeInteresarteFinal)
+                  : renderEmptyResults()}
             </section>
+            </div>
+            {resultsPending && (
+              <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center pt-4">
+                <span className="rounded-full border border-gray-200 bg-white/90 px-4 py-2 text-xs font-bold uppercase tracking-widest text-gray-500 shadow-sm">
+                  Actualizando
+                </span>
+              </div>
+            )}
           </div>
         )}
         </section>
