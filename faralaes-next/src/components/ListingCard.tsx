@@ -33,7 +33,7 @@ type ListingCardProps = {
 const ShippingIcon = () => (
   <svg
     aria-hidden="true"
-    className="h-3.5 w-3.5"
+    className="h-4 w-4"
     fill="none"
     stroke="currentColor"
     strokeLinecap="round"
@@ -51,7 +51,7 @@ const ShippingIcon = () => (
 const WhatsappIcon = () => (
   <svg
     aria-hidden="true"
-    className="h-3.5 w-3.5"
+    className="h-4 w-4"
     fill="none"
     stroke="currentColor"
     strokeLinecap="round"
@@ -77,6 +77,12 @@ export default function ListingCard({
     : listing.sellerVerified
       ? "Verificado"
       : "";
+  const chips = [
+    listing.size ? `Talla ${listing.size}` : "",
+    listing.color || "",
+    listing.brand || "",
+    listing.condition ? getConditionLabel(listing.condition) : "",
+  ].filter(Boolean).slice(0, 3);
 
   return (
     <article
@@ -125,54 +131,47 @@ export default function ListingCard({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-3.5">
-        <p className="text-[1.35rem] font-black leading-none tracking-normal text-red-800">
+      <div className="flex flex-1 flex-col px-3.5 py-3">
+        <p className="text-[1.4rem] font-black leading-none tracking-normal text-red-800">
           {formatPrice(listing.priceCents)}
         </p>
 
-        <h2 className="mt-2 line-clamp-2 min-h-[2.5rem] text-[15px] font-bold leading-5 text-stone-950">
+        <h2 className="mt-1.5 line-clamp-2 text-[15px] font-bold leading-5 text-stone-950">
           {listing.title}
         </h2>
 
-        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold text-stone-600">
-          {listing.size && (
-            <span className="rounded-full bg-[#f8f3ef] px-2 py-0.5">
-              Talla {listing.size}
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-stone-700">
+          {listing.shippingAvailable && (
+            <span className="inline-flex items-center gap-1 text-green-800">
+              <ShippingIcon />
+              Envío disponible
             </span>
           )}
-          {listing.color && (
-            <span className="rounded-full bg-[#f8f3ef] px-2 py-0.5">
-              {listing.color}
-            </span>
-          )}
-          {listing.brand && (
-            <span className="max-w-full truncate rounded-full bg-[#f8f3ef] px-2 py-0.5">
-              {listing.brand}
-            </span>
-          )}
-          {listing.condition && (
-            <span className="rounded-full bg-[#f8f3ef] px-2 py-0.5">
-              {getConditionLabel(listing.condition)}
+          {listing.whatsappContactAllowed && (
+            <span className="inline-flex items-center gap-1 text-green-800">
+              <WhatsappIcon />
+              WhatsApp
             </span>
           )}
         </div>
 
-        <div className="mt-auto flex min-h-7 items-center justify-between gap-2 pt-3 text-xs text-stone-500">
+        {chips.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold text-stone-600">
+            {chips.map((chip) => (
+              <span
+                key={chip}
+                className="max-w-full truncate rounded-full bg-[#f8f3ef] px-2 py-0.5"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-2 text-xs text-stone-500">
           <p className="min-w-0 truncate font-medium">
             {listing.location || "Andalucía"}
           </p>
-          <div className="flex shrink-0 items-center gap-1.5 text-stone-600">
-            {listing.shippingAvailable && (
-              <span title="Envío disponible" aria-label="Envío disponible">
-                <ShippingIcon />
-              </span>
-            )}
-            {listing.whatsappContactAllowed && (
-              <span title="WhatsApp permitido" aria-label="WhatsApp permitido">
-                <WhatsappIcon />
-              </span>
-            )}
-          </div>
         </div>
       </div>
     </article>
