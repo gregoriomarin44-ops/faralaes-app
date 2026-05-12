@@ -79,6 +79,16 @@ export default function ListingCard({
   onDetailsClick,
 }: ListingCardProps) {
   const imageCount = listing.images?.length || 0;
+  const ratingAverage =
+    typeof listing.sellerRatingAverage === "number" &&
+    Number.isFinite(listing.sellerRatingAverage)
+      ? listing.sellerRatingAverage
+      : null;
+  const reviewCount =
+    typeof listing.sellerReviewCount === "number" &&
+    Number.isFinite(listing.sellerReviewCount)
+      ? listing.sellerReviewCount
+      : 0;
   const profileBadge = listing.listingFeatured
     ? "Anuncio destacado"
     : listing.sellerFeatured
@@ -139,9 +149,9 @@ export default function ListingCard({
           </span>
         )}
 
-        {listing.sellerRatingAverage && listing.sellerReviewCount ? (
+        {ratingAverage !== null && reviewCount > 0 ? (
           <span className="absolute bottom-2.5 right-2.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-black text-stone-900 shadow-sm backdrop-blur">
-            ⭐ {listing.sellerRatingAverage.toFixed(1)}
+            ⭐ {ratingAverage.toFixed(1)}
           </span>
         ) : null}
       </div>

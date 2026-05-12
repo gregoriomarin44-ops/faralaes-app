@@ -93,8 +93,8 @@ export default function Catalogo() {
     const cargarCatalogo = async () => {
       try {
         const productosRes = await fetch("/api/productos");
-        const productosData = await productosRes.json();
-        setProductos(productosData);
+        const productosData = productosRes.ok ? await productosRes.json() : [];
+        setProductos(Array.isArray(productosData) ? productosData : []);
 
         const meRes = await fetch("/api/me");
 
@@ -106,10 +106,18 @@ export default function Catalogo() {
 
           if (!favoritosRes.ok) return;
 
-          const favoritosData: Producto[] = await favoritosRes.json();
-          setProductosFavoritos(favoritosData);
-          setFavoritos(favoritosData.map((producto) => producto.id));
+          const favoritosData = await favoritosRes.json();
+          const favoritosArray: Producto[] = Array.isArray(favoritosData)
+            ? favoritosData
+            : [];
+          setProductosFavoritos(favoritosArray);
+          setFavoritos(favoritosArray.map((producto) => producto.id));
         }
+      } catch (error) {
+        console.error("No se ha podido cargar el catálogo.", error);
+        setProductos([]);
+        setProductosFavoritos([]);
+        setFavoritos([]);
       } finally {
         setLoading(false);
       }

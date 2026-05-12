@@ -61,14 +61,31 @@ const añadirResumenReviews = async <T extends { sellerId: string }>(productos: 
     }));
   }
 
-  const reviewGroups = await prisma.review.groupBy({
-    by: ["reviewedUserId"],
-    where: {
-      reviewedUserId: { in: sellerIds },
-    },
-    _avg: { rating: true },
-    _count: { _all: true },
-  });
+  type ReviewGroup = {
+    reviewedUserId: string;
+    _avg: { rating: number | null };
+    _count: { _all: number };
+  };
+
+  let reviewGroups: ReviewGroup[] = [];
+
+  try {
+    const groups = await prisma.review.groupBy({
+      by: ["reviewedUserId"] as const,
+      where: {
+        reviewedUserId: { in: sellerIds },
+      },
+      _avg: { rating: true },
+      _count: { _all: true },
+    });
+    reviewGroups = groups.map((group) => ({
+      reviewedUserId: group.reviewedUserId,
+      _avg: { rating: group._avg.rating },
+      _count: { _all: group._count._all },
+    }));
+  } catch (error) {
+    console.warn("No se han podido cargar las valoraciones de vendedores.", error);
+  }
   const reviewsBySeller = new Map(
     reviewGroups.map((group) => [
       group.reviewedUserId,
