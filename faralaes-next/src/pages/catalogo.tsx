@@ -558,6 +558,29 @@ export default function Catalogo() {
     </div>
   );
 
+  const renderEmptyResults = () => (
+    <div className="mt-5 flex min-h-[420px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white/70 px-6 text-center sm:min-h-[520px] lg:min-h-[560px]">
+      <div>
+        <p className="font-serif text-2xl text-gray-950">
+          No hay anuncios publicados en esta categoría todavía.
+        </p>
+        <p className="mt-2 text-sm text-gray-500">
+          Prueba con otra categoría o limpia filtros para ver más resultados.
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderProductGrid = (items: Producto[]) => (
+    <div className="mt-5 -mx-4 flex min-h-[420px] gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:min-h-[520px] sm:grid-cols-2 sm:px-0 lg:min-h-[560px] lg:grid-cols-4">
+      {items.map((producto, index) => (
+        <div key={producto.id} className="min-w-[230px] sm:min-w-0">
+          {renderProductoCard(producto, index)}
+        </div>
+      ))}
+    </div>
+  );
+
   const renderProductoCard = (p: Producto, index = 0) => (
     <article
       key={p.id}
@@ -1027,10 +1050,6 @@ export default function Catalogo() {
           </div>
         )}
 
-        {catalogReady && productos.length === 0 && (
-          <p>No hay anuncios publicados.</p>
-        )}
-
         {catalogReady && productos.length > 0 && (
           <div className="mb-8 hidden min-h-[456px] rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:min-h-[392px] md:block">
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -1054,41 +1073,25 @@ export default function Catalogo() {
           </div>
         )}
 
-        {catalogReady && productos.length > 0 && productosFiltrados.length === 0 && (
-          <p>No se han encontrado anuncios con esos filtros.</p>
-        )}
+        {catalogReady && (
+          <div className="min-h-[900px] space-y-10 sm:min-h-[1120px] lg:min-h-[1180px]">
+            <section className="min-h-[500px] sm:min-h-[620px] lg:min-h-[660px]">
+              <h2 className="font-serif text-3xl text-gray-950">
+                Últimos anuncios publicados
+              </h2>
+              {ultimosAnuncios.length > 0
+                ? renderProductGrid(ultimosAnuncios)
+                : renderEmptyResults()}
+            </section>
 
-        {catalogReady && productosFiltrados.length > 0 && (
-          <div className="space-y-10">
-            {ultimosAnuncios.length > 0 && (
-              <section>
-                <h2 className="font-serif text-3xl text-gray-950">
-                  Últimos anuncios publicados
-                </h2>
-                <div className="mt-5 -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
-                  {ultimosAnuncios.map((producto, index) => (
-                    <div key={producto.id} className="min-w-[230px] sm:min-w-0">
-                      {renderProductoCard(producto, index)}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {puedeInteresarteFinal.length > 0 && (
-              <section>
-                <h2 className="font-serif text-3xl text-gray-950">
-                  Puede interesarte
-                </h2>
-                <div className="mt-5 -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
-                  {puedeInteresarteFinal.map((producto, index) => (
-                    <div key={producto.id} className="min-w-[230px] sm:min-w-0">
-                      {renderProductoCard(producto, index)}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
+            <section className="min-h-[500px] sm:min-h-[620px] lg:min-h-[660px]">
+              <h2 className="font-serif text-3xl text-gray-950">
+                Puede interesarte
+              </h2>
+              {puedeInteresarteFinal.length > 0
+                ? renderProductGrid(puedeInteresarteFinal)
+                : renderEmptyResults()}
+            </section>
           </div>
         )}
         </section>
