@@ -17,6 +17,7 @@ export type ListingCardItem = {
   whatsappContactAllowed?: boolean;
   sellerVerified?: boolean;
   sellerFeatured?: boolean;
+  listingFeatured?: boolean;
   images?: {
     url: string;
   }[];
@@ -28,6 +29,8 @@ type ListingCardProps = {
   isOwnListing?: boolean;
   onClick: () => void;
   onFavoriteClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onMessageClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onDetailsClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 };
 
 const ShippingIcon = () => (
@@ -70,10 +73,14 @@ export default function ListingCard({
   isOwnListing = false,
   onClick,
   onFavoriteClick,
+  onMessageClick,
+  onDetailsClick,
 }: ListingCardProps) {
   const imageCount = listing.images?.length || 0;
-  const profileBadge = listing.sellerFeatured
-    ? "Perfil top"
+  const profileBadge = listing.listingFeatured
+    ? "Anuncio destacado"
+    : listing.sellerFeatured
+    ? "Vendedora destacada"
     : listing.sellerVerified
       ? "Verificado"
       : "";
@@ -172,6 +179,27 @@ export default function ListingCard({
           <p className="min-w-0 truncate font-medium">
             {listing.location || "Andalucía"}
           </p>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onMessageClick}
+            className="tap-feedback h-9 rounded-full bg-green-700 px-3 text-xs font-black text-white shadow-sm transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-stone-300"
+            disabled={!onMessageClick}
+          >
+            Mensaje
+          </button>
+          <button
+            type="button"
+            onClick={onDetailsClick || ((event) => {
+              event.stopPropagation();
+              onClick();
+            })}
+            className="tap-feedback h-9 rounded-full border border-stone-300 bg-white px-3 text-xs font-black text-stone-700 transition hover:border-green-700 hover:text-green-700"
+          >
+            Ver detalles
+          </button>
         </div>
       </div>
     </article>

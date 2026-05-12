@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import NavBar from "../components/NavBar";
@@ -39,6 +39,30 @@ export default function Home() {
         setLoading(false);
       });
   }, []);
+
+  const enviarMensaje = async (
+    event: MouseEvent<HTMLButtonElement>,
+    producto: Producto
+  ) => {
+    event.stopPropagation();
+
+    const res = await fetch("/api/conversaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId: producto.id }),
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(`/producto/${producto.id}`)}`);
+      }
+
+      return;
+    }
+
+    const conversacion = await res.json();
+    router.push(`/mensajes?conversationId=${conversacion.id}`);
+  };
 
   return (
     <>
@@ -149,6 +173,7 @@ export default function Home() {
                   key={producto.id}
                   listing={producto}
                   onClick={() => router.push(`/producto/${producto.id}`)}
+                  onMessageClick={(event) => enviarMensaje(event, producto)}
                 />
               ))}
             </div>

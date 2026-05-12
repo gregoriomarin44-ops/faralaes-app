@@ -213,6 +213,40 @@ export default function Catalogo() {
     }
   };
 
+  const enviarMensaje = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+    producto: Producto
+  ) => {
+    event.stopPropagation();
+
+    if (!userId) {
+      router.push(`/login?next=${encodeURIComponent(`/producto/${producto.id}`)}`);
+      return;
+    }
+
+    if (producto.sellerId === userId) {
+      router.push(`/editar/${producto.id}`);
+      return;
+    }
+
+    const res = await fetch("/api/conversaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId: producto.id }),
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(`/producto/${producto.id}`)}`);
+      }
+
+      return;
+    }
+
+    const conversacion = await res.json();
+    router.push(`/mensajes?conversationId=${conversacion.id}`);
+  };
+
   const clearFilters = () => {
     setBusqueda("");
     setUbicacion("");
@@ -613,6 +647,7 @@ export default function Catalogo() {
       isOwnListing={Boolean(userId && p.sellerId === userId)}
       onClick={() => abrirProducto(p)}
       onFavoriteClick={(event) => toggleFavorito(event, p.id)}
+      onMessageClick={(event) => enviarMensaje(event, p)}
     />
   );
 
