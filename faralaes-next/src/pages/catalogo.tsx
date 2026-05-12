@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import type { ParsedUrlQueryInput } from "querystring";
 import Head from "next/head";
 import NavBar from "../components/NavBar";
-import { formatPrice } from "../lib/formatPrice";
+import ListingCard from "../components/ListingCard";
 import { getCanonical } from "../lib/seo";
 import {
   categoryOptions,
@@ -597,98 +597,23 @@ export default function Catalogo() {
 
   const renderProductGrid = (items: Producto[]) => (
     <div className="mt-5 -mx-4 flex min-h-[420px] gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:min-h-[520px] sm:grid-cols-2 sm:px-0 lg:min-h-[560px] lg:grid-cols-4">
-      {items.map((producto, index) => (
+      {items.map((producto) => (
         <div key={producto.id} className="min-w-[230px] sm:min-w-0">
-          {renderProductoCard(producto, index)}
+          {renderProductoCard(producto)}
         </div>
       ))}
     </div>
   );
 
-  const renderProductoCard = (p: Producto, index = 0) => (
-    <article
+  const renderProductoCard = (p: Producto) => (
+    <ListingCard
       key={p.id}
+      listing={p}
+      isFavorite={favoritos.includes(p.id)}
+      isOwnListing={Boolean(userId && p.sellerId === userId)}
       onClick={() => abrirProducto(p)}
-      className="cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:border-gray-300 hover:shadow-[0_16px_36px_rgba(34,24,20,0.12)]"
-    >
-      <div className="relative aspect-[3/4] overflow-hidden bg-gray-200">
-        {userId && p.sellerId === userId && (
-          <span className="absolute left-3 top-3 z-10 rounded-full bg-green-700 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
-            Tu anuncio
-          </span>
-        )}
-
-        <button
-          type="button"
-          onClick={(e) => toggleFavorito(e, p.id)}
-          className="tap-feedback absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-3xl leading-none shadow-md hover:scale-105"
-          aria-label={
-            favoritos.includes(p.id) ? "Quitar de favoritos" : "Guardar en favoritos"
-          }
-        >
-          <span className={favoritos.includes(p.id) ? "text-red-600" : "text-gray-500"}>
-            ♥
-          </span>
-        </button>
-
-        {p.images?.[0]?.url ? (
-          <img
-            src={p.images[0].url}
-            alt={p.title}
-            loading="lazy"
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-gray-400">
-            Sin imagen
-          </div>
-        )}
-      </div>
-
-      <div className="p-4">
-        <h2 className="mb-1 line-clamp-2 min-h-[3.25rem] font-serif text-xl leading-tight text-gray-950">
-          {p.title}
-        </h2>
-
-        {p.description && (
-          <p className="mb-3 line-clamp-2 text-sm leading-5 text-gray-600">
-            {p.description}
-          </p>
-        )}
-
-        <p className="mb-3 text-2xl font-bold text-red-700">
-          {formatPrice(p.priceCents)}
-        </p>
-
-        <div className="flex flex-wrap gap-2 text-xs font-semibold text-gray-600">
-          {p.size && (
-            <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
-              Talla {p.size}
-            </span>
-          )}
-          {p.color && (
-            <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
-              {p.color}
-            </span>
-          )}
-          {p.brand && (
-            <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
-              {p.brand}
-            </span>
-          )}
-          {p.condition && (
-            <span className="rounded-full bg-[#f8f3ef] px-3 py-1">
-              {getConditionLabel(p.condition)}
-            </span>
-          )}
-        </div>
-
-        <div className="mt-3 flex items-center justify-between gap-3 text-sm text-gray-500">
-          <p className="min-w-0 truncate">{p.location || "Sin ubicación"}</p>
-          {p.shippingAvailable && <p>Envío disponible</p>}
-        </div>
-      </div>
-    </article>
+      onFavoriteClick={(event) => toggleFavorito(event, p.id)}
+    />
   );
 
   const precioMinCents = precioAcentimos(precioMin);

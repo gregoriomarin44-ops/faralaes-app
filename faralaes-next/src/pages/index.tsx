@@ -2,13 +2,20 @@ import { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import NavBar from "../components/NavBar";
-import { formatPrice } from "../lib/formatPrice";
+import ListingCard from "../components/ListingCard";
 
 type Producto = {
   id: string;
   title: string;
+  description: string | null;
   priceCents: number;
+  size: string | null;
+  color: string | null;
+  brand: string | null;
+  condition: string | null;
   location: string | null;
+  shippingAvailable: boolean;
+  whatsappContactAllowed: boolean;
   images?: {
     url: string;
   }[];
@@ -136,38 +143,13 @@ export default function Home() {
           )}
 
           {!loading && productos.length > 0 && (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {productos.map((producto) => (
-                <article
+                <ListingCard
                   key={producto.id}
+                  listing={producto}
                   onClick={() => router.push(`/producto/${producto.id}`)}
-                  className="cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-lg"
-                >
-                  <div className="aspect-[4/5] overflow-hidden bg-gray-100">
-                    {producto.images?.[0]?.url ? (
-                      <img
-                        src={producto.images[0].url}
-                        alt={producto.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-gray-400">
-                        Sin imagen
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-5">
-                    <h3 className="mb-2 font-serif text-xl text-gray-950">
-                      {producto.title}
-                    </h3>
-                    <p className="text-2xl font-bold text-red-700">
-                      {formatPrice(producto.priceCents)}
-                    </p>
-                    <p className="mt-2 text-sm text-gray-500">
-                      {producto.location || "Andalucía"}
-                    </p>
-                  </div>
-                </article>
+                />
               ))}
             </div>
           )}
