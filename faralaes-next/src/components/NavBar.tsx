@@ -6,7 +6,7 @@ import { categoryOptions } from "../lib/listingOptions";
 import PwaInstallBanner from "./PwaInstallBanner";
 
 const categoryLinks = categoryOptions.map((category) => ({
-  href: `/catalogo?categoria=${category.value}`,
+  value: category.value,
   label: category.label,
 }));
 
@@ -82,6 +82,13 @@ export default function NavBar() {
     router.push({
       pathname: "/catalogo",
       query: query ? { q: query } : undefined,
+    });
+  };
+
+  const openCategory = (category: string) => {
+    router.push({
+      pathname: "/catalogo",
+      query: { categoria: category },
     });
   };
 
@@ -269,13 +276,14 @@ export default function NavBar() {
       <div className="border-t border-stone-100 bg-white/90">
         <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 py-2 md:px-6">
           {categoryLinks.map((category) => (
-            <Link
-              key={category.href}
-              href={category.href}
+            <button
+              key={category.value}
+              type="button"
+              onClick={() => openCategory(category.value)}
               className="whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800"
             >
               {category.label}
-            </Link>
+            </button>
           ))}
         </div>
       </div>

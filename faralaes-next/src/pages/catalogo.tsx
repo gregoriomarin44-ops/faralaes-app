@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import type { ParsedUrlQueryInput } from "querystring";
 import Head from "next/head";
 import NavBar from "../components/NavBar";
 import { formatPrice } from "../lib/formatPrice";
@@ -70,7 +71,6 @@ export default function Catalogo() {
   const [userId, setUserId] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [busqueda, setBusqueda] = useState("");
-  const [categoria, setCategoria] = useState("todas");
   const [ubicacion, setUbicacion] = useState("");
   const [talla, setTalla] = useState("");
   const [color, setColor] = useState("");
@@ -82,8 +82,12 @@ export default function Catalogo() {
   const [soloEnvio, setSoloEnvio] = useState(false);
   const [orden, setOrden] = useState("recientes");
   const [loading, setLoading] = useState(true);
-  const [urlFiltersReady, setUrlFiltersReady] = useState(false);
   const router = useRouter();
+  const activeCategory =
+    router.isReady && typeof router.query.categoria === "string"
+      ? router.query.categoria
+      : "";
+  const categoryFilterValue = activeCategory || "todas";
 
   useEffect(() => {
     const cargarCatalogo = async () => {
@@ -118,38 +122,26 @@ export default function Catalogo() {
     if (!router.isReady) return;
 
     const queryBusqueda = router.query.q;
-    const queryCategoria = router.query.categoria;
 
     setBusqueda(typeof queryBusqueda === "string" ? queryBusqueda : "");
-    setCategoria(typeof queryCategoria === "string" ? queryCategoria : "todas");
-    setUrlFiltersReady(true);
-  }, [router.isReady, router.query.q, router.query.categoria]);
+  }, [router.isReady, router.query.q]);
 
   useEffect(() => {
-    if (!router.isReady || !urlFiltersReady) return;
+    if (!router.isReady) return;
 
-    const nextQuery = {
+    const nextQuery: ParsedUrlQueryInput = {
       ...router.query,
       ...(busqueda.trim() ? { q: busqueda.trim() } : {}),
-      ...(categoria !== "todas" ? { categoria } : {}),
     };
 
     if (!busqueda.trim()) {
       delete nextQuery.q;
     }
 
-    if (categoria === "todas") {
-      delete nextQuery.categoria;
-    }
-
     const nextQ = typeof nextQuery.q === "string" ? nextQuery.q : "";
     const currentQ = typeof router.query.q === "string" ? router.query.q : "";
-    const nextCategoria =
-      typeof nextQuery.categoria === "string" ? nextQuery.categoria : "";
-    const currentCategoria =
-      typeof router.query.categoria === "string" ? router.query.categoria : "";
 
-    if (nextQ === currentQ && nextCategoria === currentCategoria) {
+    if (nextQ === currentQ) {
       return;
     }
 
@@ -161,7 +153,7 @@ export default function Catalogo() {
       undefined,
       { shallow: true }
     );
-  }, [busqueda, categoria, router, router.isReady, urlFiltersReady]);
+  }, [busqueda, router, router.isReady]);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -223,7 +215,6 @@ export default function Catalogo() {
 
   const clearFilters = () => {
     setBusqueda("");
-    setCategoria("todas");
     setUbicacion("");
     setTalla("");
     setColor("");
@@ -233,21 +224,29 @@ export default function Catalogo() {
     setPrecioMax("");
     setSoloWhatsapp(false);
     setSoloEnvio(false);
+    router.push(
+      {
+        pathname: router.pathname,
+        query: {},
+      },
+      undefined,
+      { shallow: true }
+    );
   };
 
   const selectedAttributeSchema = useMemo(
     () =>
-      categoria === "todas"
+      !router.isReady || !activeCategory
         ? []
-        : getCategoryAttributeSchema(categoria).filter((field) => field.filterable),
-    [categoria]
+        : getCategoryAttributeSchema(activeCategory).filter((field) => field.filterable),
+    [activeCategory, router.isReady]
   );
   const hidesGeneralSizeFilter = hasDynamicSizeField(selectedAttributeSchema);
   const hidesGeneralColorFilter = hasDynamicColorField(selectedAttributeSchema);
 
   const activeFilterCount = [
     Boolean(busqueda.trim()),
-    categoria !== "todas",
+    Boolean(activeCategory),
     Boolean(ubicacion.trim()),
     !hidesGeneralSizeFilter && Boolean(talla.trim()),
     !hidesGeneralColorFilter && Boolean(color.trim()),
@@ -260,14 +259,29 @@ export default function Catalogo() {
   ].filter(Boolean).length;
 
   const setCategoryFilter = (value: string) => {
-    setCategoria(value);
-    setAttributeFilters({});
-    if (hasDynamicSizeField(getCategoryAttributeSchema(value))) {
-      setTalla("");
+    const nextQuery: ParsedUrlQueryInput = {
+      ...router.query,
+      ...(busqueda.trim() ? { q: busqueda.trim() } : {}),
+    };
+
+    if (value === "todas") {
+      delete nextQuery.categoria;
+    } else {
+      nextQuery.categoria = value;
     }
-    if (hasDynamicColorField(getCategoryAttributeSchema(value))) {
-      setColor("");
+
+    if (!busqueda.trim()) {
+      delete nextQuery.q;
     }
+
+    router.push(
+      {
+        pathname: router.pathname,
+        query: nextQuery,
+      },
+      undefined,
+      { shallow: true }
+    );
   };
 
   const setAttributeFilter = (key: string, value: string) => {
@@ -346,7 +360,7 @@ export default function Catalogo() {
       />
       <select
         className="h-12 rounded border border-gray-300 px-3"
-        value={categoria}
+        value={categoryFilterValue}
         onChange={(e) => setCategoryFilter(e.target.value)}
       >
         <option value="todas">Todas las categorías</option>
@@ -447,7 +461,7 @@ export default function Catalogo() {
       />
       <select
         className="h-12 w-full rounded border border-gray-300 px-3"
-        value={categoria}
+        value={categoryFilterValue}
         onChange={(e) => setCategoryFilter(e.target.value)}
       >
         <option value="todas">Todas las categorías</option>
@@ -679,7 +693,7 @@ export default function Catalogo() {
 
   const precioMinCents = precioAcentimos(precioMin);
   const precioMaxCents = precioAcentimos(precioMax);
-  const catalogReady = !loading && urlFiltersReady;
+  const catalogReady = !loading && router.isReady;
   const currentCatalogState = useMemo<CatalogDisplayState>(() => {
     const productosFiltrados = productos
       .filter((producto) => {
@@ -689,7 +703,7 @@ export default function Catalogo() {
           producto.title.toLowerCase().includes(texto) ||
           (producto.description || "").toLowerCase().includes(texto);
         const coincideCategoria =
-          categoria === "todas" || producto.category === categoria;
+          !activeCategory || producto.category === activeCategory;
         const coincideUbicacion =
           !ubicacion.trim() ||
           (producto.location || "")
@@ -712,7 +726,7 @@ export default function Catalogo() {
           producto.attributes
         );
         const coincideAttributes =
-          categoria === "todas" ||
+          !activeCategory ||
           selectedAttributeSchema.every((field) => {
             const selectedValue = attributeFilters[field.key];
 
@@ -829,7 +843,7 @@ export default function Catalogo() {
   }, [
     attributeFilters,
     busqueda,
-    categoria,
+    activeCategory,
     color,
     estado,
     favoritos,
@@ -847,38 +861,7 @@ export default function Catalogo() {
     ubicacion,
     userId,
   ]);
-  const [displayedCatalogState, setDisplayedCatalogState] =
-    useState<CatalogDisplayState | null>(null);
-  const [resultsPending, setResultsPending] = useState(false);
-
-  useEffect(() => {
-    if (!catalogReady) {
-      return;
-    }
-
-    if (!displayedCatalogState) {
-      setDisplayedCatalogState(currentCatalogState);
-      return;
-    }
-
-    if (displayedCatalogState === currentCatalogState) {
-      setResultsPending(false);
-      return;
-    }
-
-    setResultsPending(true);
-
-    const frameId = window.requestAnimationFrame(() => {
-      setDisplayedCatalogState(currentCatalogState);
-      setResultsPending(false);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [catalogReady, currentCatalogState, displayedCatalogState]);
-
-  const visibleCatalogState = displayedCatalogState || currentCatalogState;
+  const visibleCatalogState = currentCatalogState;
   const productosFiltrados = visibleCatalogState.productosFiltrados;
   const ultimosAnuncios = visibleCatalogState.ultimosAnuncios;
   const puedeInteresarteFinal = visibleCatalogState.puedeInteresarteFinal;
@@ -891,10 +874,10 @@ export default function Catalogo() {
           onRemove: () => setBusqueda(""),
         }
       : null,
-    categoria !== "todas"
+    activeCategory
       ? {
           key: "category",
-          label: getCategoryLabel(categoria),
+          label: getCategoryLabel(activeCategory),
           onRemove: () => setCategoryFilter("todas"),
         }
       : null,
@@ -1154,11 +1137,7 @@ export default function Catalogo() {
 
         {catalogReady && (
           <div className="relative min-h-[900px] sm:min-h-[1120px] lg:min-h-[1180px]">
-            <div
-              className={`space-y-10 transition-opacity duration-150 ${
-                resultsPending ? "opacity-70" : "opacity-100"
-              }`}
-            >
+            <div className="space-y-10">
               <section className="min-h-[500px] sm:min-h-[620px] lg:min-h-[660px]">
                 <h2 className="font-serif text-3xl text-gray-950">
                   Últimos anuncios publicados
@@ -1177,13 +1156,6 @@ export default function Catalogo() {
                   : renderEmptyResults()}
             </section>
             </div>
-            {resultsPending && (
-              <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center pt-4">
-                <span className="rounded-full border border-gray-200 bg-white/90 px-4 py-2 text-xs font-bold uppercase tracking-widest text-gray-500 shadow-sm">
-                  Actualizando
-                </span>
-              </div>
-            )}
           </div>
         )}
         </section>
