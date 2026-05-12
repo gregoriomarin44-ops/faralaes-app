@@ -48,6 +48,14 @@ const precioAcentimos = (valor: string) => {
   return Math.round(numero * 100);
 };
 
+const hasDynamicSizeField = (
+  schema: ReturnType<typeof getCategoryAttributeSchema>
+) => schema.some((field) => ["talla", "talla_edad", "numero"].includes(field.key));
+
+const hasDynamicColorField = (
+  schema: ReturnType<typeof getCategoryAttributeSchema>
+) => schema.some((field) => field.key === "color");
+
 export default function Catalogo() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [productosFavoritos, setProductosFavoritos] = useState<Producto[]>([]);
@@ -220,12 +228,19 @@ export default function Catalogo() {
     setSoloEnvio(false);
   };
 
+  const selectedAttributeSchema =
+    categoria === "todas"
+      ? []
+      : getCategoryAttributeSchema(categoria).filter((field) => field.filterable);
+  const hidesGeneralSizeFilter = hasDynamicSizeField(selectedAttributeSchema);
+  const hidesGeneralColorFilter = hasDynamicColorField(selectedAttributeSchema);
+
   const activeFilterCount = [
     Boolean(busqueda.trim()),
     categoria !== "todas",
     Boolean(ubicacion.trim()),
-    Boolean(talla.trim()),
-    Boolean(color.trim()),
+    !hidesGeneralSizeFilter && Boolean(talla.trim()),
+    !hidesGeneralColorFilter && Boolean(color.trim()),
     estado !== "todos",
     ...Object.values(attributeFilters).map((value) => Boolean(value)),
     Boolean(precioMin.trim()),
@@ -234,14 +249,15 @@ export default function Catalogo() {
     soloEnvio,
   ].filter(Boolean).length;
 
-  const selectedAttributeSchema =
-    categoria === "todas"
-      ? []
-      : getCategoryAttributeSchema(categoria).filter((field) => field.filterable);
-
   const setCategoryFilter = (value: string) => {
     setCategoria(value);
     setAttributeFilters({});
+    if (hasDynamicSizeField(getCategoryAttributeSchema(value))) {
+      setTalla("");
+    }
+    if (hasDynamicColorField(getCategoryAttributeSchema(value))) {
+      setColor("");
+    }
   };
 
   const setAttributeFilter = (key: string, value: string) => {
@@ -337,18 +353,22 @@ export default function Catalogo() {
         onChange={(e) => setUbicacion(e.target.value)}
         placeholder="Ubicación"
       />
-      <input
-        className="h-12 rounded border border-gray-300 px-3"
-        value={talla}
-        onChange={(e) => setTalla(e.target.value)}
-        placeholder="Talla"
-      />
-      <input
-        className="h-12 rounded border border-gray-300 px-3"
-        value={color}
-        onChange={(e) => setColor(e.target.value)}
-        placeholder="Color"
-      />
+      {!hidesGeneralSizeFilter && (
+        <input
+          className="h-12 rounded border border-gray-300 px-3"
+          value={talla}
+          onChange={(e) => setTalla(e.target.value)}
+          placeholder="Talla"
+        />
+      )}
+      {!hidesGeneralColorFilter && (
+        <input
+          className="h-12 rounded border border-gray-300 px-3"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          placeholder="Color"
+        />
+      )}
       <select
         className="h-12 rounded border border-gray-300 px-3"
         value={estado}
@@ -451,25 +471,29 @@ export default function Catalogo() {
         onChange={(e) => setUbicacion(e.target.value)}
         placeholder="Ubicación"
       />
-      {selectedAttributeSchema.length > 0 && (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {dynamicFilterControls}
+      </div>
+      {(!hidesGeneralSizeFilter || !hidesGeneralColorFilter) && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {dynamicFilterControls}
+          {!hidesGeneralSizeFilter && (
+            <input
+              className="h-12 rounded border border-gray-300 px-3"
+              value={talla}
+              onChange={(e) => setTalla(e.target.value)}
+              placeholder="Talla"
+            />
+          )}
+          {!hidesGeneralColorFilter && (
+            <input
+              className="h-12 rounded border border-gray-300 px-3"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              placeholder="Color"
+            />
+          )}
         </div>
       )}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <input
-          className="h-12 rounded border border-gray-300 px-3"
-          value={talla}
-          onChange={(e) => setTalla(e.target.value)}
-          placeholder="Talla"
-        />
-        <input
-          className="h-12 rounded border border-gray-300 px-3"
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-          placeholder="Color"
-        />
-      </div>
       <select
         className="h-12 w-full rounded border border-gray-300 px-3"
         value={estado}
@@ -623,6 +647,7 @@ export default function Catalogo() {
 
   const precioMinCents = precioAcentimos(precioMin);
   const precioMaxCents = precioAcentimos(precioMax);
+  const catalogReady = !loading && urlFiltersReady;
   const productosFiltrados = productos
     .filter((producto) => {
       const texto = busqueda.trim().toLowerCase();
@@ -638,9 +663,11 @@ export default function Catalogo() {
           .toLowerCase()
           .includes(ubicacion.trim().toLowerCase());
       const coincideTalla =
+        hidesGeneralSizeFilter ||
         !talla.trim() ||
         (producto.size || "").toLowerCase().includes(talla.trim().toLowerCase());
       const coincideColor =
+        hidesGeneralColorFilter ||
         !color.trim() ||
         (producto.color || "")
           .toLowerCase()
@@ -776,14 +803,14 @@ export default function Catalogo() {
           onRemove: () => setUbicacion(""),
         }
       : null,
-    talla.trim()
+    !hidesGeneralSizeFilter && talla.trim()
       ? {
           key: "size",
           label: `Talla ${talla.trim()}`,
           onRemove: () => setTalla(""),
         }
       : null,
-    color.trim()
+    !hidesGeneralColorFilter && color.trim()
       ? {
           key: "color",
           label: color.trim(),
@@ -930,7 +957,9 @@ export default function Catalogo() {
             </h1>
 
             <p className="text-gray-600">
-              Mostrando {productosFiltrados.length} de {productos.length} prendas publicadas.
+              {catalogReady
+                ? `Mostrando ${productosFiltrados.length} de ${productos.length} prendas publicadas.`
+                : "Preparando el catálogo..."}
             </p>
           </div>
 
@@ -943,7 +972,7 @@ export default function Catalogo() {
           </button>
         </div>
 
-        {!loading && productos.length > 0 && (
+        {catalogReady && productos.length > 0 && (
           <div className="sticky top-0 z-30 -mx-4 mb-6 border-y border-gray-200 bg-[#f8f3ef]/95 px-4 py-3 backdrop-blur md:hidden">
             <div className="flex items-center gap-2">
               <button
@@ -953,21 +982,24 @@ export default function Catalogo() {
               >
                 Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </button>
-              {activeFilterCount > 0 && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="tap-feedback h-11 shrink-0 rounded-full border border-gray-300 bg-white px-3 text-sm font-bold text-gray-700"
-                >
-                  Limpiar
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={clearFilters}
+                disabled={activeFilterCount === 0}
+                className={`tap-feedback h-11 shrink-0 rounded-full border border-gray-300 bg-white px-3 text-sm font-bold text-gray-700 ${
+                  activeFilterCount === 0
+                    ? "pointer-events-none invisible"
+                    : ""
+                }`}
+              >
+                Limpiar
+              </button>
             </div>
           </div>
         )}
 
-        {!loading && activeFilterChips.length > 0 && (
-          <div className="mb-6 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+        {catalogReady && (
+          <div className="mb-6 -mx-4 flex min-h-12 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-gutter:stable] [scrollbar-width:none] sm:mx-0 sm:min-h-[5.5rem] sm:flex-wrap sm:overflow-y-auto sm:px-0">
             {activeFilterChips.map((chip) => (
                 <button
                   key={chip.key}
@@ -982,7 +1014,7 @@ export default function Catalogo() {
           </div>
         )}
 
-        {loading && (
+        {!catalogReady && (
           <div className="space-y-10">
             <section>
               <div className="skeleton h-9 w-64 rounded-full" />
@@ -995,35 +1027,38 @@ export default function Catalogo() {
           </div>
         )}
 
-        {!loading && productos.length === 0 && (
+        {catalogReady && productos.length === 0 && (
           <p>No hay anuncios publicados.</p>
         )}
 
-        {!loading && productos.length > 0 && (
-          <div className="mb-8 hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:block">
+        {catalogReady && productos.length > 0 && (
+          <div className="mb-8 hidden min-h-[456px] rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:min-h-[392px] md:block">
             <div className="mb-4 flex items-center justify-between gap-3">
               <p className="text-sm font-bold uppercase tracking-widest text-gray-500">
                 Filtrar catálogo
               </p>
-              {activeFilterCount > 0 && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="tap-feedback rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-green-700 hover:text-green-700"
-                >
-                  Limpiar filtros
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={clearFilters}
+                disabled={activeFilterCount === 0}
+                className={`tap-feedback rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:border-green-700 hover:text-green-700 ${
+                  activeFilterCount === 0
+                    ? "pointer-events-none invisible"
+                    : ""
+                }`}
+              >
+                Limpiar filtros
+              </button>
             </div>
             {filterControls}
           </div>
         )}
 
-        {!loading && productos.length > 0 && productosFiltrados.length === 0 && (
+        {catalogReady && productos.length > 0 && productosFiltrados.length === 0 && (
           <p>No se han encontrado anuncios con esos filtros.</p>
         )}
 
-        {!loading && productosFiltrados.length > 0 && (
+        {catalogReady && productosFiltrados.length > 0 && (
           <div className="space-y-10">
             {ultimosAnuncios.length > 0 && (
               <section>
