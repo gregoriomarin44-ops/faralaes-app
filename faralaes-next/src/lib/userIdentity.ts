@@ -29,5 +29,10 @@ export const validateUsername = (value: unknown) => {
 export const normalizeDisplayName = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
 
-export const getInitial = (displayName: string, username: string) =>
-  (displayName.trim() || username.trim() || "F").charAt(0).toUpperCase();
+export const getInitial = (
+  displayName: string | null | undefined,
+  username: string | null | undefined
+) =>
+  ((displayName || "").trim() || (username || "").trim() || "F")
+    .charAt(0)
+    .toUpperCase();

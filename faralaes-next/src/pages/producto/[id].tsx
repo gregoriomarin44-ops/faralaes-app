@@ -343,6 +343,7 @@ export default function ProductoDetalle({
   const esPropio = userId === producto.sellerId;
   const sellerPhone = producto.seller?.profile?.phone?.replace(/\D/g, "") || "";
   const sellerUsername = producto.seller?.username || "";
+  const sellerProfileSlug = sellerUsername || producto.seller?.id || "";
   const sellerDisplayName = producto.seller?.displayName || "Usuario Faralaes";
   const sellerInitial = getInitial(sellerDisplayName, sellerUsername);
   const puedeWhatsapp =
@@ -659,7 +660,11 @@ export default function ProductoDetalle({
                 </h2>
                 <button
                   type="button"
-                  onClick={() => router.push(`/usuario/${sellerUsername}`)}
+                  onClick={() => {
+                    if (sellerProfileSlug) {
+                      router.push(`/usuario/${sellerProfileSlug}`);
+                    }
+                  }}
                   className="tap-feedback flex w-full items-center gap-4 rounded-3xl border border-gray-200 bg-white p-4 text-left shadow-[0_12px_32px_rgba(34,24,20,0.06)] hover:border-green-700"
                 >
                   <span className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-stone-950 to-red-900 text-xl font-black text-white shadow-md">
@@ -671,7 +676,7 @@ export default function ProductoDetalle({
                       {sellerDisplayName}
                     </span>
                     <span className="block text-sm font-semibold text-gray-500">
-                      @{sellerUsername}
+                      {sellerUsername ? `@${sellerUsername}` : "Perfil de Faralaes"}
                     </span>
                     <span className="mt-1 block text-xs font-semibold text-green-700">
                       Perfil verificado por Faralaes

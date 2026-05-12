@@ -1,6 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "../../../../lib/prisma";
 
+const getDisplayName = (
+  displayName: string | null | undefined,
+  username: string | null | undefined
+) => displayName?.trim() || (username ? `@${username}` : "Usuario Faralaes");
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
@@ -42,12 +47,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     return res.status(200).json({
-      average: summary._avg.rating || null,
+      average:
+        typeof summary._avg.rating === "number" &&
+        Number.isFinite(summary._avg.rating)
+          ? summary._avg.rating
+          : null,
       count: summary._count._all,
-      reviews,
+      reviews: reviews.map((review) => ({
+        id: review.id,
+        rating: review.rating,
+        comment: review.comment,
+        createdAt: review.createdAt,
+        reviewer: {
+          username: review.reviewer.username || "usuario",
+          displayName: getDisplayName(
+            review.reviewer.displayName,
+            review.reviewer.username
+          ),
+        },
+        listing: review.listing
+          ? {
+              id: review.listing.id,
+              title: review.listing.title || "Anuncio",
+            }
+          : null,
+      })),
     });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Error interno del servidor" });
+    console.error("No se han podido cargar las reviews del usuario.", error);
+    return res.status(200).json({
+      average: null,
+      count: 0,
+      reviews: [],
+    });
   }
 }

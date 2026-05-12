@@ -43,17 +43,31 @@ type PublicUserPageProps = {
   } | null;
 };
 
+type PublicReview = NonNullable<PublicUserPageProps["user"]>["reviews"][number];
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const getDisplayName = (
+  displayName: string | null | undefined,
+  username: string | null | undefined
+) => displayName?.trim() || (username ? `@${username}` : "Usuario Faralaes");
+
+const getSafeAverage = (value: number | null | undefined) =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
 export const getServerSideProps: GetServerSideProps<
   PublicUserPageProps
 > = async ({ params }) => {
-  const username = normalizeUsername(params?.username);
+  const rawUsername = typeof params?.username === "string" ? params.username : "";
+  const username = normalizeUsername(rawUsername);
 
-  if (!username) {
+  if (!username && !UUID_PATTERN.test(rawUsername)) {
     return { notFound: true };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { username },
+  const user = await prisma.user.findFirst({
+    where: UUID_PATTERN.test(rawUsername) ? { id: rawUsername } : { username },
     select: {
       id: true,
       username: true,
@@ -61,6 +75,7 @@ export const getServerSideProps: GetServerSideProps<
       disabled: true,
       profile: {
         select: {
+          displayName: true,
           bio: true,
           location: true,
         },
@@ -78,7 +93,26 @@ export const getServerSideProps: GetServerSideProps<
           },
         },
       },
-      reviewsReceived: {
+    },
+  });
+
+  if (!user || user.disabled) {
+    return { notFound: true };
+  }
+
+  let reviewAverage: number | null = null;
+  let reviewCount = 0;
+  let reviews: PublicReview[] = [];
+
+  try {
+    const [reviewSummary, latestReviews] = await Promise.all([
+      prisma.review.aggregate({
+        where: { reviewedUserId: user.id },
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
+      prisma.review.findMany({
+        where: { reviewedUserId: user.id },
         orderBy: { createdAt: "desc" },
         take: 8,
         include: {
@@ -95,31 +129,51 @@ export const getServerSideProps: GetServerSideProps<
             },
           },
         },
-      },
-    },
-  });
+      }),
+    ]);
 
-  if (!user || user.disabled) {
-    return { notFound: true };
+    reviewAverage = getSafeAverage(reviewSummary._avg.rating);
+    reviewCount = reviewSummary._count._all;
+    reviews = latestReviews.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      createdAt: review.createdAt.toISOString(),
+      reviewer: {
+        username: review.reviewer.username || "usuario",
+        displayName: getDisplayName(
+          review.reviewer.displayName,
+          review.reviewer.username
+        ),
+      },
+      listing: review.listing
+        ? {
+            id: review.listing.id,
+            title: review.listing.title || "Anuncio",
+          }
+        : null,
+    }));
+  } catch (error) {
+    console.error("No se han podido cargar las reviews del perfil publico.", error);
   }
 
-  const reviewSummary = await prisma.review.aggregate({
-    where: { reviewedUserId: user.id },
-    _avg: { rating: true },
-    _count: { _all: true },
-  });
+  const safeUsername = user.username || username || user.id;
+  const safeDisplayName = getDisplayName(
+    user.displayName || user.profile?.displayName,
+    safeUsername
+  );
 
   return {
     props: {
       user: {
         id: user.id,
-        username: user.username,
-        displayName: user.displayName,
+        username: safeUsername,
+        displayName: safeDisplayName,
         bio: user.profile?.bio || null,
         location: user.profile?.location || null,
-        reviewAverage: reviewSummary._avg.rating || null,
-        reviewCount: reviewSummary._count._all,
-        reviews: JSON.parse(JSON.stringify(user.reviewsReceived)),
+        reviewAverage,
+        reviewCount,
+        reviews,
         listings: user.listings,
       },
     },
@@ -135,8 +189,10 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
   const [reviewMessage, setReviewMessage] = useState("");
   const [reviewError, setReviewError] = useState("");
   const [reviews, setReviews] = useState(user?.reviews || []);
-  const [reviewAverage, setReviewAverage] = useState(user?.reviewAverage || null);
-  const [reviewCount, setReviewCount] = useState(user?.reviewCount || 0);
+  const [reviewAverage, setReviewAverage] = useState(
+    getSafeAverage(user?.reviewAverage)
+  );
+  const [reviewCount, setReviewCount] = useState(user?.reviewCount ?? 0);
 
   if (!user) {
     return null;
@@ -144,6 +200,7 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
 
   const initial = getInitial(user.displayName, user.username);
   const isOwnProfile = currentUser?.id === user.id;
+  const hasReviews = reviewCount > 0 && reviewAverage !== null;
   const reportUser = () => {
     if (!currentUser) {
       router.push(`/login?next=${encodeURIComponent(router.asPath)}`);
@@ -186,8 +243,8 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
     if (reviewsRes.ok) {
       const data = await reviewsRes.json();
       setReviews(data.reviews || []);
-      setReviewAverage(data.average || null);
-      setReviewCount(data.count || 0);
+      setReviewAverage(getSafeAverage(data.average));
+      setReviewCount(data.count ?? 0);
     }
   };
 
@@ -218,10 +275,14 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                     {user.bio && <p>{user.bio}</p>}
                   </div>
                 )}
-                {reviewCount > 0 && (
+                {hasReviews ? (
                   <p className="mt-4 text-sm font-bold text-amber-700">
-                    ⭐ {reviewAverage?.toFixed(1)} · {reviewCount}{" "}
+                    ⭐ {reviewAverage.toFixed(1)} · {reviewCount}{" "}
                     {reviewCount === 1 ? "reseña" : "reseñas"}
+                  </p>
+                ) : (
+                  <p className="mt-4 text-sm font-semibold text-gray-500">
+                    Aún no tiene valoraciones
                   </p>
                 )}
               </div>
@@ -246,10 +307,10 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
               <h2 className="mt-2 font-serif text-3xl text-gray-950">
                 Confianza en Faralaes
               </h2>
-              {reviewCount > 0 ? (
+              {hasReviews ? (
                 <div className="mt-4">
                   <p className="text-4xl font-black text-amber-700">
-                    ⭐ {reviewAverage?.toFixed(1)}
+                    ⭐ {reviewAverage.toFixed(1)}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-gray-500">
                     Basado en {reviewCount} {reviewCount === 1 ? "reseña" : "reseñas"}
@@ -257,7 +318,7 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-gray-600">
-                  Este perfil todavía no tiene valoraciones.
+                  Aún no tiene valoraciones
                 </p>
               )}
 
@@ -309,7 +370,7 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
               </h2>
               {reviews.length === 0 ? (
                 <p className="mt-4 text-sm text-gray-600">
-                  Aún no hay reseñas publicadas.
+                  Aún no tiene valoraciones
                 </p>
               ) : (
                 <div className="mt-4 space-y-3">
