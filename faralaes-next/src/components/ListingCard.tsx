@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 import { formatPrice } from "../lib/formatPrice";
 import { getConditionLabel } from "../lib/listingOptions";
+import { getOperationLabel, isDonationListing } from "../lib/listingOperation";
 
 export type ListingCardItem = {
   id: string;
@@ -8,6 +9,7 @@ export type ListingCardItem = {
   title: string;
   description?: string | null;
   priceCents: number;
+  operationType?: string | null;
   location?: string | null;
   size?: string | null;
   color?: string | null;
@@ -79,6 +81,7 @@ export default function ListingCard({
   onDetailsClick,
 }: ListingCardProps) {
   const imageCount = listing.images?.length || 0;
+  const isDonation = isDonationListing(listing.operationType);
   const ratingAverage =
     typeof listing.sellerRatingAverage === "number" &&
     Number.isFinite(listing.sellerRatingAverage)
@@ -157,9 +160,15 @@ export default function ListingCard({
       </div>
 
       <div className="flex flex-1 flex-col px-3.5 py-3">
-        <p className="text-[1.4rem] font-black leading-none tracking-normal text-red-800">
-          {formatPrice(listing.priceCents)}
-        </p>
+        {isDonation ? (
+          <p className="inline-flex w-fit rounded-full bg-green-50 px-3 py-1 text-[13px] font-black uppercase tracking-wide text-green-800">
+            {getOperationLabel(listing.operationType)}
+          </p>
+        ) : (
+          <p className="text-[1.4rem] font-black leading-none tracking-normal text-red-800">
+            {formatPrice(listing.priceCents)}
+          </p>
+        )}
 
         <h2 className="mt-1.5 line-clamp-2 text-[15px] font-bold leading-5 text-stone-950">
           {listing.title}

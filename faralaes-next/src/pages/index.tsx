@@ -9,6 +9,7 @@ type Producto = {
   title: string;
   description: string | null;
   priceCents: number;
+  operationType?: string | null;
   size: string | null;
   color: string | null;
   brand: string | null;

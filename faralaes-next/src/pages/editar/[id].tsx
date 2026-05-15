@@ -48,6 +48,7 @@ type Producto = {
   title: string;
   description: string | null;
   priceCents: number;
+  operationType?: string | null;
   category: string;
   size: string | null;
   color: string | null;
@@ -69,6 +70,7 @@ export default function EditarProducto() {
   const { id } = router.query;
 
   const [titulo, setTitulo] = useState("");
+  const [operationType, setOperationType] = useState<"sale" | "donation">("sale");
   const [precio, setPrecio] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState("traje");
@@ -122,7 +124,14 @@ export default function EditarProducto() {
         }
 
         setTitulo(producto.title);
-        setPrecio(centimosAPrecio(producto.priceCents));
+        const normalizedOperationType =
+          producto.operationType === "donation" ? "donation" : "sale";
+        setOperationType(normalizedOperationType);
+        setPrecio(
+          normalizedOperationType === "donation"
+            ? ""
+            : centimosAPrecio(producto.priceCents)
+        );
         setDescripcion(producto.description || "");
         setCategoria(producto.category);
         setAttributes(
@@ -162,9 +171,9 @@ export default function EditarProducto() {
     setMensaje("");
     setError("");
 
-    const priceCents = precioAcentimos(precio);
+    const priceCents = operationType === "donation" ? 0 : precioAcentimos(precio);
 
-    if (priceCents === null) {
+    if (operationType === "sale" && (priceCents === null || priceCents <= 0)) {
       setError("Introduce un precio válido. Ejemplo: 90,50");
       setSaving(false);
       return;
@@ -192,6 +201,7 @@ export default function EditarProducto() {
         title: titulo,
         description: descripcion,
         priceCents,
+        operationType,
         category: categoria,
         size:
           getStringAttribute(attributes, ["talla", "talla_edad", "numero"]) ||
@@ -381,15 +391,39 @@ export default function EditarProducto() {
                 placeholder="Título"
                 required
               />
-              <input
-                className="w-full rounded border p-3"
-                value={precio}
-                onChange={(e) => setPrecio(e.target.value)}
-                placeholder="Precio"
-                type="text"
-                inputMode="decimal"
-                required
-              />
+              <label className="block text-sm font-semibold text-gray-700">
+                <span className="mb-1 block">Tipo de operación</span>
+                <select
+                  className="w-full rounded border border-gray-300 bg-white p-3"
+                  value={operationType}
+                  onChange={(e) => {
+                    const nextType =
+                      e.target.value === "donation" ? "donation" : "sale";
+                    setOperationType(nextType);
+                    if (nextType === "donation") {
+                      setPrecio("");
+                    }
+                  }}
+                >
+                  <option value="sale">Venta</option>
+                  <option value="donation">Regalo / donación</option>
+                </select>
+              </label>
+              {operationType === "sale" ? (
+                <input
+                  className="w-full rounded border p-3"
+                  value={precio}
+                  onChange={(e) => setPrecio(e.target.value)}
+                  placeholder="Precio"
+                  type="text"
+                  inputMode="decimal"
+                  required
+                />
+              ) : (
+                <p className="rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-semibold leading-6 text-green-900">
+                  Indica en la descripción cómo prefieres entregarlo.
+                </p>
+              )}
               <textarea
                 className="w-full rounded border p-3"
                 value={descripcion}

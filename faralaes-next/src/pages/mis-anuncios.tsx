@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../lib/authContext";
 import { formatPrice } from "../lib/formatPrice";
+import { getOperationLabel, isDonationListing } from "../lib/listingOperation";
 
 type Producto = {
   id: string;
   title: string;
   description: string | null;
   priceCents: number;
+  operationType?: string | null;
   category: string;
   size: string | null;
   color: string | null;
@@ -185,7 +187,9 @@ export default function MisAnuncios() {
                   )}
 
                   <p className="mb-3 text-2xl font-semibold text-red-700">
-                    {formatPrice(producto.priceCents)}
+                    {isDonationListing(producto.operationType)
+                      ? getOperationLabel(producto.operationType)
+                      : formatPrice(producto.priceCents)}
                   </p>
 
                   <div className="space-y-1 text-sm text-gray-500">

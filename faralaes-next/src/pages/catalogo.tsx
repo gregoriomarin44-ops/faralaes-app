@@ -5,6 +5,7 @@ import Head from "next/head";
 import NavBar from "../components/NavBar";
 import ListingCard from "../components/ListingCard";
 import { getCanonical } from "../lib/seo";
+import { getOperationLabel, normalizeOperationType } from "../lib/listingOperation";
 import {
   categoryOptions,
   conditionOptions,
@@ -21,6 +22,7 @@ type Producto = {
   title: string;
   description: string | null;
   priceCents: number;
+  operationType?: string | null;
   category: string;
   size: string | null;
   color: string | null;
@@ -75,6 +77,7 @@ export default function Catalogo() {
   const [talla, setTalla] = useState("");
   const [color, setColor] = useState("");
   const [estado, setEstado] = useState("todos");
+  const [operationType, setOperationType] = useState("todos");
   const [attributeFilters, setAttributeFilters] = useState<Record<string, string>>({});
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
@@ -261,6 +264,7 @@ export default function Catalogo() {
     setTalla("");
     setColor("");
     setEstado("todos");
+    setOperationType("todos");
     setAttributeFilters({});
     setPrecioMin("");
     setPrecioMax("");
@@ -293,6 +297,7 @@ export default function Catalogo() {
     !hidesGeneralSizeFilter && Boolean(talla.trim()),
     !hidesGeneralColorFilter && Boolean(color.trim()),
     estado !== "todos",
+    operationType !== "todos",
     ...Object.values(attributeFilters).map((value) => Boolean(value)),
     Boolean(precioMin.trim()),
     Boolean(precioMax.trim()),
@@ -437,6 +442,15 @@ export default function Catalogo() {
       )}
       <select
         className="h-12 rounded border border-gray-300 px-3"
+        value={operationType}
+        onChange={(e) => setOperationType(e.target.value)}
+      >
+        <option value="todos">Todos</option>
+        <option value="sale">Venta</option>
+        <option value="donation">Regalo / donación</option>
+      </select>
+      <select
+        className="h-12 rounded border border-gray-300 px-3"
         value={estado}
         onChange={(e) => setEstado(e.target.value)}
       >
@@ -560,6 +574,15 @@ export default function Catalogo() {
           )}
         </div>
       )}
+      <select
+        className="h-12 w-full rounded border border-gray-300 px-3"
+        value={operationType}
+        onChange={(e) => setOperationType(e.target.value)}
+      >
+        <option value="todos">Todos</option>
+        <option value="sale">Venta</option>
+        <option value="donation">Regalo / donación</option>
+      </select>
       <select
         className="h-12 w-full rounded border border-gray-300 px-3"
         value={estado}
@@ -689,6 +712,9 @@ export default function Catalogo() {
             .includes(color.trim().toLowerCase());
         const coincideEstado =
           estado === "todos" || producto.condition === estado;
+        const coincideOperacion =
+          operationType === "todos" ||
+          normalizeOperationType(producto.operationType) === operationType;
         const productoAttributes = normalizeAttributesForCategory(
           producto.category,
           producto.attributes
@@ -731,6 +757,7 @@ export default function Catalogo() {
           coincideTalla &&
           coincideColor &&
           coincideEstado &&
+          coincideOperacion &&
           coincideAttributes &&
           coincidePrecioMin &&
           coincidePrecioMax &&
@@ -817,6 +844,7 @@ export default function Catalogo() {
     favoritos,
     hidesGeneralColorFilter,
     hidesGeneralSizeFilter,
+    operationType,
     orden,
     precioMaxCents,
     precioMinCents,
@@ -875,6 +903,13 @@ export default function Catalogo() {
           key: "condition",
           label: getConditionLabel(estado),
           onRemove: () => setEstado("todos"),
+        }
+      : null,
+    operationType !== "todos"
+      ? {
+          key: "operation",
+          label: getOperationLabel(operationType),
+          onRemove: () => setOperationType("todos"),
         }
       : null,
     precioMin.trim()

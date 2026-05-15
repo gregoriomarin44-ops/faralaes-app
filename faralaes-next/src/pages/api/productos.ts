@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireSessionUser, requireVerifiedSessionUser } from "../../lib/auth";
 import { normalizeAttributesForCategory } from "../../lib/listingOptions";
+import { normalizeOperationType } from "../../lib/listingOperation";
 import { prisma } from "../../lib/prisma";
 
 const MAX_IMAGES = 5;
@@ -48,6 +49,46 @@ const prepararImagenes = (images: unknown): { images: string[]; error: string | 
   }
 
   return { images: imagenes, error: null };
+};
+
+const prepararOperacion = (operationType: unknown, priceCents: unknown) => {
+  if (
+    operationType !== undefined &&
+    operationType !== "sale" &&
+    operationType !== "donation"
+  ) {
+    return {
+      error: "Tipo de operación no válido.",
+      operationType: "sale" as const,
+      priceCents: 0,
+    };
+  }
+
+  const normalizedOperationType = normalizeOperationType(operationType);
+  const normalizedPrice =
+    typeof priceCents === "number" ? priceCents : Number(priceCents);
+
+  if (normalizedOperationType === "donation") {
+    return {
+      error: null,
+      operationType: normalizedOperationType,
+      priceCents: 0,
+    };
+  }
+
+  if (!Number.isFinite(normalizedPrice) || normalizedPrice <= 0) {
+    return {
+      error: "El precio es obligatorio para anuncios de venta.",
+      operationType: normalizedOperationType,
+      priceCents: 0,
+    };
+  }
+
+  return {
+    error: null,
+    operationType: normalizedOperationType,
+    priceCents: Math.round(normalizedPrice),
+  };
 };
 
 const añadirResumenReviews = async <T extends { sellerId: string }>(productos: T[]) => {
@@ -147,13 +188,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         usage,
         location,
         condition,
+        operationType,
         attributes,
         shippingAvailable,
         whatsappContactAllowed,
         images,
       } = req.body;
 
-      if (!title || !priceCents || !category) {
+      const operation = prepararOperacion(operationType, priceCents);
+
+      if (operation.error) {
+        return res.status(400).json({ error: operation.error });
+      }
+
+      if (!title || !category) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
@@ -173,7 +221,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: {
           title,
           description: description || null,
-          priceCents,
+          priceCents: operation.priceCents,
+          operationType: operation.operationType,
           sellerId: user.id,
           category,
           size: size || null,
@@ -219,6 +268,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         usage,
         location,
         condition,
+        operationType,
         attributes,
         shippingAvailable,
         whatsappContactAllowed,
@@ -235,9 +285,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return;
       }
 
-      if (!title || !priceCents || !category) {
+      const operation = prepararOperacion(operationType, priceCents);
+
+      if (operation.error) {
+        return res.status(400).json({ error: operation.error });
+      }
+
+      if (!title || !category) {
         return res.status(400).json({
-          error: "Título, precio y categoría obligatorios",
+          error: "Título y categoría obligatorios",
         });
       }
 
@@ -271,7 +327,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: {
           title,
           description: description || null,
-          priceCents,
+          priceCents: operation.priceCents,
+          operationType: operation.operationType,
           category,
           size: size || null,
           color: color || null,

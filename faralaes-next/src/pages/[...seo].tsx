@@ -3,6 +3,7 @@ import Head from "next/head";
 import Link from "next/link";
 import NavBar from "../components/NavBar";
 import { formatPrice } from "../lib/formatPrice";
+import { getOperationLabel, isDonationListing } from "../lib/listingOperation";
 import { prisma } from "../lib/prisma";
 import {
   categorySeo,
@@ -18,6 +19,7 @@ type SeoListing = {
   title: string;
   description: string | null;
   priceCents: number;
+  operationType?: string | null;
   location: string | null;
   size: string | null;
   color: string | null;
@@ -64,6 +66,7 @@ export const getServerSideProps: GetServerSideProps<SeoPageProps> = async ({
       title: true,
       description: true,
       priceCents: true,
+      operationType: true,
       location: true,
       size: true,
       color: true,
@@ -277,7 +280,9 @@ export default function SeoLanding({
                       {listing.title}
                     </h2>
                     <p className="mt-3 text-2xl font-semibold text-red-700">
-                      {formatPrice(listing.priceCents)}
+                      {isDonationListing(listing.operationType)
+                        ? getOperationLabel(listing.operationType)
+                        : formatPrice(listing.priceCents)}
                     </p>
                     <p className="mt-2 text-sm text-gray-500">
                       {listing.location || "Sin ubicacion"}

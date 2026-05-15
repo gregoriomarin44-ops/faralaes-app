@@ -9,6 +9,7 @@ import { formatPrice } from "../../lib/formatPrice";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { getCanonical, getSeoProductLinks } from "../../lib/seo";
+import { getOperationLabel, isDonationListing } from "../../lib/listingOperation";
 import { getInitial } from "../../lib/userIdentity";
 import {
   getCategoryLabel,
@@ -23,6 +24,7 @@ type Producto = {
   title: string;
   description: string | null;
   priceCents: number;
+  operationType?: string | null;
   category: string;
   size: string | null;
   color: string | null;
@@ -53,6 +55,7 @@ type RelatedListing = {
   id: string;
   title: string;
   priceCents: number;
+  operationType?: string | null;
   location: string | null;
   images?: {
     url: string;
@@ -148,6 +151,7 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
       id: true,
       title: true,
       priceCents: true,
+      operationType: true,
       location: true,
       images: {
         orderBy: { sortOrder: "asc" },
@@ -340,6 +344,7 @@ export default function ProductoDetalle({
       }).format(new Date(producto.createdAt))
     : "Fecha no disponible";
   const images = producto.images || [];
+  const isDonation = isDonationListing(producto.operationType);
   const esPropio = userId === producto.sellerId;
   const sellerPhone = producto.seller?.profile?.phone?.replace(/\D/g, "") || "";
   const sellerUsername = producto.seller?.username || "";
@@ -375,7 +380,7 @@ export default function ProductoDetalle({
   const productUrl = getCanonical(`/producto/${producto.id}`);
   const metaDescription =
     producto.description?.slice(0, 150) ||
-    `${producto.title}${producto.brand ? ` de ${producto.brand}` : ""} en Faralaes por ${formatPrice(producto.priceCents)}${producto.location ? ` en ${producto.location}` : ""}.`;
+    `${producto.title}${producto.brand ? ` de ${producto.brand}` : ""} en Faralaes${isDonation ? " como regalo o donación" : ` por ${formatPrice(producto.priceCents)}`}${producto.location ? ` en ${producto.location}` : ""}.`;
   const breadcrumbItems = [
     { href: "/", label: "Inicio" },
     { href: categoryPath, label: categoryInfo.label },
@@ -585,9 +590,21 @@ export default function ProductoDetalle({
                 {producto.title}
               </h1>
 
-              <p className="text-5xl font-extrabold tracking-tight text-red-700 sm:text-6xl">
-                {formatPrice(producto.priceCents)}
-              </p>
+              {isDonation ? (
+                <div className="space-y-3">
+                  <p className="inline-flex rounded-full bg-green-50 px-4 py-2 text-sm font-black uppercase tracking-wide text-green-800">
+                    {getOperationLabel(producto.operationType)}
+                  </p>
+                  <p className="rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-semibold leading-6 text-green-900">
+                    Este anuncio está publicado como regalo o donación. Acuerda
+                    directamente con la persona anunciante la entrega.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-5xl font-extrabold tracking-tight text-red-700 sm:text-6xl">
+                  {formatPrice(producto.priceCents)}
+                </p>
+              )}
               <p className="mt-3 text-sm font-semibold text-gray-400">
                 Publicado el {publishedDate}
               </p>
@@ -767,7 +784,9 @@ export default function ProductoDetalle({
                   >
                     <p className="font-semibold text-gray-950">{related.title}</p>
                     <p className="mt-1 text-sm font-bold text-red-700">
-                      {formatPrice(related.priceCents)}
+                      {isDonationListing(related.operationType)
+                        ? getOperationLabel(related.operationType)
+                        : formatPrice(related.priceCents)}
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
                       {related.location || "Sin ubicacion"}

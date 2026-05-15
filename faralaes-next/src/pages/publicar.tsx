@@ -43,6 +43,7 @@ export default function Publicar() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [titulo, setTitulo] = useState("");
+  const [operationType, setOperationType] = useState<"sale" | "donation">("sale");
   const [precio, setPrecio] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState("");
@@ -147,9 +148,9 @@ export default function Publicar() {
       return;
     }
 
-    const priceCents = precioAcentimos(precio);
+    const priceCents = operationType === "donation" ? 0 : precioAcentimos(precio);
 
-    if (priceCents === null) {
+    if (operationType === "sale" && (priceCents === null || priceCents <= 0)) {
       setMensaje("Introduce un precio válido. Ejemplo: 90,50");
       return;
     }
@@ -179,6 +180,7 @@ export default function Publicar() {
         title: titulo,
         description: descripcion,
         priceCents,
+        operationType,
         category: categoria,
         size:
           getStringAttribute(attributes, ["talla", "talla_edad", "numero"]) ||
@@ -199,6 +201,7 @@ export default function Publicar() {
     if (res.ok) {
       setMensaje("Anuncio publicado correctamente.");
       setTitulo("");
+      setOperationType("sale");
       setPrecio("");
       setDescripcion("");
       setCategoria("");
@@ -361,8 +364,32 @@ export default function Publicar() {
               </button>
             </div>
 
+            <label className="block text-sm font-semibold text-gray-700">
+              <span className="mb-1 block">Tipo de anuncio</span>
+              <select
+                className="w-full rounded border border-gray-300 bg-white p-3"
+                value={operationType}
+                onChange={(e) => {
+                  const nextType = e.target.value === "donation" ? "donation" : "sale";
+                  setOperationType(nextType);
+                  if (nextType === "donation") {
+                    setPrecio("");
+                  }
+                }}
+              >
+                <option value="sale">Venta</option>
+                <option value="donation">Regalo / donación</option>
+              </select>
+            </label>
+
             <input className="w-full border p-3 rounded" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título" required />
-            <input className="w-full border p-3 rounded" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" type="text" inputMode="decimal" required />
+            {operationType === "sale" ? (
+              <input className="w-full border p-3 rounded" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" type="text" inputMode="decimal" required />
+            ) : (
+              <p className="rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-semibold leading-6 text-green-900">
+                Indica en la descripción cómo prefieres entregarlo.
+              </p>
+            )}
             <textarea className="w-full border p-3 rounded" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
 
             {renderAttributeFields()}

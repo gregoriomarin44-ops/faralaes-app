@@ -94,6 +94,7 @@ model Listing {
   description            String?
   priceCents             Int
   currency               String         @default("EUR")
+  operationType          String         @default("sale")
   category               String
   size                   String?
   color                  String?
