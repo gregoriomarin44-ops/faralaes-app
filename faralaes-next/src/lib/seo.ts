@@ -255,14 +255,6 @@ const pickBySlug = <T,>(items: readonly T[], slug: string, offset = 0) => {
   return items[score % items.length];
 };
 
-const semanticVerbs = [
-  "compra",
-  "encuentra",
-  "descubre",
-  "explora",
-  "elige",
-] as const;
-
 const introOpeners = [
   "En Faralaes reunimos anuncios actualizados",
   "Esta selección agrupa anuncios publicados en Faralaes",
@@ -430,7 +422,6 @@ export const buildSeoCopy = (route: SeoRoute, count: number) => {
   const reference = pickBySlug(flamencoReferences, route.slug);
   const opener = pickBySlug(introOpeners, route.slug, 7);
   const cta = pickBySlug(seoCtas, route.slug, 13);
-  const verb = pickBySlug(semanticVerbs, route.slug, 19);
   const listingCountText =
     count > 0
       ? `Ahora mismo hay ${count} anuncio${count === 1 ? "" : "s"} activo${count === 1 ? "" : "s"} para esta búsqueda.`
@@ -451,13 +442,11 @@ export const buildSeoCopy = (route: SeoRoute, count: number) => {
       ? `${categoryName} nuevos y de segunda mano | Faralaes`
       : `${h1} | Faralaes`;
 
-  const metaTemplates = [
-    `${capitalizeFirst(verb)} ${scopedDescription} para ${reference}. Anuncios de particulares y tiendas en Faralaes.`,
-    `Compra ${scopedDescription} nuevos y de segunda mano. Compara fotos, estado y precio antes de contactar directamente.`,
-    `Descubre anuncios de ${scopedDescription} para feria, romerías y eventos flamencos. Moda flamenca seleccionada en Faralaes.`,
-    `Encuentra moda flamenca de segunda mano: ${scopedDescription}, complementos y prendas para completar tu look flamenco.`,
-  ] as const;
-  const metaDescription = pickBySlug(metaTemplates, route.slug, count).slice(0, 160);
+  const metaDescription =
+    `Compra, vende, dona o regala trajes de flamenca y moda flamenca de segunda mano en Faralaes: ${scopedDescription}.`.slice(
+      0,
+      160
+    );
 
   const introText =
     route.kind === "city" && route.filters.location
