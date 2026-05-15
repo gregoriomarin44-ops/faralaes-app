@@ -46,7 +46,7 @@ export const getServerSideProps: GetServerSideProps<SeoPageProps> = async ({
     return {
       redirect: {
         destination: canonicalPath,
-        permanent: true,
+        statusCode: 301,
       },
     };
   }
@@ -72,25 +72,35 @@ export const getServerSideProps: GetServerSideProps<SeoPageProps> = async ({
       : {}),
   };
 
-  const listings = await prisma.listing.findMany({
-    where,
-    take: 24,
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      priceCents: true,
-      operationType: true,
-      location: true,
-      size: true,
-      color: true,
-      images: {
-        orderBy: { sortOrder: "asc" },
-        select: { url: true },
+  let listings: SeoListing[] = [];
+
+  try {
+    listings = await prisma.listing.findMany({
+      where,
+      take: 24,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        priceCents: true,
+        operationType: true,
+        location: true,
+        size: true,
+        color: true,
+        images: {
+          orderBy: { sortOrder: "asc" },
+          select: { url: true },
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("No se han podido cargar anuncios para la landing SEO.", {
+      error,
+      slug: page.slug,
+    });
+  }
+
   const pageWithCount = getSeoPage(params?.seo, listings.length);
 
   if (!pageWithCount) {
