@@ -205,6 +205,15 @@ export type SeoFaq = {
 
 export const seoCategorySlugs = Object.keys(categorySeo) as SeoCategorySlug[];
 
+const seoCategorySlugAliases: Partial<Record<string, SeoCategorySlug>> = {
+  "mantoncillos": "mantoncillos-flamencos",
+  "flores-flamenca": "flores-flamencas",
+  "pendientes-flamenca": "pendientes-flamencos",
+  "peinetas-flamenca": "peinetas-flamencas",
+  "abanicos-flamenca": "abanicos-flamencos",
+  "bolsos-flamenca": "bolsos-flamencos",
+};
+
 export const getSeoCategorySlugByCategory = (category: string) =>
   seoCategorySlugs.find((slug) => categorySeo[slug].category === category) ||
   null;
@@ -219,6 +228,22 @@ export const normalizeSlugText = (value: string) =>
     .replace(/^-+|-+$/g, "");
 
 export const getCanonical = (path: string) => `${SITE_URL}${path}`;
+
+export const shouldNoindexSeoRoute = ({
+  hasNonCanonicalQuery,
+  listingCount,
+  route,
+}: {
+  hasNonCanonicalQuery: boolean;
+  listingCount: number;
+  route: SeoRoute;
+}) => {
+  if (hasNonCanonicalQuery) {
+    return true;
+  }
+
+  return route.kind !== "category" && listingCount === 0;
+};
 
 const findCityBySlug = (slug: string) =>
   seoCities.find((city) => city.slug === normalizeSlugText(slug));
@@ -305,9 +330,11 @@ export const parseSeoRoute = (slug: string[] | string | undefined): SeoRoute | n
 
   if (parts.length === 1) {
     const [singleSlug] = parts;
+    const categorySlugAlias = seoCategorySlugAliases[singleSlug];
+    const normalizedSingleSlug = categorySlugAlias || singleSlug;
 
-    if (seoCategorySlugs.includes(singleSlug as SeoCategorySlug)) {
-      const categorySlug = singleSlug as SeoCategorySlug;
+    if (seoCategorySlugs.includes(normalizedSingleSlug as SeoCategorySlug)) {
+      const categorySlug = normalizedSingleSlug as SeoCategorySlug;
       const category = categorySeo[categorySlug];
 
       return {
@@ -425,7 +452,9 @@ export const buildSeoCopy = (route: SeoRoute, count: number) => {
   const listingCountText =
     count > 0
       ? `Ahora mismo hay ${count} anuncio${count === 1 ? "" : "s"} activo${count === 1 ? "" : "s"} para esta búsqueda.`
-      : "Cuando no haya anuncios disponibles, mantenemos la página fuera de indexación hasta que vuelva a tener oferta útil.";
+      : route.kind === "category"
+        ? "Si ahora hay poca oferta, la página sigue abierta para que puedas volver y encontrar nuevos anuncios publicados."
+        : "Cuando no haya anuncios disponibles en filtros muy específicos, mantenemos la página fuera de indexación hasta que vuelva a tener oferta útil.";
 
   const h1 =
     route.kind === "city" && route.filters.location

@@ -42,14 +42,6 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     },
   });
 
-  const categoryCounts = await prisma.listing.groupBy({
-    by: ["category"],
-    where: {
-      status: "published",
-      seller: { disabled: false },
-    },
-    _count: { _all: true },
-  });
   const locationCounts = await prisma.listing.groupBy({
     by: ["category", "location"],
     where: {
@@ -81,13 +73,9 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     _count: { _all: true },
   });
 
-  const categoryPaths = seoCategorySlugs
-    .filter((slug) =>
-      categoryCounts.some((count) => {
-        return count.category === categorySeo[slug].category && count._count._all > 0;
-      })
-    )
-    .map((categorySlug) => buildSeoPath({ categorySlug }));
+  const categoryPaths = seoCategorySlugs.map((categorySlug) =>
+    buildSeoPath({ categorySlug })
+  );
 
   const locationPaths = locationCounts
     .filter((count) => count.location)

@@ -10,6 +10,7 @@ import {
   getSeoLinksForCategory,
   getSeoPage,
   SeoPage,
+  shouldNoindexSeoRoute,
 } from "../lib/seo";
 
 type SeoListing = {
@@ -78,11 +79,16 @@ export const getServerSideProps: GetServerSideProps<SeoPageProps> = async ({
     return { notFound: true };
   }
 
+  const hasNonCanonicalQuery = Object.keys(query).some((key) => key !== "seo");
+
   return {
     props: {
       listings,
-      noindex:
-        listings.length === 0 || Object.keys(query).some((key) => key !== "seo"),
+      noindex: shouldNoindexSeoRoute({
+        hasNonCanonicalQuery,
+        listingCount: listings.length,
+        route: pageWithCount,
+      }),
       page: pageWithCount,
     },
   };
