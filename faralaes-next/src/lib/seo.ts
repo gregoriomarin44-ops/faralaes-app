@@ -38,7 +38,7 @@ export const categorySeo = {
     supportsColor: true,
     supportsSize: false,
   },
-  "mantoncillos-flamencos": {
+  "mantoncillos": {
     category: "mantoncillo",
     plural: "mantoncillos flamencos",
     singular: "mantoncillo flamenco",
@@ -65,39 +65,39 @@ export const categorySeo = {
     supportsColor: true,
     supportsSize: true,
   },
-  "flores-flamencas": {
+  "flores-flamenca": {
     category: "flores",
     plural: "flores flamencas",
     singular: "flor flamenca",
     title: "Flores flamencas de segunda mano",
-    colorRouteBase: "flores-flamencas",
+    colorRouteBase: "flores-flamenca",
     supportsColor: true,
     supportsSize: false,
   },
-  "pendientes-flamencos": {
+  "pendientes-flamenca": {
     category: "pendientes",
     plural: "pendientes flamencos",
     singular: "pendiente flamenco",
     title: "Pendientes flamencos de segunda mano",
-    colorRouteBase: "pendientes-flamencos",
+    colorRouteBase: "pendientes-flamenca",
     supportsColor: true,
     supportsSize: false,
   },
-  "peinetas-flamencas": {
+  "peinetas-flamenca": {
     category: "peinetas",
     plural: "peinetas flamencas",
     singular: "peineta flamenca",
     title: "Peinetas flamencas de segunda mano",
-    colorRouteBase: "peinetas-flamencas",
+    colorRouteBase: "peinetas-flamenca",
     supportsColor: true,
     supportsSize: false,
   },
-  "bolsos-flamencos": {
+  "bolsos-flamenca": {
     category: "bolsos",
     plural: "bolsos flamencos",
     singular: "bolso flamenco",
     title: "Bolsos flamencos de segunda mano",
-    colorRouteBase: "bolsos-flamencos",
+    colorRouteBase: "bolsos-flamenca",
     supportsColor: true,
     supportsSize: false,
   },
@@ -205,14 +205,39 @@ export type SeoFaq = {
 
 export const seoCategorySlugs = Object.keys(categorySeo) as SeoCategorySlug[];
 
+export const primarySeoCategorySlugs = [
+  "trajes-flamenca",
+  "zapatos-flamenca",
+  "complementos-flamencos",
+  "mantoncillos",
+  "abanicos-flamencos",
+  "flores-flamenca",
+  "pendientes-flamenca",
+  "peinetas-flamenca",
+  "bolsos-flamenca",
+  "moda-flamenca-nina",
+  "moda-flamenca-hombre",
+] as const satisfies readonly SeoCategorySlug[];
+
 const seoCategorySlugAliases: Partial<Record<string, SeoCategorySlug>> = {
-  "mantoncillos": "mantoncillos-flamencos",
-  "flores-flamenca": "flores-flamencas",
-  "pendientes-flamenca": "pendientes-flamencos",
-  "peinetas-flamenca": "peinetas-flamencas",
+  "mantoncillos-flamencos": "mantoncillos",
+  "flores-flamencas": "flores-flamenca",
+  "pendientes-flamencos": "pendientes-flamenca",
+  "peinetas-flamencas": "peinetas-flamenca",
   "abanicos-flamenca": "abanicos-flamencos",
-  "bolsos-flamenca": "bolsos-flamencos",
+  "bolsos-flamencos": "bolsos-flamenca",
 };
+
+const seoCategorySlugAliasEntries = Object.entries(
+  seoCategorySlugAliases
+) as [string, SeoCategorySlug][];
+
+const getCanonicalCategorySlug = (slug: string) =>
+  seoCategorySlugAliases[slug] || (slug as SeoCategorySlug);
+
+export const getCanonicalSeoPathForSlug = (
+  slug: string[] | string | undefined
+) => parseSeoRoute(slug)?.slug || null;
 
 export const getSeoCategorySlugByCategory = (category: string) =>
   seoCategorySlugs.find((slug) => categorySeo[slug].category === category) ||
@@ -330,8 +355,7 @@ export const parseSeoRoute = (slug: string[] | string | undefined): SeoRoute | n
 
   if (parts.length === 1) {
     const [singleSlug] = parts;
-    const categorySlugAlias = seoCategorySlugAliases[singleSlug];
-    const normalizedSingleSlug = categorySlugAlias || singleSlug;
+    const normalizedSingleSlug = getCanonicalCategorySlug(singleSlug);
 
     if (seoCategorySlugs.includes(normalizedSingleSlug as SeoCategorySlug)) {
       const categorySlug = normalizedSingleSlug as SeoCategorySlug;
@@ -343,6 +367,25 @@ export const parseSeoRoute = (slug: string[] | string | undefined): SeoRoute | n
         kind: "category",
         slug: buildSeoPath({ categorySlug }),
       };
+    }
+
+    for (const [legacyPrefix, categorySlug] of seoCategorySlugAliasEntries) {
+      const colorPrefix = `${legacyPrefix}-`;
+
+      if (categorySupportsColor(categorySlug) && singleSlug.startsWith(colorPrefix)) {
+        const colorSlug = singleSlug.slice(colorPrefix.length);
+        const color = findColorBySlug(colorSlug);
+
+        if (color) {
+          return {
+            categorySlug,
+            colorSlug: color.slug,
+            filters: { category: categorySeo[categorySlug].category, color: color.label },
+            kind: "color",
+            slug: buildSeoPath({ categorySlug, colorSlug: color.slug }),
+          };
+        }
+      }
     }
 
     for (const categorySlug of seoCategorySlugs) {
@@ -383,8 +426,9 @@ export const parseSeoRoute = (slug: string[] | string | undefined): SeoRoute | n
 
   if (parts.length === 2) {
     const [categorySlug, citySlug] = parts;
+    const normalizedCategorySlug = getCanonicalCategorySlug(categorySlug);
 
-    if (!seoCategorySlugs.includes(categorySlug as SeoCategorySlug)) {
+    if (!seoCategorySlugs.includes(normalizedCategorySlug as SeoCategorySlug)) {
       return null;
     }
 
@@ -394,15 +438,15 @@ export const parseSeoRoute = (slug: string[] | string | undefined): SeoRoute | n
       return null;
     }
 
-    const normalizedCategorySlug = categorySlug as SeoCategorySlug;
-    const category = categorySeo[normalizedCategorySlug];
+    const canonicalCategorySlug = normalizedCategorySlug as SeoCategorySlug;
+    const category = categorySeo[canonicalCategorySlug];
 
     return {
-      categorySlug: normalizedCategorySlug,
+      categorySlug: canonicalCategorySlug,
       citySlug: city.slug,
       filters: { category: category.category, location: city.label },
       kind: "city",
-      slug: buildSeoPath({ categorySlug: normalizedCategorySlug, citySlug: city.slug }),
+      slug: buildSeoPath({ categorySlug: canonicalCategorySlug, citySlug: city.slug }),
     };
   }
 
@@ -582,7 +626,7 @@ export const getSeoProductLinks = ({
   ].filter((link): link is { href: string; label: string } => Boolean(link));
 };
 
-export const primarySeoFooterLinks = seoCategorySlugs.slice(0, 8).map((categorySlug) => ({
+export const primarySeoFooterLinks = primarySeoCategorySlugs.slice(0, 8).map((categorySlug) => ({
   href: buildSeoPath({ categorySlug }),
   label: categorySeo[categorySlug].title.replace(" de segunda mano", ""),
 }));

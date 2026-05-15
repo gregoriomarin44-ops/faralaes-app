@@ -6,9 +6,9 @@ import {
   getSeoCategorySlugByCategory,
   getCanonical,
   normalizeSlugText,
+  primarySeoCategorySlugs,
   seoCities,
   seoColors,
-  seoCategorySlugs,
   seoSizes,
 } from "../lib/seo";
 
@@ -28,6 +28,8 @@ const renderUrl = (path: string, lastmod?: string) => `
     <loc>${getCanonical(path)}</loc>
     ${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}
   </url>`;
+
+const officialCategorySlugSet = new Set<string>(primarySeoCategorySlugs);
 
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   const listings = await prisma.listing.findMany({
@@ -73,7 +75,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     _count: { _all: true },
   });
 
-  const categoryPaths = seoCategorySlugs.map((categorySlug) =>
+  const categoryPaths = primarySeoCategorySlugs.map((categorySlug) =>
     buildSeoPath({ categorySlug })
   );
 
@@ -85,7 +87,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
         (item) => item.slug === normalizeSlugText(count.location || "")
       );
 
-      return categorySlug && city
+      return categorySlug && officialCategorySlugSet.has(categorySlug) && city
         ? buildSeoPath({
             categorySlug,
             citySlug: city.slug,
@@ -100,6 +102,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
       const size = normalizeSlugText(count.size || "");
 
       return categorySlug &&
+        officialCategorySlugSet.has(categorySlug) &&
         categorySeo[categorySlug].supportsSize &&
         seoSizes.includes(size as (typeof seoSizes)[number])
         ? buildSeoPath({
@@ -117,7 +120,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
         (item) => normalizeSlugText(item.label) === normalizeSlugText(count.color || "")
       );
 
-      return categorySlug && color
+      return categorySlug && officialCategorySlugSet.has(categorySlug) && color
         ? buildSeoPath({
             categorySlug,
             colorSlug: color.slug,

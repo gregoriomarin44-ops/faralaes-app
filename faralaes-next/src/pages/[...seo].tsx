@@ -11,6 +11,7 @@ import {
   getSeoLinksForCategory,
   getSeoPage,
   SeoPage,
+  getCanonicalSeoPathForSlug,
   shouldNoindexSeoRoute,
 } from "../lib/seo";
 
@@ -36,6 +37,20 @@ export const getServerSideProps: GetServerSideProps<SeoPageProps> = async ({
   params,
   query,
 }) => {
+  const requestedPath = `/${
+    Array.isArray(params?.seo) ? params.seo.join("/") : params?.seo || ""
+  }`;
+  const canonicalPath = getCanonicalSeoPathForSlug(params?.seo);
+
+  if (canonicalPath && requestedPath !== canonicalPath) {
+    return {
+      redirect: {
+        destination: canonicalPath,
+        permanent: true,
+      },
+    };
+  }
+
   const page = getSeoPage(params?.seo);
 
   if (!page) {
