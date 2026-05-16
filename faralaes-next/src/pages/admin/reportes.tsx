@@ -87,7 +87,7 @@ export default function AdminReportes() {
     reportId: string,
     body: {
       status?: Report["status"];
-      action?: "hide_listing" | "publish_listing" | "disable_user";
+      action?: "hide_listing" | "publish_listing" | "disable_user" | "enable_user";
     }
   ) => {
     const res = await fetch(
@@ -290,7 +290,20 @@ export default function AdminReportes() {
                             Ocultar anuncio
                           </button>
                           )}
-                        {report.targetType === "user" && (
+                        {report.targetType === "user" &&
+                          (report.target as UserTarget)?.disabled && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              patchReport(report.id, { action: "enable_user" })
+                            }
+                            className="rounded-full bg-green-700 px-3 py-1 text-xs font-bold text-white transition hover:bg-green-800"
+                          >
+                            Activar usuario
+                          </button>
+                          )}
+                        {report.targetType === "user" &&
+                          !(report.target as UserTarget)?.disabled && (
                           <button
                             type="button"
                             onClick={() =>
@@ -300,7 +313,7 @@ export default function AdminReportes() {
                           >
                             Desactivar usuario
                           </button>
-                        )}
+                          )}
                       </div>
                     </td>
                   </tr>

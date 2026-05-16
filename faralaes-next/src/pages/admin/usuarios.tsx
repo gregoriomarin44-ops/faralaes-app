@@ -5,6 +5,7 @@ type AdminUserRow = {
   id: string;
   email: string;
   role: "ADMIN" | "USER";
+  disabled: boolean;
   createdAt: string;
   profile: {
     displayName: string;
@@ -76,6 +77,45 @@ export default function AdminUsers() {
       prev?.id === targetUserId ? (data as AdminUserRow) : prev
     );
     setError("");
+  };
+
+  const toggleDisabled = async (targetUser: AdminUserRow) => {
+    const nextDisabled = !targetUser.disabled;
+    const confirmed = confirm(
+      nextDisabled
+        ? "¿Seguro que quieres desactivar este usuario?"
+        : "¿Seguro que quieres activar este usuario?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: session.userId,
+        targetUserId: targetUser.id,
+        disabled: nextDisabled,
+      }),
+    });
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      setError(data?.error || "No se ha podido cambiar el estado del usuario.");
+      setSuccessMessage("");
+      return;
+    }
+
+    await loadUsers();
+    setSelectedUser((prev) =>
+      prev?.id === targetUser.id ? (data as AdminUserRow) : prev
+    );
+    setError("");
+    setSuccessMessage(
+      nextDisabled ? "Usuario desactivado correctamente" : "Usuario activado correctamente"
+    );
   };
 
   const resetPassword = async (targetUserId: string) => {
@@ -220,6 +260,14 @@ export default function AdminUsers() {
                         >
                           Verificar usuario
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleDisabled(user)}
+                          disabled={user.id === session.userId}
+                          className="rounded-lg border border-stone-200 px-3 py-2 font-semibold text-stone-700 transition hover:border-red-700 hover:text-red-700 disabled:cursor-not-allowed disabled:bg-stone-100"
+                        >
+                          {user.disabled ? "Activar usuario" : "Desactivar usuario"}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -264,6 +312,10 @@ export default function AdminUsers() {
               <div>
                 <p className="font-semibold text-stone-500">Rol</p>
                 <p>{selectedUser.role}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-stone-500">Estado</p>
+                <p>{selectedUser.disabled ? "Desactivado" : "Activo"}</p>
               </div>
             </div>
           ) : (
