@@ -26,25 +26,28 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [passwordMessage, setPasswordMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const loadUsers = async () => {
+    const res = await fetch(
+      `/api/admin/users?userId=${encodeURIComponent(session.userId)}`
+    );
+
+    if (!res.ok) {
+      throw new Error("No se han podido cargar los usuarios.");
+    }
+
+    const data = (await res.json()) as AdminUserRow[];
+    setUsers(data);
+    setError("");
+  };
 
   useEffect(() => {
     if (session.status !== "authorized") {
       return;
     }
 
-    fetch(`/api/admin/users?userId=${encodeURIComponent(session.userId)}`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("No se han podido cargar los usuarios.");
-        }
-
-        return res.json() as Promise<AdminUserRow[]>;
-      })
-      .then((data) => {
-        setUsers(data);
-        setError("");
-      })
+    loadUsers()
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, [session]);
@@ -96,14 +99,44 @@ export default function AdminUsers() {
 
     if (!res.ok) {
       setError(data?.error || "No se ha podido resetear la contraseña.");
-      setPasswordMessage("");
+      setSuccessMessage("");
       return;
     }
 
     setError("");
-    setPasswordMessage(
+    setSuccessMessage(
       `Contraseña temporal: ${data.temporaryPassword || "Faralaes123!"}`
     );
+  };
+
+  const verifyUser = async (targetUserId: string) => {
+    const confirmed = confirm(
+      "¿Seguro que quieres verificar manualmente este usuario?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const res = await fetch(
+      `/api/admin/users/${targetUserId}/verify?userId=${encodeURIComponent(
+        session.userId
+      )}`,
+      {
+        method: "PATCH",
+      }
+    );
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      setError(data?.error || "No se ha podido verificar el usuario.");
+      setSuccessMessage("");
+      return;
+    }
+
+    await loadUsers();
+    setError("");
+    setSuccessMessage("Usuario verificado correctamente");
   };
 
   return (
@@ -117,9 +150,9 @@ export default function AdminUsers() {
           {error}
         </p>
       )}
-      {passwordMessage && (
+      {successMessage && (
         <p className="mb-5 rounded-lg border border-green-100 bg-white px-4 py-3 text-sm font-semibold text-green-800">
-          {passwordMessage}
+          {successMessage}
         </p>
       )}
 
@@ -179,6 +212,13 @@ export default function AdminUsers() {
                           className="rounded-lg border border-stone-200 px-3 py-2 font-semibold text-stone-700 transition hover:border-red-700 hover:text-red-700"
                         >
                           Reset contraseña
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => verifyUser(user.id)}
+                          className="rounded-lg border border-stone-200 px-3 py-2 font-semibold text-stone-700 transition hover:border-green-700 hover:text-green-800"
+                        >
+                          Verificar usuario
                         </button>
                       </div>
                     </td>
