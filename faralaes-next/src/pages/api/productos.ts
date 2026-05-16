@@ -263,6 +263,78 @@ const cargarProductosPublicadosFallback = async (
   }));
 };
 
+const borrarListingConRelaciones = async (listingId: string) => {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.message.deleteMany({
+        where: {
+          conversation: {
+            listingId,
+          },
+        },
+      });
+      await tx.conversation.deleteMany({ where: { listingId } });
+      await tx.favorite.deleteMany({ where: { listingId } });
+      await tx.review.updateMany({
+        where: { listingId },
+        data: { listingId: null },
+      });
+      await tx.report.deleteMany({
+        where: {
+          targetType: "listing",
+          targetId: listingId,
+        },
+      });
+      await tx.listingImage.deleteMany({ where: { listingId } });
+      await tx.listing.delete({ where: { id: listingId } });
+    });
+  } catch (error) {
+    logApiError("/api/productos DELETE prisma", error, {
+      listingId,
+      userId: null,
+      isAdmin: null,
+    });
+
+    if (!/^[0-9a-fA-F-]{36}$/.test(listingId)) {
+      throw error;
+    }
+
+    await prisma.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        IF to_regclass('"Message"') IS NOT NULL AND to_regclass('"Conversation"') IS NOT NULL THEN
+          DELETE FROM "Message"
+          WHERE "conversationId" IN (
+            SELECT "id" FROM "Conversation" WHERE "listingId"::text = '${listingId}'
+          );
+        END IF;
+
+        IF to_regclass('"Conversation"') IS NOT NULL THEN
+          DELETE FROM "Conversation" WHERE "listingId"::text = '${listingId}';
+        END IF;
+
+        IF to_regclass('"Favorite"') IS NOT NULL THEN
+          DELETE FROM "Favorite" WHERE "listingId"::text = '${listingId}';
+        END IF;
+
+        IF to_regclass('"Review"') IS NOT NULL THEN
+          UPDATE "Review" SET "listingId" = NULL WHERE "listingId"::text = '${listingId}';
+        END IF;
+
+        IF to_regclass('reports') IS NOT NULL THEN
+          DELETE FROM reports WHERE "targetType" = 'listing' AND "targetId"::text = '${listingId}';
+        END IF;
+
+        IF to_regclass('"ListingImage"') IS NOT NULL THEN
+          DELETE FROM "ListingImage" WHERE "listingId"::text = '${listingId}';
+        END IF;
+
+        DELETE FROM "Listing" WHERE "id"::text = '${listingId}';
+      END $$;
+    `);
+  }
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === "GET") {
@@ -478,15 +550,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === "DELETE") {
       const { id } = req.body;
 
-      if (!id) {
+      if (!id || typeof id !== "string") {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const user = await requireVerifiedSessionUser(req, res);
+      const user = await requireSessionUser(req, res);
 
       if (!user) {
         return;
       }
+      const isAdmin = user.role === "ADMIN";
 
       const productoActual = await prisma.listing.findUnique({
         where: { id },
@@ -497,13 +570,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: "Producto no encontrado" });
       }
 
-      if (productoActual.sellerId !== user.id) {
+      if (productoActual.sellerId !== user.id && !isAdmin) {
         return res.status(403).json({ error: "No autorizado" });
       }
 
-      await prisma.listing.delete({
-        where: { id },
-      });
+      try {
+        await borrarListingConRelaciones(id);
+      } catch (error) {
+        logApiError("/api/productos DELETE", error, {
+          listingId: id,
+          userId: user.id,
+          isAdmin,
+        });
+
+        return res.status(500).json({
+          error: "No se ha podido eliminar el anuncio.",
+        });
+      }
 
       return res.status(200).json({ ok: true });
     }

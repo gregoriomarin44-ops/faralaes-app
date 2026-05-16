@@ -81,23 +81,37 @@ export default function MisAnuncios() {
       return;
     }
 
-    const res = await fetch("/api/productos", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
+    try {
+      const res = await fetch("/api/productos", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
 
-    if (res.ok) {
-      setProductos((prev) => prev.filter((producto) => producto.id !== id));
-      return;
+      const data = await res.json().catch(() => null);
+
+      if (res.ok) {
+        setProductos((prev) => prev.filter((producto) => producto.id !== id));
+        setError("");
+        return;
+      }
+
+      if (res.status === 401) {
+        router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
+        return;
+      }
+
+      const message = data?.error || "No se ha podido eliminar el anuncio.";
+      console.error("No se ha podido eliminar el anuncio.", {
+        listingId: id,
+        status: res.status,
+        error: message,
+      });
+      setError(message);
+    } catch (err) {
+      console.error("No se ha podido eliminar el anuncio.", err);
+      setError("No se ha podido eliminar el anuncio.");
     }
-
-    if (res.status === 401) {
-      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
-      return;
-    }
-
-    setError("No se ha podido eliminar el anuncio.");
   };
 
   const editarProducto = (
