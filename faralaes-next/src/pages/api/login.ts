@@ -15,6 +15,30 @@ import {
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+const logLoginDebug = (
+  stage: string,
+  context: {
+    emailRecibido: string;
+    userEncontrado?: boolean;
+    disabled?: boolean | null;
+    emailVerified?: boolean | null;
+    verified?: boolean | null;
+    passwordHashExiste?: boolean;
+    bcryptCompare?: boolean;
+  }
+) => {
+  console.info("[/api/login] Debug", {
+    stage,
+    emailRecibido: context.emailRecibido,
+    userEncontrado: context.userEncontrado,
+    disabled: context.disabled,
+    emailVerified: context.emailVerified,
+    verified: context.verified,
+    passwordHashExiste: context.passwordHashExiste,
+    bcryptCompare: context.bcryptCompare,
+  });
+};
+
 const getLoginErrorResponse = (error: unknown) => {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
@@ -215,7 +239,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         role: true,
         passwordHash: true,
         emailVerified: true,
+        disabled: true,
       },
+    });
+
+    logLoginDebug("user lookup", {
+      emailRecibido: normalizedIdentifier,
+      userEncontrado: Boolean(user),
+      disabled: user?.disabled ?? null,
+      emailVerified: user?.emailVerified ?? null,
+      verified: user?.emailVerified ?? null,
+      passwordHashExiste: Boolean(user?.passwordHash),
     });
 
     if (!user?.passwordHash) {
@@ -226,10 +260,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
 
+    logLoginDebug("password compare", {
+      emailRecibido: normalizedIdentifier,
+      userEncontrado: true,
+      disabled: user.disabled,
+      emailVerified: user.emailVerified,
+      verified: user.emailVerified,
+      passwordHashExiste: Boolean(user.passwordHash),
+      bcryptCompare: passwordMatches,
+    });
+
     if (!passwordMatches) {
       return res
         .status(401)
         .json({ error: "Email o contraseña incorrectos." });
+    }
+
+    if (user.disabled) {
+      return res.status(403).json({
+        error: "Tu cuenta esta bloqueada. Contacta con Faralaes.",
+        code: "USER_DISABLED",
+      });
     }
 
     if (!user.emailVerified) {
