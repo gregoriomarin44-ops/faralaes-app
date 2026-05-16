@@ -125,7 +125,9 @@ export default function AdminListings() {
                   <td className="px-4 py-4">
                     <div className="flex min-w-[260px] flex-wrap gap-2">
                       <Link
-                        href={`/producto/${listing.id}`}
+                        href={`/producto/${listing.id}?adminUserId=${encodeURIComponent(
+                          session.userId
+                        )}`}
                         className="rounded-lg border border-stone-200 px-3 py-2 font-semibold text-stone-700 transition hover:border-green-700 hover:text-green-800"
                       >
                         Ver

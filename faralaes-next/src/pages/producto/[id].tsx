@@ -1,4 +1,5 @@
 import type { GetServerSideProps } from "next";
+import { Prisma } from "@prisma/client";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { useEffect, useState } from "react";
@@ -67,6 +68,249 @@ type ProductoDetalleProps = {
   relatedListings: RelatedListing[];
 };
 
+type ServerProducto = Omit<Producto, "createdAt"> & {
+  createdAt: Date | string;
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
+const getErrorStack = (error: unknown) =>
+  error instanceof Error ? error.stack : undefined;
+
+const logProductError = (
+  endpoint: string,
+  error: unknown,
+  context: Record<string, unknown>
+) => {
+  console.error(`[${endpoint}] Error`, {
+    message: getErrorMessage(error),
+    stack: getErrorStack(error),
+    ...context,
+  });
+};
+
+const getSingleQueryValue = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
+
+const getRequestAdminState = async (
+  req: Parameters<GetServerSideProps<ProductoDetalleProps>>[0]["req"],
+  adminUserId: string | undefined
+) => {
+  const session = req.cookies[AUTH_COOKIE_NAME]
+    ? verifySessionToken(req.cookies[AUTH_COOKIE_NAME])
+    : null;
+  const userId = session?.userId || adminUserId || null;
+
+  if (!userId) {
+    return { userId: null, isAdmin: false };
+  }
+
+  try {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, disabled: true },
+    });
+
+    return {
+      userId,
+      isAdmin: currentUser?.role === "ADMIN" && !currentUser.disabled,
+    };
+  } catch (error) {
+    logProductError("/producto/[id] admin lookup", error, {
+      listingId: null,
+      userId,
+      isAdmin: false,
+    });
+
+    try {
+      const users = await prisma.$queryRaw<{ role: string }[]>`
+        SELECT "role"
+        FROM "User"
+        WHERE "id"::text = ${userId}
+        LIMIT 1
+      `;
+
+      return {
+        userId,
+        isAdmin: users[0]?.role === "ADMIN",
+      };
+    } catch (fallbackError) {
+      logProductError("/producto/[id] admin lookup fallback", fallbackError, {
+        listingId: null,
+        userId,
+        isAdmin: false,
+      });
+
+      return { userId, isAdmin: false };
+    }
+  }
+};
+
+const loadProductFallback = async (
+  id: string,
+  isAdmin: boolean
+): Promise<ServerProducto | null> => {
+  const statusFilter = isAdmin
+    ? Prisma.empty
+    : Prisma.sql`AND l."status" = 'published'`;
+  const rows = await prisma.$queryRaw<
+    {
+      id: string;
+      sellerId: string;
+      title: string;
+      description: string | null;
+      priceCents: number;
+      category: string;
+      size: string | null;
+      color: string | null;
+      location: string | null;
+      condition: string | null;
+      shippingAvailable: boolean;
+      whatsappContactAllowed: boolean;
+      status: string;
+      createdAt: Date;
+      sellerEmail: string | null;
+      sellerProfileDisplayName: string | null;
+      sellerPhone: string | null;
+      sellerLocation: string | null;
+    }[]
+  >`
+    SELECT
+      l."id"::text AS "id",
+      l."sellerId"::text AS "sellerId",
+      l."title",
+      l."description",
+      l."priceCents",
+      l."category",
+      l."size",
+      l."color",
+      l."location",
+      l."condition",
+      l."shippingAvailable",
+      l."whatsappContactAllowed",
+      l."status",
+      l."createdAt",
+      u."email" AS "sellerEmail",
+      p."displayName" AS "sellerProfileDisplayName",
+      p."phone" AS "sellerPhone",
+      p."location" AS "sellerLocation"
+    FROM "Listing" l
+    LEFT JOIN "User" u ON u."id" = l."sellerId"
+    LEFT JOIN "Profile" p ON p."userId" = u."id"
+    WHERE l."id"::text = ${id}
+    ${statusFilter}
+    LIMIT 1
+  `;
+  const row = rows[0];
+
+  if (!row) {
+    return null;
+  }
+
+  const images = await prisma.listingImage.findMany({
+    where: { listingId: id },
+    orderBy: { sortOrder: "asc" },
+    select: { url: true },
+  });
+
+  return {
+    id: row.id,
+    sellerId: row.sellerId,
+    title: row.title,
+    description: row.description,
+    priceCents: row.priceCents,
+    operationType: "sale",
+    category: row.category,
+    size: row.size,
+    color: row.color,
+    brand: null,
+    usage: null,
+    location: row.location,
+    condition: row.condition,
+    attributes: null,
+    shippingAvailable: row.shippingAvailable,
+    whatsappContactAllowed: row.whatsappContactAllowed,
+    status: row.status,
+    createdAt: row.createdAt,
+    images,
+    seller: {
+      id: row.sellerId,
+      username: "",
+      displayName:
+        row.sellerProfileDisplayName ||
+        row.sellerEmail?.split("@")[0] ||
+        "Sin perfil",
+      profile:
+        row.sellerPhone || row.sellerLocation
+          ? {
+              phone: row.sellerPhone,
+              location: row.sellerLocation,
+            }
+          : null,
+    },
+  };
+};
+
+const loadRelatedFallback = async (
+  producto: { id: string; category: string; location: string | null },
+  isAdmin: boolean
+): Promise<RelatedListing[]> => {
+  try {
+    const rows = await prisma.$queryRaw<
+      {
+        id: string;
+        title: string;
+        priceCents: number;
+        location: string | null;
+      }[]
+    >`
+      SELECT
+        "id"::text AS "id",
+        "title",
+        "priceCents",
+        "location"
+      FROM "Listing"
+      WHERE "id"::text <> ${producto.id}
+        AND "status" = 'published'
+        AND ("category" = ${producto.category} OR "location" = ${producto.location})
+      ORDER BY "createdAt" DESC
+      LIMIT 4
+    `;
+    const imageRows = rows.length
+      ? await prisma.listingImage.findMany({
+          where: { listingId: { in: rows.map((row) => row.id) } },
+          orderBy: { sortOrder: "asc" },
+          select: { listingId: true, url: true },
+        })
+      : [];
+    const imagesByListingId = new Map<string, { url: string }[]>();
+
+    imageRows.forEach((image) => {
+      const current = imagesByListingId.get(image.listingId) || [];
+      current.push({ url: image.url });
+      imagesByListingId.set(image.listingId, current);
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      priceCents: row.priceCents,
+      operationType: "sale",
+      location: row.location,
+      images: imagesByListingId.get(row.id) || [],
+    }));
+  } catch (error) {
+    logProductError("/producto/[id] related fallback", error, {
+      listingId: producto.id,
+      userId: null,
+      isAdmin,
+    });
+
+    return [];
+  }
+};
+
 const categoryLabels: Record<string, { label: string; path: string }> = {
   traje: { label: "Trajes de flamenca", path: "/trajes-flamenca" },
   zapatos: { label: "Zapatos de flamenca", path: "/zapatos-flamenca" },
@@ -85,6 +329,7 @@ const categoryLabels: Record<string, { label: string; path: string }> = {
 
 export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = async ({
   params,
+  query,
   req,
 }) => {
   const id = params?.id;
@@ -93,72 +338,104 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
     return { notFound: true };
   }
 
-  const session = req.cookies[AUTH_COOKIE_NAME]
-    ? verifySessionToken(req.cookies[AUTH_COOKIE_NAME])
-    : null;
-  const currentUser = session
-    ? await prisma.user.findUnique({
-        where: { id: session.userId },
-        select: { role: true, disabled: true },
-      })
-    : null;
-  const isAdmin = currentUser?.role === "ADMIN" && !currentUser.disabled;
+  const { userId, isAdmin } = await getRequestAdminState(
+    req,
+    getSingleQueryValue(query.adminUserId)
+  );
+  let producto: ServerProducto | null = null;
+  let relatedListings: RelatedListing[] = [];
 
-  const producto = await prisma.listing.findFirst({
-    where: {
-      id,
-      ...(isAdmin ? {} : { status: "published" }),
-      seller: { disabled: false },
-    },
-    include: {
-      images: {
-        orderBy: { sortOrder: "asc" },
-        select: { url: true },
+  try {
+    producto = (await prisma.listing.findFirst({
+      where: {
+        id,
+        ...(isAdmin ? {} : { status: "published" }),
       },
-      seller: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          profile: {
-            select: {
-              phone: true,
-              location: true,
+      select: {
+        id: true,
+        sellerId: true,
+        title: true,
+        description: true,
+        priceCents: true,
+        operationType: true,
+        category: true,
+        size: true,
+        color: true,
+        brand: true,
+        usage: true,
+        location: true,
+        condition: true,
+        attributes: true,
+        shippingAvailable: true,
+        whatsappContactAllowed: true,
+        status: true,
+        createdAt: true,
+        images: {
+          orderBy: { sortOrder: "asc" },
+          select: { url: true },
+        },
+        seller: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            profile: {
+              select: {
+                phone: true,
+                location: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    })) as ServerProducto | null;
+  } catch (error) {
+    logProductError("/producto/[id]", error, {
+      listingId: id,
+      userId,
+      isAdmin,
+    });
+
+    producto = await loadProductFallback(id, isAdmin);
+  }
 
   if (!producto) {
     return { notFound: true };
   }
 
-  const relatedListings = await prisma.listing.findMany({
-    where: {
-      id: { not: producto.id },
-      status: "published",
-      seller: { disabled: false },
-      OR: [
-        { category: producto.category },
-        ...(producto.location ? [{ location: producto.location }] : []),
-      ],
-    },
-    take: 4,
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-      priceCents: true,
-      operationType: true,
-      location: true,
-      images: {
-        orderBy: { sortOrder: "asc" },
-        select: { url: true },
+  try {
+    relatedListings = await prisma.listing.findMany({
+      where: {
+        id: { not: producto.id },
+        status: "published",
+        OR: [
+          { category: producto.category },
+          ...(producto.location ? [{ location: producto.location }] : []),
+        ],
       },
-    },
-  });
+      take: 4,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        priceCents: true,
+        operationType: true,
+        location: true,
+        images: {
+          orderBy: { sortOrder: "asc" },
+          select: { url: true },
+        },
+      },
+    });
+  } catch (error) {
+    logProductError("/producto/[id] related", error, {
+      listingId: id,
+      userId,
+      isAdmin,
+    });
+
+    relatedListings = await loadRelatedFallback(producto, isAdmin);
+  }
 
   return {
     props: {
