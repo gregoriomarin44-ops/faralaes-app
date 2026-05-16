@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { Prisma } from "@prisma/client";
 import { requireSessionUser, requireVerifiedSessionUser } from "../../lib/auth";
 import { normalizeAttributesForCategory } from "../../lib/listingOptions";
 import { normalizeOperationType } from "../../lib/listingOperation";
@@ -6,6 +7,48 @@ import { prisma } from "../../lib/prisma";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+
+type PublicListingFallback = {
+  id: string;
+  sellerId: string;
+  title: string;
+  description: string | null;
+  priceCents: number;
+  currency: string;
+  operationType: string | null;
+  category: string;
+  size: string | null;
+  color: string | null;
+  brand: string | null;
+  usage: string | null;
+  location: string | null;
+  condition: string | null;
+  attributes: Record<string, string | number | boolean> | null;
+  status: string;
+  shippingAvailable: boolean;
+  whatsappContactAllowed: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  images: { url: string; sortOrder: number }[];
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
+const getErrorStack = (error: unknown) =>
+  error instanceof Error ? error.stack : undefined;
+
+const logApiError = (
+  endpoint: string,
+  error: unknown,
+  context: Record<string, unknown>
+) => {
+  console.error(`[${endpoint}] Error`, {
+    message: getErrorMessage(error),
+    stack: getErrorStack(error),
+    ...context,
+  });
+};
 
 export const config = {
   api: {
@@ -125,7 +168,11 @@ const añadirResumenReviews = async <T extends { sellerId: string }>(productos: 
       _count: { _all: group._count._all },
     }));
   } catch (error) {
-    console.warn("No se han podido cargar las valoraciones de vendedores.", error);
+    logApiError("/api/productos reviews", error, {
+      filtrosRecibidos: {},
+      queryParamsRecibidos: {},
+      sellerIds,
+    });
   }
   const reviewsBySeller = new Map(
     reviewGroups.map((group) => [
@@ -148,6 +195,74 @@ const añadirResumenReviews = async <T extends { sellerId: string }>(productos: 
   });
 };
 
+const cargarProductosPublicadosFallback = async (
+  mine: boolean,
+  userId: string | null
+): Promise<PublicListingFallback[]> => {
+  const sellerFilter =
+    mine && userId
+      ? Prisma.sql`AND "sellerId"::text = ${userId}`
+      : Prisma.empty;
+
+  const productos = await prisma.$queryRaw<Omit<PublicListingFallback, "images">[]>`
+    SELECT
+      "id"::text AS "id",
+      "sellerId"::text AS "sellerId",
+      "title",
+      "description",
+      "priceCents",
+      "currency",
+      'sale' AS "operationType",
+      "category",
+      "size",
+      "color",
+      NULL AS "brand",
+      NULL AS "usage",
+      "location",
+      "condition",
+      NULL AS "attributes",
+      "status",
+      "shippingAvailable",
+      "whatsappContactAllowed",
+      "createdAt",
+      "updatedAt"
+    FROM "Listing"
+    WHERE "status" = 'published'
+    ${sellerFilter}
+    ORDER BY "createdAt" DESC
+  `;
+
+  const listingIds = productos.map((producto) => producto.id);
+
+  if (listingIds.length === 0) {
+    return [];
+  }
+
+  const images = await prisma.listingImage.findMany({
+    where: { listingId: { in: listingIds } },
+    orderBy: { sortOrder: "asc" },
+    select: {
+      listingId: true,
+      url: true,
+      sortOrder: true,
+    },
+  });
+  const imagesByListingId = new Map<string, { url: string; sortOrder: number }[]>();
+
+  images.forEach((image) => {
+    const current = imagesByListingId.get(image.listingId) || [];
+    current.push({ url: image.url, sortOrder: image.sortOrder });
+    imagesByListingId.set(image.listingId, current);
+  });
+
+  return productos.map((producto) => ({
+    ...producto,
+    operationType: producto.operationType || "sale",
+    attributes: null,
+    images: imagesByListingId.get(producto.id) || [],
+  }));
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === "GET") {
@@ -162,7 +277,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const productos = await prisma.listing.findMany({
         where: {
           status: "published",
-          seller: { disabled: false },
           ...(mine === "true" && user ? { sellerId: user.id } : {}),
         },
         orderBy: { createdAt: "desc" },
@@ -396,7 +510,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(405).json({ error: "Método no permitido" });
   } catch (error) {
-    console.error(error);
+    const queryParamsRecibidos = req.query;
+    const filtrosRecibidos =
+      req.method === "GET"
+        ? {
+            mine: req.query.mine,
+          }
+        : req.body;
+
+    logApiError("/api/productos", error, {
+      method: req.method,
+      filtrosRecibidos,
+      queryParamsRecibidos,
+    });
+
+    if (req.method === "GET") {
+      try {
+        const mine = req.query.mine === "true";
+        const user = mine ? await requireSessionUser(req, res) : null;
+
+        if (mine && !user) {
+          return;
+        }
+
+        const fallbackProductos = await cargarProductosPublicadosFallback(
+          mine,
+          user?.id || null
+        );
+
+        return res.status(200).json(await añadirResumenReviews(fallbackProductos));
+      } catch (fallbackError) {
+        logApiError("/api/productos fallback", fallbackError, {
+          method: req.method,
+          filtrosRecibidos,
+          queryParamsRecibidos,
+        });
+      }
+    }
+
     return res.status(500).json({ error: "Error interno del servidor" });
   }
 }

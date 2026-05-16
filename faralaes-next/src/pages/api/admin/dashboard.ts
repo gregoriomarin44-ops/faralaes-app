@@ -2,6 +2,38 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdmin } from "../../../lib/adminAuth";
 import { prisma } from "../../../lib/prisma";
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
+const getErrorStack = (error: unknown) =>
+  error instanceof Error ? error.stack : undefined;
+
+const logApiError = (
+  endpoint: string,
+  error: unknown,
+  context: Record<string, unknown>
+) => {
+  console.error(`[${endpoint}] Error`, {
+    message: getErrorMessage(error),
+    stack: getErrorStack(error),
+    ...context,
+  });
+};
+
+const safeDashboardQuery = async <T,>(
+  label: string,
+  query: Promise<T>,
+  fallback: T,
+  context: Record<string, unknown>
+) => {
+  try {
+    return await query;
+  } catch (error) {
+    logApiError(`/api/admin/dashboard ${label}`, error, context);
+    return fallback;
+  }
+};
+
 const startOfDay = (date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
@@ -62,19 +94,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Metodo no permitido" });
   }
 
-  const user = await requireAdmin(req, res);
-
-  if (!user) {
-    return;
-  }
-
+  const queryParamsRecibidos = req.query;
   const range = getRange(req.query.range);
-  const days = getDays(range);
-  const rangeStart = days[0].date;
-  const today = startOfDay(new Date());
-  const tomorrow = addDays(today, 1);
+  const filtrosRecibidos = { range };
 
-  const [
+  try {
+    const user = await requireAdmin(req, res);
+
+    if (!user) {
+      return;
+    }
+
+    const days = getDays(range);
+    const rangeStart = days[0].date;
+    const today = startOfDay(new Date());
+    const tomorrow = addDays(today, 1);
+    const logContext = {
+      filtrosRecibidos,
+      queryParamsRecibidos,
+      rangeStart,
+      today,
+      tomorrow,
+    };
+
+    const [
     totalListings,
     publishedListings,
     hiddenListings,
@@ -101,46 +144,123 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     topFavoriteGroups,
     topSellerGroups,
   ] = await Promise.all([
-    prisma.listing.count(),
-    prisma.listing.count({ where: { status: "published" } }),
-    prisma.listing.count({ where: { status: "hidden" } }),
-    prisma.listing.count({
-      where: { status: "hidden", updatedAt: { gte: rangeStart } },
-    }),
-    prisma.listing.count({
-      where: {
-        status: "published",
-        createdAt: { gte: today, lt: tomorrow },
-      },
-    }),
-    prisma.listing.count({
-      where: { status: "published", createdAt: { gte: rangeStart } },
-    }),
-    prisma.user.count(),
-    prisma.user.count({ where: { createdAt: { gte: rangeStart } } }),
-    prisma.report.count({ where: { status: "pending" } }),
-    prisma.report.count({
-      where: { status: "pending", createdAt: { gte: rangeStart } },
-    }),
-    prisma.report.count({ where: { createdAt: { gte: rangeStart } } }),
-    prisma.favorite.count(),
-    prisma.favorite.count({ where: { createdAt: { gte: rangeStart } } }),
-    prisma.message.count(),
-    prisma.message.count({ where: { createdAt: { gte: rangeStart } } }),
-    prisma.user.count({ where: { disabled: true } }),
-    prisma.listing.findMany({
+    safeDashboardQuery("totalListings", prisma.listing.count(), 0, logContext),
+    safeDashboardQuery(
+      "publishedListings",
+      prisma.listing.count({ where: { status: "published" } }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery(
+      "hiddenListings",
+      prisma.listing.count({ where: { status: "hidden" } }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery(
+      "hiddenListingsInRange",
+      prisma.listing.count({
+        where: { status: "hidden", updatedAt: { gte: rangeStart } },
+      }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery(
+      "publishedToday",
+      prisma.listing.count({
+        where: {
+          status: "published",
+          createdAt: { gte: today, lt: tomorrow },
+        },
+      }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery(
+      "publishedListingsInRange",
+      prisma.listing.count({
+        where: { status: "published", createdAt: { gte: rangeStart } },
+      }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery("totalUsers", prisma.user.count(), 0, logContext),
+    safeDashboardQuery(
+      "newUsersInRange",
+      prisma.user.count({ where: { createdAt: { gte: rangeStart } } }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery(
+      "pendingReports",
+      prisma.report.count({ where: { status: "pending" } }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery(
+      "pendingReportsInRange",
+      prisma.report.count({
+        where: { status: "pending", createdAt: { gte: rangeStart } },
+      }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery(
+      "createdReportsInRange",
+      prisma.report.count({ where: { createdAt: { gte: rangeStart } } }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery("totalFavorites", prisma.favorite.count(), 0, logContext),
+    safeDashboardQuery(
+      "favoritesInRange",
+      prisma.favorite.count({ where: { createdAt: { gte: rangeStart } } }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery("totalMessages", prisma.message.count(), 0, logContext),
+    safeDashboardQuery(
+      "messagesInRange",
+      prisma.message.count({ where: { createdAt: { gte: rangeStart } } }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery(
+      "disabledUsers",
+      prisma.user.count({ where: { disabled: true } }),
+      0,
+      logContext
+    ),
+    safeDashboardQuery(
+      "latestListings",
+      prisma.listing.findMany({
       take: 6,
       orderBy: { createdAt: "desc" },
       where: { status: "published", createdAt: { gte: rangeStart } },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        priceCents: true,
+        status: true,
+        createdAt: true,
         seller: {
-          include: {
-            profile: true,
+          select: {
+            email: true,
+            profile: {
+              select: {
+                displayName: true,
+              },
+            },
           },
         },
       },
     }),
-    prisma.user.findMany({
+      [],
+      logContext
+    ),
+    safeDashboardQuery(
+      "latestUsers",
+      prisma.user.findMany({
       take: 6,
       orderBy: { createdAt: "desc" },
       where: { createdAt: { gte: rangeStart } },
@@ -148,7 +268,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         profile: true,
       },
     }),
-    prisma.report.findMany({
+      [],
+      logContext
+    ),
+    safeDashboardQuery(
+      "latestReports",
+      prisma.report.findMany({
       take: 6,
       orderBy: { createdAt: "desc" },
       where: { createdAt: { gte: rangeStart } },
@@ -161,15 +286,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       },
     }),
-    prisma.listing.findMany({
+      [],
+      logContext
+    ),
+    safeDashboardQuery(
+      "recentListingsForChart",
+      prisma.listing.findMany({
       where: { createdAt: { gte: rangeStart } },
       select: { createdAt: true },
     }),
-    prisma.user.findMany({
+      [],
+      logContext
+    ),
+    safeDashboardQuery(
+      "recentUsersForChart",
+      prisma.user.findMany({
       where: { createdAt: { gte: rangeStart } },
       select: { createdAt: true },
     }),
-    prisma.listing.groupBy({
+      [],
+      logContext
+    ),
+    safeDashboardQuery(
+      "topCategories",
+      prisma.listing.groupBy({
       by: ["category"],
       where: {
         status: "published",
@@ -180,7 +320,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       orderBy: { _count: { category: "desc" } },
       take: 5,
     }),
-    prisma.listing.groupBy({
+      [],
+      logContext
+    ),
+    safeDashboardQuery(
+      "topLocations",
+      prisma.listing.groupBy({
       by: ["location"],
       where: {
         status: "published",
@@ -191,57 +336,85 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       orderBy: { _count: { location: "desc" } },
       take: 5,
     }),
-    prisma.favorite.groupBy({
+      [],
+      logContext
+    ),
+    safeDashboardQuery(
+      "topFavoriteGroups",
+      prisma.favorite.groupBy({
       by: ["listingId"],
       where: { createdAt: { gte: rangeStart } },
       _count: { _all: true },
       orderBy: { _count: { listingId: "desc" } },
       take: 5,
     }),
-    prisma.listing.groupBy({
+      [],
+      logContext
+    ),
+    safeDashboardQuery(
+      "topSellerGroups",
+      prisma.listing.groupBy({
       by: ["sellerId"],
       where: { status: "published", createdAt: { gte: rangeStart } },
       _count: { _all: true },
       orderBy: { _count: { sellerId: "desc" } },
       take: 5,
     }),
+      [],
+      logContext
+    ),
   ]);
 
   const [topFavoriteListings, topSellers, enrichedReports] = await Promise.all([
     topFavoriteGroups.length > 0
-      ? prisma.listing.findMany({
+      ? safeDashboardQuery(
+          "topFavoriteListings",
+          prisma.listing.findMany({
           where: { id: { in: topFavoriteGroups.map((group) => group.listingId) } },
           select: { id: true, title: true, status: true },
-        })
+        }),
+          [],
+          logContext
+        )
       : Promise.resolve([]),
     topSellerGroups.length > 0
-      ? prisma.user.findMany({
+      ? safeDashboardQuery(
+          "topSellers",
+          prisma.user.findMany({
           where: { id: { in: topSellerGroups.map((group) => group.sellerId) } },
           select: {
             id: true,
             username: true,
             displayName: true,
           },
-        })
+        }),
+          [],
+          logContext
+        )
       : Promise.resolve([]),
-    Promise.all(
-      latestReports.map(async (report) => {
-        if (report.targetType === "listing") {
-          const target = await prisma.listing.findUnique({
+    safeDashboardQuery(
+      "enrichedReports",
+      Promise.all(
+        latestReports.map(async (report) => {
+          if (report.targetType === "listing") {
+            const target = await prisma.listing.findUnique({
+              where: { id: report.targetId },
+              select: { title: true, status: true },
+            });
+
+            return { ...report, target };
+          }
+
+          const target = await prisma.user.findUnique({
             where: { id: report.targetId },
-            select: { title: true, status: true },
+            select: { username: true, displayName: true, disabled: true },
           });
 
           return { ...report, target };
-        }
-
-        const target = await prisma.user.findUnique({
-          where: { id: report.targetId },
-          select: { username: true, displayName: true, disabled: true },
-        });
-
-        return { ...report, target };
-      })
+        })
+      ),
+      [],
+      logContext
     ),
   ]);
 
@@ -309,4 +482,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
     },
   });
+  } catch (error) {
+    logApiError("/api/admin/dashboard", error, {
+      filtrosRecibidos,
+      queryParamsRecibidos,
+    });
+
+    return res.status(500).json({
+      error: "No se han podido cargar los datos del panel.",
+    });
+  }
 }

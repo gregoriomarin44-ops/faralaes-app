@@ -66,6 +66,14 @@ const hasDynamicColorField = (
   schema: ReturnType<typeof getCategoryAttributeSchema>
 ) => schema.some((field) => field.key === "color");
 
+const normalizeCategoryValue = (value: string | null | undefined) =>
+  (value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ñ/g, "n");
+
 export default function Catalogo() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [productosFavoritos, setProductosFavoritos] = useState<Producto[]>([]);
@@ -694,7 +702,9 @@ export default function Catalogo() {
           producto.title.toLowerCase().includes(texto) ||
           (producto.description || "").toLowerCase().includes(texto);
         const coincideCategoria =
-          !activeCategory || producto.category === activeCategory;
+          !activeCategory ||
+          normalizeCategoryValue(producto.category) ===
+            normalizeCategoryValue(activeCategory);
         const coincideUbicacion =
           !ubicacion.trim() ||
           (producto.location || "")
