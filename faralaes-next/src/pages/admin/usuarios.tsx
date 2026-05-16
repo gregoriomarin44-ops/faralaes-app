@@ -26,6 +26,7 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
 
   useEffect(() => {
     if (session.status !== "authorized") {
@@ -74,6 +75,37 @@ export default function AdminUsers() {
     setError("");
   };
 
+  const resetPassword = async (targetUserId: string) => {
+    const confirmed = confirm(
+      "¿Seguro que quieres resetear la contraseña de este usuario?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const res = await fetch(
+      `/api/admin/users/${targetUserId}/reset-password?userId=${encodeURIComponent(
+        session.userId
+      )}`,
+      {
+        method: "PATCH",
+      }
+    );
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      setError(data?.error || "No se ha podido resetear la contraseña.");
+      setPasswordMessage("");
+      return;
+    }
+
+    setError("");
+    setPasswordMessage(
+      `Contraseña temporal: ${data.temporaryPassword || "Faralaes123!"}`
+    );
+  };
+
   return (
     <AdminLayout
       session={session}
@@ -83,6 +115,11 @@ export default function AdminUsers() {
       {error && (
         <p className="mb-5 rounded-lg border border-red-100 bg-white px-4 py-3 text-sm font-semibold text-red-700">
           {error}
+        </p>
+      )}
+      {passwordMessage && (
+        <p className="mb-5 rounded-lg border border-green-100 bg-white px-4 py-3 text-sm font-semibold text-green-800">
+          {passwordMessage}
         </p>
       )}
 
@@ -128,13 +165,22 @@ export default function AdminUsers() {
                       </select>
                     </td>
                     <td className="px-4 py-4">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedUser(user)}
-                        className="rounded-lg border border-stone-200 px-3 py-2 font-semibold text-stone-700 transition hover:border-green-700 hover:text-green-800"
-                      >
-                        Ver
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUser(user)}
+                          className="rounded-lg border border-stone-200 px-3 py-2 font-semibold text-stone-700 transition hover:border-green-700 hover:text-green-800"
+                        >
+                          Ver
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => resetPassword(user.id)}
+                          className="rounded-lg border border-stone-200 px-3 py-2 font-semibold text-stone-700 transition hover:border-red-700 hover:text-red-700"
+                        >
+                          Reset contraseña
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
