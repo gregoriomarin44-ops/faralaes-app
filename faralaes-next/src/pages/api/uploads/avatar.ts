@@ -9,11 +9,29 @@ const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "avatars");
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: "4mb",
-    },
+    bodyParser: false,
   },
 };
+
+const readRequestBody = (req: NextApiRequest) =>
+  new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let totalBytes = 0;
+
+    req.on("data", (chunk: Buffer) => {
+      totalBytes += chunk.length;
+
+      if (totalBytes > MAX_AVATAR_BYTES) {
+        reject(new Error("AVATAR_TOO_LARGE"));
+        req.destroy();
+        return;
+      }
+
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
 
 const getMimeType = (buffer: Buffer) => {
   if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
@@ -71,19 +89,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const image = req.body?.image;
+  let buffer: Buffer;
 
-  if (typeof image !== "string") {
-    return res.status(400).json({ error: "Imagen obligatoria." });
+  try {
+    buffer = await readRequestBody(req);
+  } catch (error) {
+    if (error instanceof Error && error.message === "AVATAR_TOO_LARGE") {
+      return res.status(400).json({ error: "La imagen debe pesar 2MB como máximo." });
+    }
+
+    throw error;
   }
-
-  const match = image.match(/^data:image\/(jpeg|png|webp);base64,([a-z0-9+/=]+)$/i);
-
-  if (!match) {
-    return res.status(400).json({ error: "Solo puedes subir imágenes JPG, PNG o WEBP." });
-  }
-
-  const buffer = Buffer.from(match[2], "base64");
 
   if (buffer.length === 0 || buffer.length > MAX_AVATAR_BYTES) {
     return res.status(400).json({ error: "La imagen debe pesar 2MB como máximo." });

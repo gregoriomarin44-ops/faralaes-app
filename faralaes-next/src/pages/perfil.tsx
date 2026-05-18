@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import NavBar from "../components/NavBar";
 import UserAvatar from "../components/UserAvatar";
 import { useAuth } from "../lib/authContext";
@@ -22,6 +22,22 @@ type ProfileResponse = {
   };
 };
 
+const CameraIcon = () => (
+  <svg
+    aria-hidden="true"
+    className="h-4 w-4"
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+  >
+    <path d="M14.5 5.5 13 3H9L7.5 5.5H5a2 2 0 0 0-2 2V18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7.5a2 2 0 0 0-2-2h-4.5Z" />
+    <path d="M12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+  </svg>
+);
+
 export default function Perfil() {
   const router = useRouter();
   const { user, loading: authLoading, refresh, clear } = useAuth();
@@ -31,7 +47,9 @@ export default function Perfil() {
   const [location, setLocation] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarWarning, setAvatarWarning] = useState("");
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState("");
+  const [avatarStatus, setAvatarStatus] = useState("");
+  const [avatarError, setAvatarError] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,6 +58,8 @@ export default function Perfil() {
   const [deleting, setDeleting] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const visibleAvatarUrl = avatarPreviewUrl || avatarUrl;
 
   useEffect(() => {
     if (!router.isReady || authLoading) {
@@ -86,6 +106,15 @@ export default function Perfil() {
       .finally(() => setLoading(false));
   }, [authLoading, router, router.asPath, router.isReady, user]);
 
+  useEffect(
+    () => () => {
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(avatarPreviewUrl);
+      }
+    },
+    [avatarPreviewUrl]
+  );
+
   const guardar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -126,25 +155,100 @@ export default function Perfil() {
     setSaving(false);
   };
 
+  const guardarAvatarUrl = async (nextAvatarUrl: string | null) => {
+    const res = await fetch("/api/perfil", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        displayName,
+        phone,
+        location,
+        bio,
+        avatarUrl: nextAvatarUrl,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error || "No se ha podido actualizar la foto.");
+    }
+
+    await refresh();
+  };
+
   const cambiarAvatar = async (file: File | undefined) => {
     if (!file) {
       return;
     }
 
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreviewUrl((current) => {
+      if (current) {
+        URL.revokeObjectURL(current);
+      }
+
+      return previewUrl;
+    });
     setUploadingAvatar(true);
-    setAvatarWarning("");
+    setAvatarStatus("Subiendo foto...");
+    setAvatarError("");
     setError("");
+    setMensaje("");
 
     try {
       const result = await uploadAvatarImage(file);
+      await guardarAvatarUrl(result.url);
       setAvatarUrl(result.url);
-      setAvatarWarning("");
+      setAvatarPreviewUrl((current) => {
+        if (current) {
+          URL.revokeObjectURL(current);
+        }
+
+        return "";
+      });
+      setAvatarStatus("Foto actualizada correctamente.");
     } catch (err) {
-      setError(
+      setAvatarError(
         err instanceof Error
           ? err.message
           : "No se ha podido preparar la imagen de perfil."
       );
+      setAvatarStatus("");
+      setAvatarPreviewUrl((current) => {
+        if (current) {
+          URL.revokeObjectURL(current);
+        }
+
+        return "";
+      });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const eliminarAvatar = async () => {
+    setUploadingAvatar(true);
+    setAvatarStatus("Eliminando foto...");
+    setAvatarError("");
+    setError("");
+    setMensaje("");
+
+    try {
+      await guardarAvatarUrl(null);
+      setAvatarUrl(null);
+      setAvatarPreviewUrl((current) => {
+        if (current) {
+          URL.revokeObjectURL(current);
+        }
+
+        return "";
+      });
+      setAvatarStatus("Foto eliminada correctamente.");
+    } catch (err) {
+      setAvatarError(
+        err instanceof Error ? err.message : "No se ha podido eliminar la foto."
+      );
+      setAvatarStatus("");
     } finally {
       setUploadingAvatar(false);
     }
@@ -191,11 +295,22 @@ export default function Perfil() {
             Perfil
           </p>
           <div className="mb-6 mt-3 flex items-center gap-4">
-            <UserAvatar
-              user={{ displayName, username, avatarUrl }}
-              size="lg"
-              className="ring-4 ring-[#f8f3ef]"
-            />
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="relative rounded-full outline-none transition hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-75"
+              aria-label="Cambiar foto de perfil"
+            >
+              <UserAvatar
+                user={{ displayName, username, avatarUrl: visibleAvatarUrl }}
+                size="lg"
+                className="ring-4 ring-[#f8f3ef]"
+              />
+              <span className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-green-700 text-sm text-white shadow-sm">
+                <CameraIcon />
+              </span>
+            </button>
             <div>
               <h1 className="font-serif text-4xl">Tus datos</h1>
               {username && (
@@ -212,11 +327,25 @@ export default function Perfil() {
             <form onSubmit={guardar} className="space-y-4">
               <div className="rounded-2xl border border-gray-200 bg-[#f8f3ef] p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <UserAvatar
-                    user={{ displayName, username, avatarUrl }}
-                    size="xl"
-                    className="ring-4 ring-white"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={uploadingAvatar}
+                    className="group relative mx-auto rounded-full outline-none transition hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-75 sm:mx-0"
+                    aria-label="Subir foto de perfil o logo"
+                  >
+                    <UserAvatar
+                      user={{ displayName, username, avatarUrl: visibleAvatarUrl }}
+                      size="xl"
+                      className="ring-4 ring-white"
+                    />
+                    <span className="absolute inset-x-2 bottom-2 rounded-full bg-stone-950/70 px-2 py-1 text-center text-[11px] font-bold text-white opacity-100 backdrop-blur transition group-hover:bg-green-700">
+                      {uploadingAvatar ? "Subiendo..." : "Cambiar"}
+                    </span>
+                    <span className="absolute -right-1 top-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-green-700 text-sm text-white shadow-sm">
+                      <CameraIcon />
+                    </span>
+                  </button>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-gray-950">
                       Foto de perfil o logo
@@ -225,35 +354,44 @@ export default function Perfil() {
                       JPG, PNG o WEBP. Máximo 2MB.
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <label className="cursor-pointer rounded-full bg-green-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-green-800">
-                        {uploadingAvatar ? "Subiendo..." : "Cambiar foto"}
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          className="sr-only"
-                          disabled={uploadingAvatar}
-                          onChange={(event) => {
-                            cambiarAvatar(event.target.files?.[0]);
-                            event.target.value = "";
-                          }}
-                        />
-                      </label>
-                      {avatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={uploadingAvatar}
+                        className="rounded-full bg-green-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-green-800 disabled:cursor-wait disabled:bg-gray-400"
+                      >
+                        {uploadingAvatar ? "Subiendo..." : "Subir foto"}
+                      </button>
+                      {avatarUrl && !avatarPreviewUrl && (
                         <button
                           type="button"
-                          onClick={() => {
-                            setAvatarUrl(null);
-                            setAvatarWarning("");
-                          }}
-                          className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-red-700 hover:text-red-700"
+                          onClick={eliminarAvatar}
+                          disabled={uploadingAvatar}
+                          className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-red-700 hover:text-red-700 disabled:cursor-wait disabled:text-gray-400"
                         >
-                          Eliminar avatar
+                          Eliminar foto
                         </button>
                       )}
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        disabled={uploadingAvatar}
+                        onChange={(event) => {
+                          cambiarAvatar(event.target.files?.[0]);
+                          event.target.value = "";
+                        }}
+                      />
                     </div>
-                    {avatarWarning && (
-                      <p className="mt-2 text-xs font-semibold text-amber-700">
-                        {avatarWarning}
+                    {avatarStatus && (
+                      <p className="mt-2 text-xs font-semibold text-green-700">
+                        {avatarStatus}
+                      </p>
+                    )}
+                    {avatarError && (
+                      <p className="mt-2 text-xs font-semibold text-red-700">
+                        {avatarError}
                       </p>
                     )}
                   </div>

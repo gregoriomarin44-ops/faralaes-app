@@ -55,21 +55,6 @@ const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality: number) 
     );
   });
 
-const blobToDataUrl = (blob: Blob) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-        return;
-      }
-
-      reject(new Error("No se ha podido leer la imagen"));
-    };
-    reader.onerror = () => reject(new Error("No se ha podido leer la imagen"));
-    reader.readAsDataURL(blob);
-  });
-
 const resizeAvatarFile = async (file: File) => {
   const objectUrl = URL.createObjectURL(file);
 
@@ -116,11 +101,10 @@ export async function uploadAvatarImage(file: File) {
     throw new Error("La imagen redimensionada supera el máximo de 2MB.");
   }
 
-  const image = await blobToDataUrl(resizedBlob);
   const res = await fetch("/api/uploads/avatar", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image }),
+    headers: { "Content-Type": resizedBlob.type },
+    body: resizedBlob,
   });
   const data = await res.json().catch(() => null);
 
