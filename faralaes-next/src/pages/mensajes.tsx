@@ -63,6 +63,18 @@ const formatShortTime = (date: string) =>
     minute: "2-digit",
   }).format(new Date(date));
 
+const getOwnMessageStatus = (message: Message) => {
+  if (message.failed) {
+    return "No enviado";
+  }
+
+  if (message.pending) {
+    return "Enviando...";
+  }
+
+  return message.readAt ? "Leído" : "Enviado";
+};
+
 const sortConversations = (conversations: Conversation[]) =>
   [...conversations].sort(
     (a, b) => getConversationTimestamp(b) - getConversationTimestamp(a)
@@ -601,17 +613,19 @@ export default function Mensajes() {
                               }`}
                             >
                               <p>{message.body}</p>
-                              <p
-                                className={`mt-1 text-[11px] ${
-                                  propio ? "text-green-100" : "text-gray-500"
+                              <div
+                                className={`mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-tight ${
+                                  propio ? "justify-end text-green-100" : "text-gray-500"
                                 }`}
                               >
-                                {message.failed
-                                  ? "No enviado"
-                                  : message.pending
-                                    ? "Enviando..."
-                                    : formatShortTime(message.createdAt)}
-                              </p>
+                                <span>{formatShortTime(message.createdAt)}</span>
+                                {propio && (
+                                  <>
+                                    <span aria-hidden="true">·</span>
+                                    <span>{getOwnMessageStatus(message)}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
