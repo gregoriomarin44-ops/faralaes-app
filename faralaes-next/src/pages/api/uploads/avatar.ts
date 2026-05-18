@@ -119,5 +119,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await writeFile(targetPath, buffer, { flag: "wx" });
 
-  return res.status(201).json({ url: `/uploads/avatars/${filename}` });
+  const url = `/uploads/avatars/${filename}`;
+
+  console.log("[avatar-upload] OK", {
+    userId: user.id,
+    url,
+    mimeType,
+    bytes: buffer.length,
+  });
+
+  return res.status(201).json({ url });
 }

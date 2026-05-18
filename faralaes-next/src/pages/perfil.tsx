@@ -22,6 +22,10 @@ type ProfileResponse = {
   };
 };
 
+type ProfileUpdateResponse = Profile & {
+  avatarUrl: string | null;
+};
+
 const CameraIcon = () => (
   <svg
     aria-hidden="true"
@@ -59,6 +63,7 @@ export default function Perfil() {
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const avatarRequestVersionRef = useRef(0);
   const visibleAvatarUrl = avatarPreviewUrl || avatarUrl;
 
   useEffect(() => {
@@ -72,6 +77,7 @@ export default function Perfil() {
     }
 
     setLoading(true);
+    const requestVersion = avatarRequestVersionRef.current;
 
     fetch("/api/perfil")
       .then((res) => {
@@ -94,7 +100,9 @@ export default function Perfil() {
         const profile = data.profile;
         setDisplayName(data.user.displayName || profile?.displayName || "");
         setUsername(data.user.username);
-        setAvatarUrl(data.user.avatarUrl);
+        if (requestVersion === avatarRequestVersionRef.current) {
+          setAvatarUrl(data.user.avatarUrl);
+        }
         setPhone(profile?.phone || "");
         setLocation(profile?.location || "");
         setBio(profile?.bio || "");
@@ -173,7 +181,10 @@ export default function Perfil() {
       throw new Error(data?.error || "No se ha podido actualizar la foto.");
     }
 
+    const data = (await res.json()) as ProfileUpdateResponse;
     await refresh();
+
+    return data.avatarUrl;
   };
 
   const cambiarAvatar = async (file: File | undefined) => {
@@ -182,6 +193,7 @@ export default function Perfil() {
     }
 
     const previewUrl = URL.createObjectURL(file);
+    avatarRequestVersionRef.current += 1;
     setAvatarPreviewUrl((current) => {
       if (current) {
         URL.revokeObjectURL(current);
@@ -197,8 +209,8 @@ export default function Perfil() {
 
     try {
       const result = await uploadAvatarImage(file);
-      await guardarAvatarUrl(result.url);
-      setAvatarUrl(result.url);
+      const savedAvatarUrl = await guardarAvatarUrl(result.url);
+      setAvatarUrl(savedAvatarUrl);
       setAvatarPreviewUrl((current) => {
         if (current) {
           URL.revokeObjectURL(current);
@@ -228,14 +240,15 @@ export default function Perfil() {
 
   const eliminarAvatar = async () => {
     setUploadingAvatar(true);
+    avatarRequestVersionRef.current += 1;
     setAvatarStatus("Eliminando foto...");
     setAvatarError("");
     setError("");
     setMensaje("");
 
     try {
-      await guardarAvatarUrl(null);
-      setAvatarUrl(null);
+      const savedAvatarUrl = await guardarAvatarUrl(null);
+      setAvatarUrl(savedAvatarUrl);
       setAvatarPreviewUrl((current) => {
         if (current) {
           URL.revokeObjectURL(current);

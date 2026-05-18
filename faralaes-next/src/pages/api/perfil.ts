@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: preparedAvatar.error });
       }
 
-      const [, profile] = await prisma.$transaction([
+      const [updatedUser, profile] = await prisma.$transaction([
         prisma.user.update({
           where: { id: user.id },
           data: {
@@ -95,20 +95,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }),
       ]);
 
+      if (preparedAvatar.avatarUrl !== undefined) {
+        console.log("[avatar-profile] avatarUrl guardado en User", {
+          userId: updatedUser.id,
+          avatarUrl: updatedUser.avatarUrl,
+        });
+      }
+
       return res.status(200).json({
         ...profile,
         displayName: normalizedDisplayName,
-        avatarUrl:
-          preparedAvatar.avatarUrl !== undefined
-            ? preparedAvatar.avatarUrl
-            : user.avatarUrl,
+        avatarUrl: updatedUser.avatarUrl,
       });
     }
 
     res.setHeader("Allow", "GET, PUT");
     return res.status(405).json({ error: "Método no permitido" });
   } catch (error) {
-    console.error(error);
+    console.error("[avatar-profile] error al guardar avatarUrl", error);
     return res.status(500).json({ error: "Error interno del servidor" });
   }
 }
