@@ -18,6 +18,70 @@ const menuLinks = [
   { href: "/contacto", label: "Contacto" },
 ];
 
+type AvatarUser = {
+  displayName?: string | null;
+  username?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+  image?: string | null;
+};
+
+const getUserName = (user: AvatarUser | null) =>
+  user?.displayName?.trim() || user?.username?.trim() || "";
+
+const getUserSecondaryText = (user: AvatarUser | null) => {
+  if (!user) {
+    return "";
+  }
+
+  const username = user.username?.trim();
+  const email = user.email?.trim();
+
+  if (username) {
+    return `@${username}`;
+  }
+
+  return email || "";
+};
+
+const getAvatarLabel = (user: AvatarUser | null) =>
+  (getUserName(user) || user?.email || "F").trim();
+
+const getAvatarInitial = (user: AvatarUser | null) =>
+  getAvatarLabel(user).charAt(0).toUpperCase() || "F";
+
+const getAvatarUrl = (user: AvatarUser | null) =>
+  user?.avatarUrl?.trim() || user?.image?.trim() || "";
+
+function UserAvatar({
+  user,
+  size = "sm",
+}: {
+  user: AvatarUser | null;
+  size?: "sm" | "lg";
+}) {
+  const avatarUrl = getAvatarUrl(user);
+  const avatarInitial = getAvatarInitial(user);
+  const sizeClass = size === "lg" ? "h-14 w-14 text-xl" : "h-8 w-8 text-sm";
+
+  return (
+    <span
+      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-red-900 to-stone-950 font-bold text-white shadow-sm ${sizeClass}`}
+      aria-hidden="true"
+    >
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        avatarInitial
+      )}
+    </span>
+  );
+}
+
 export default function NavBar() {
   const router = useRouter();
   const { user, clear } = useAuth();
@@ -135,23 +199,39 @@ export default function NavBar() {
     });
   };
 
-  const avatarLabel = (
-    user?.displayName ||
-    user?.username ||
-    user?.email ||
-    "F"
-  ).trim();
-  const avatarInitial = avatarLabel.charAt(0).toUpperCase() || "F";
+  const userDisplayName = getUserName(user) || "Tu cuenta";
+  const userSecondaryText = getUserSecondaryText(user);
 
   const menuPanel = (
     <div className="fixed right-4 top-20 z-[70] w-64 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl md:right-[max(1.5rem,calc((100vw-72rem)/2+1.5rem))] md:top-16">
-      <div className="border-b border-stone-100 px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-red-800">
-          Faralaes
-        </p>
-        <p className="mt-1 text-sm font-semibold text-stone-900">
-          {user ? "Tu cuenta" : "Marketplace flamenco"}
-        </p>
+      <div className="border-b border-stone-100 px-4 py-4">
+        {user ? (
+          <div className="flex items-center gap-3">
+            <UserAvatar user={user} size="lg" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-red-800">
+                Tu cuenta
+              </p>
+              <p className="mt-1 truncate text-sm font-bold text-stone-950">
+                {userDisplayName}
+              </p>
+              {userSecondaryText && (
+                <p className="truncate text-xs font-medium text-stone-500">
+                  {userSecondaryText}
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs font-semibold uppercase tracking-wide text-red-800">
+              Faralaes
+            </p>
+            <p className="mt-1 text-sm font-semibold text-stone-900">
+              Marketplace flamenco
+            </p>
+          </>
+        )}
       </div>
 
       <div className="p-2">
@@ -300,11 +380,22 @@ export default function NavBar() {
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-sm font-bold text-red-900 transition hover:border-red-900 hover:bg-[#f8f3ef]"
+              className={`flex h-10 items-center justify-center rounded-full border border-stone-200 bg-white text-sm font-bold text-red-900 transition hover:border-red-900 hover:bg-[#f8f3ef] ${
+                user
+                  ? "max-w-[12rem] gap-2 px-1.5 pr-3"
+                  : "w-10"
+              }`}
               aria-label="Abrir menú de usuario"
               aria-expanded={menuOpen}
             >
-              {user ? avatarInitial : (
+              {user ? (
+                <>
+                  <UserAvatar user={user} />
+                  <span className="hidden min-w-0 max-w-[8.5rem] truncate text-left text-xs font-bold leading-tight text-stone-900 sm:block">
+                    {userDisplayName}
+                  </span>
+                </>
+              ) : (
                 <span className="flex flex-col gap-1" aria-hidden="true">
                   <span className="block h-0.5 w-4 bg-current" />
                   <span className="block h-0.5 w-4 bg-current" />
