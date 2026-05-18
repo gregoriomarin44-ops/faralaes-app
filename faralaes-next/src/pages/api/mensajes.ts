@@ -1,6 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireVerifiedSessionUser } from "../../lib/auth";
+import { sendMessageNotificationEmail } from "../../lib/messageNotifications";
 import { prisma } from "../../lib/prisma";
+
+const getErrorLogDetails = (error: unknown) => {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+    };
+  }
+
+  return { message: String(error) };
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -20,6 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const conversation = await prisma.conversation.findUnique({
         where: { id: conversationId },
         select: {
+          id: true,
           buyerId: true,
           sellerId: true,
         },
@@ -45,6 +58,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { id: conversationId },
         data: { updatedAt: new Date() },
       });
+
+      const receiverId =
+        conversation.buyerId === user.id ? conversation.sellerId : conversation.buyerId;
+
+      try {
+        await sendMessageNotificationEmail({
+          conversationId: conversation.id,
+          senderId: user.id,
+          receiverId,
+          body,
+          req,
+        });
+      } catch (error) {
+        console.error("[message-email] failed", {
+          conversationId: conversation.id,
+          senderId: user.id,
+          receiverId,
+          error: getErrorLogDetails(error),
+        });
+      }
 
       return res.status(201).json(message);
     }

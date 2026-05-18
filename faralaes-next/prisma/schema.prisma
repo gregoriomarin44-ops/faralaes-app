@@ -29,6 +29,7 @@ model User {
   boughtChats   Conversation[] @relation("BuyerConversations")
   soldChats     Conversation[] @relation("SellerConversations")
   messages      Message[]
+  messageEmailNotifications MessageEmailNotification[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens PasswordResetToken[]
   reports       Report[]       @relation("ReporterReports")
@@ -164,6 +165,7 @@ model Conversation {
   buyer     User      @relation("BuyerConversations", fields: [buyerId], references: [id], onDelete: Cascade)
   seller    User      @relation("SellerConversations", fields: [sellerId], references: [id], onDelete: Cascade)
   messages  Message[]
+  emailNotifications MessageEmailNotification[]
 }
 
 model Message {
@@ -174,6 +176,20 @@ model Message {
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model MessageEmailNotification {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  receiverId     String       @db.Uuid
+  lastSentAt     DateTime
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  receiver       User         @relation(fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, receiverId])
+  @@index([receiverId, lastSentAt])
 }
 
 model Producto {
