@@ -28,7 +28,8 @@ model User {
   favorites     Favorite[]
   boughtChats   Conversation[] @relation("BuyerConversations")
   soldChats     Conversation[] @relation("SellerConversations")
-  messages      Message[]
+  messages      Message[]      @relation("SentMessages")
+  receivedMessages Message[]   @relation("ReceivedMessages")
   messageEmailNotifications MessageEmailNotification[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens PasswordResetToken[]
@@ -172,10 +173,16 @@ model Message {
   id             String       @id @default(uuid()) @db.Uuid
   conversationId String       @db.Uuid
   senderId       String       @db.Uuid
+  receiverId     String       @db.Uuid
   body           String
+  readAt         DateTime?
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver       User         @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([receiverId, readAt])
+  @@index([conversationId, receiverId, readAt])
 }
 
 model MessageEmailNotification {

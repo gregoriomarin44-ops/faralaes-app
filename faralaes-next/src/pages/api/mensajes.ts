@@ -46,10 +46,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: "No autorizado" });
       }
 
+      const receiverId =
+        conversation.buyerId === user.id ? conversation.sellerId : conversation.buyerId;
+
       const message = await prisma.message.create({
         data: {
           conversationId,
           senderId: user.id,
+          receiverId,
           body,
         },
       });
@@ -58,9 +62,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { id: conversationId },
         data: { updatedAt: new Date() },
       });
-
-      const receiverId =
-        conversation.buyerId === user.id ? conversation.sellerId : conversation.buyerId;
 
       try {
         await sendMessageNotificationEmail({

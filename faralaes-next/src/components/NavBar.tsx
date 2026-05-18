@@ -21,24 +21,67 @@ const menuLinks = [
 export default function NavBar() {
   const router = useRouter();
   const { user, clear } = useAuth();
-  const [conversationCount, setConversationCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
 
   useEffect(() => {
     if (!user) {
-      setConversationCount(0);
+      setUnreadMessageCount(0);
       return;
     }
 
-    fetch("/api/conversaciones")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => {
-        setConversationCount(Array.isArray(data) ? data.length : 0);
-      })
-      .catch(() => setConversationCount(0));
+    const loadUnreadMessageCount = () => {
+      fetch("/api/mensajes/unread-count")
+        .then((res) => (res.ok ? res.json() : { count: 0 }))
+        .then((data) => {
+          setUnreadMessageCount(
+            typeof data?.count === "number" ? data.count : 0
+          );
+        })
+        .catch(() => setUnreadMessageCount(0));
+    };
+
+    const handleUnreadMessagesChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ count?: number }>).detail;
+
+      if (typeof detail?.count === "number") {
+        setUnreadMessageCount(detail.count);
+        return;
+      }
+
+      loadUnreadMessageCount();
+    };
+
+    loadUnreadMessageCount();
+    window.addEventListener(
+      "faralaes:unread-messages-changed",
+      handleUnreadMessagesChanged
+    );
+    const intervalId = window.setInterval(loadUnreadMessageCount, 15000);
+
+    return () => {
+      window.removeEventListener(
+        "faralaes:unread-messages-changed",
+        handleUnreadMessagesChanged
+      );
+      window.clearInterval(intervalId);
+    };
   }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    fetch("/api/mensajes/unread-count")
+      .then((res) => (res.ok ? res.json() : { count: 0 }))
+      .then((data) => {
+        setUnreadMessageCount(typeof data?.count === "number" ? data.count : 0);
+      })
+      .catch(() => null);
+  }, [router.asPath, user]);
 
   useEffect(() => {
     const handleScroll = () => setHasScrolled(window.scrollY > 8);
@@ -68,7 +111,7 @@ export default function NavBar() {
   const salir = async () => {
     await fetch("/api/logout", { method: "POST" }).catch(() => null);
     clear();
-    setConversationCount(0);
+    setUnreadMessageCount(0);
     setMenuOpen(false);
     router.push("/catalogo");
   };
@@ -135,7 +178,7 @@ export default function NavBar() {
             onClick={() => setMenuOpen(false)}
             className="block rounded-xl px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800 sm:hidden"
           >
-            Mensajes{conversationCount > 0 ? ` (${conversationCount})` : ""}
+            Mensajes{unreadMessageCount > 0 ? ` (${unreadMessageCount})` : ""}
           </Link>
         )}
         {user ? (
@@ -238,9 +281,9 @@ export default function NavBar() {
               className="relative hidden h-10 items-center rounded-full px-3 text-sm font-semibold text-stone-700 transition hover:bg-[#f8f3ef] hover:text-red-800 sm:flex"
             >
               Mensajes
-              {conversationCount > 0 && (
+              {unreadMessageCount > 0 && (
                 <span className="ml-1 rounded-full bg-red-800 px-1.5 py-0.5 text-[11px] leading-none text-white">
-                  {conversationCount}
+                  {unreadMessageCount}
                 </span>
               )}
             </Link>

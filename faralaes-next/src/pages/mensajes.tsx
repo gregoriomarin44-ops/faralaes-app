@@ -8,7 +8,9 @@ type Message = {
   id: string;
   conversationId: string;
   senderId: string;
+  receiverId: string;
   body: string;
+  readAt: string | null;
   createdAt: string;
   pending?: boolean;
   failed?: boolean;
@@ -99,6 +101,7 @@ export default function Mensajes() {
   const shouldStickToBottomRef = useRef(true);
   const lastScrolledConversationIdRef = useRef("");
   const lastScrolledMessageCountRef = useRef(0);
+  const markingReadConversationIdRef = useRef("");
 
   const isNearBottom = () => {
     const container = messagesContainerRef.current;
@@ -258,6 +261,85 @@ export default function Mensajes() {
     }
   }, [conversacionSeleccionada?.id, conversacionSeleccionada?.messages.length]);
 
+  useEffect(() => {
+    if (!conversacionSeleccionada || !userId) {
+      return;
+    }
+
+    const hasUnreadReceivedMessages = conversacionSeleccionada.messages.some(
+      (message) => message.receiverId === userId && !message.readAt
+    );
+
+    if (!hasUnreadReceivedMessages) {
+      return;
+    }
+
+    if (markingReadConversationIdRef.current === conversacionSeleccionada.id) {
+      return;
+    }
+
+    let active = true;
+    markingReadConversationIdRef.current = conversacionSeleccionada.id;
+
+    fetch("/api/mensajes/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId: conversacionSeleccionada.id }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("No se han podido marcar los mensajes como leidos.");
+        }
+
+        return res.json();
+      })
+      .then(
+        (data: {
+          readAt?: string;
+          unreadCount?: number;
+        }) => {
+          if (!active || !data.readAt) {
+            return;
+          }
+
+          setConversaciones((prev) =>
+            prev.map((conversacion) =>
+              conversacion.id === conversacionSeleccionada.id
+                ? {
+                    ...conversacion,
+                    messages: conversacion.messages.map((message) =>
+                      message.receiverId === userId && !message.readAt
+                        ? { ...message, readAt: data.readAt as string }
+                        : message
+                    ),
+                  }
+                : conversacion
+            )
+          );
+
+          window.dispatchEvent(
+            new CustomEvent("faralaes:unread-messages-changed", {
+              detail: { count: data.unreadCount },
+            })
+          );
+        }
+      )
+      .catch(() => null)
+      .finally(() => {
+        if (markingReadConversationIdRef.current === conversacionSeleccionada.id) {
+          markingReadConversationIdRef.current = "";
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    conversacionSeleccionada?.id,
+    conversacionSeleccionada?.messages,
+    userId,
+  ]);
+
   const seleccionarConversacion = (id: string) => {
     setSelectedId(id);
     router.push(`/mensajes?conversationId=${id}`, undefined, {
@@ -278,7 +360,12 @@ export default function Mensajes() {
       id: tempId,
       conversationId: conversacionSeleccionada.id,
       senderId: userId,
+      receiverId:
+        conversacionSeleccionada.buyerId === userId
+          ? conversacionSeleccionada.sellerId
+          : conversacionSeleccionada.buyerId,
       body: texto,
+      readAt: null,
       createdAt: new Date().toISOString(),
       pending: true,
     };
