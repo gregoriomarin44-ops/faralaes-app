@@ -17,6 +17,7 @@ model User {
   email         String         @unique
   username      String         @unique
   displayName   String
+  avatarUrl     String?
   passwordHash  String?
   role          Role           @default(USER)
   disabled      Boolean        @default(false)

@@ -2,6 +2,7 @@ import type { MouseEvent } from "react";
 import { formatPrice } from "../lib/formatPrice";
 import { getConditionLabel } from "../lib/listingOptions";
 import { getOperationLabel, isDonationListing } from "../lib/listingOperation";
+import UserAvatar from "./UserAvatar";
 
 export type ListingCardItem = {
   id: string;
@@ -22,6 +23,11 @@ export type ListingCardItem = {
   listingFeatured?: boolean;
   sellerRatingAverage?: number | null;
   sellerReviewCount?: number;
+  seller?: {
+    username?: string | null;
+    displayName?: string | null;
+    avatarUrl?: string | null;
+  } | null;
   images?: {
     url: string;
   }[];
@@ -105,6 +111,10 @@ export default function ListingCard({
     listing.brand || "",
     listing.condition ? getConditionLabel(listing.condition) : "",
   ].filter(Boolean).slice(0, 3);
+  const sellerName =
+    listing.seller?.displayName?.trim() ||
+    listing.seller?.username?.trim() ||
+    "";
 
   return (
     <article
@@ -207,6 +217,22 @@ export default function ListingCard({
             {listing.location || "Andalucía"}
           </p>
         </div>
+
+        {sellerName && (
+          <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-stone-100 pt-3">
+            <UserAvatar
+              user={{
+                displayName: listing.seller?.displayName,
+                username: listing.seller?.username,
+                avatarUrl: listing.seller?.avatarUrl,
+              }}
+              size="xs"
+            />
+            <p className="min-w-0 truncate text-xs font-bold text-stone-600">
+              {sellerName}
+            </p>
+          </div>
+        )}
 
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button

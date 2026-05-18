@@ -30,6 +30,11 @@ type PublicListingFallback = {
   createdAt: Date;
   updatedAt: Date;
   images: { url: string; sortOrder: number }[];
+  seller?: {
+    username: string | null;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
 };
 
 const getErrorMessage = (error: unknown) =>
@@ -259,6 +264,7 @@ const cargarProductosPublicadosFallback = async (
     ...producto,
     operationType: producto.operationType || "sale",
     attributes: null,
+    seller: null,
     images: imagesByListingId.get(producto.id) || [],
   }));
 };
@@ -356,6 +362,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           images: {
             orderBy: { sortOrder: "asc" },
           },
+          seller: {
+            select: {
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+            },
+          },
         },
       });
 
@@ -434,6 +447,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         include: {
           images: {
             orderBy: { sortOrder: "asc" },
+          },
+          seller: {
+            select: {
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+            },
           },
         },
       });

@@ -35,6 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           disabled: true,
           displayName: "Usuario eliminado",
           username: DELETED_USERNAME,
+          avatarUrl: null,
         },
         create: {
           email: DELETED_USER_EMAIL,

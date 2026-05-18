@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import NavBar from "../components/NavBar";
+import UserAvatar from "../components/UserAvatar";
 import { formatPrice } from "../lib/formatPrice";
 import { useAuth } from "../lib/authContext";
 
@@ -38,6 +39,7 @@ type User = {
   id: string;
   username: string;
   displayName: string;
+  avatarUrl: string | null;
 };
 
 const getLastMessage = (conversation: Conversation) =>
@@ -504,9 +506,10 @@ export default function Mensajes() {
                             event.stopPropagation();
                             openUserProfile(router, otherUser);
                           }}
-                          className="text-xs font-semibold text-gray-500 transition hover:text-green-700"
+                          className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-gray-500 transition hover:text-green-700"
                         >
-                          Con: {getDisplayName(otherUser)}
+                          <UserAvatar user={otherUser} size="xs" />
+                          <span className="truncate">Con: {getDisplayName(otherUser)}</span>
                         </button>
                       </div>
                       <p className="mt-2 line-clamp-2 text-sm text-gray-500">
@@ -572,12 +575,18 @@ export default function Mensajes() {
                                   getOtherUser(conversacionSeleccionada, userId)
                                 )
                               }
-                              className="text-sm font-semibold text-gray-700 transition hover:text-green-700"
+                              className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-gray-700 transition hover:text-green-700"
                             >
-                              Con:{" "}
-                              {getDisplayName(
-                                getOtherUser(conversacionSeleccionada, userId)
-                              )}
+                              <UserAvatar
+                                user={getOtherUser(conversacionSeleccionada, userId)}
+                                size="xs"
+                              />
+                              <span className="truncate">
+                                Con:{" "}
+                                {getDisplayName(
+                                  getOtherUser(conversacionSeleccionada, userId)
+                                )}
+                              </span>
                             </button>
                           </div>
                         </div>
@@ -599,12 +608,22 @@ export default function Mensajes() {
 
                       {conversacionSeleccionada.messages.map((message) => {
                         const propio = message.senderId === userId;
+                        const messageUser = propio
+                          ? {
+                              displayName: user?.displayName || "",
+                              username: user?.username || "",
+                              avatarUrl: user?.avatarUrl || null,
+                            }
+                          : getOtherUser(conversacionSeleccionada, userId);
 
                         return (
                           <div
                             key={message.id}
-                            className={`flex ${propio ? "justify-end" : "justify-start"}`}
+                            className={`flex items-end gap-2 ${
+                              propio ? "justify-end" : "justify-start"
+                            }`}
                           >
+                            {!propio && <UserAvatar user={messageUser} size="xs" />}
                             <div
                               className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
                                 propio
@@ -627,6 +646,7 @@ export default function Mensajes() {
                                 )}
                               </div>
                             </div>
+                            {propio && <UserAvatar user={messageUser} size="xs" />}
                           </div>
                         );
                       })}

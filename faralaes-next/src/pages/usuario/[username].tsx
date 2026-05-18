@@ -4,10 +4,11 @@ import { useRouter } from "next/router";
 import { useState, type FormEvent } from "react";
 import NavBar from "../../components/NavBar";
 import ReportModal from "../../components/ReportModal";
+import UserAvatar from "../../components/UserAvatar";
 import { formatPrice } from "../../lib/formatPrice";
 import { useAuth } from "../../lib/authContext";
 import { prisma } from "../../lib/prisma";
-import { getInitial, normalizeUsername } from "../../lib/userIdentity";
+import { normalizeUsername } from "../../lib/userIdentity";
 
 type PublicListing = {
   id: string;
@@ -21,6 +22,7 @@ type PublicUserPageProps = {
     id: string;
     username: string;
     displayName: string;
+    avatarUrl: string | null;
     bio: string | null;
     location: string | null;
     reviewAverage: number | null;
@@ -72,6 +74,7 @@ export const getServerSideProps: GetServerSideProps<
       id: true,
       username: true,
       displayName: true,
+      avatarUrl: true,
       disabled: true,
       profile: {
         select: {
@@ -169,6 +172,7 @@ export const getServerSideProps: GetServerSideProps<
         id: user.id,
         username: safeUsername,
         displayName: safeDisplayName,
+        avatarUrl: user.avatarUrl,
         bio: user.profile?.bio || null,
         location: user.profile?.location || null,
         reviewAverage,
@@ -198,7 +202,6 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
     return null;
   }
 
-  const initial = getInitial(user.displayName, user.username);
   const isOwnProfile = currentUser?.id === user.id;
   const hasReviews = reviewCount > 0 && reviewAverage !== null;
   const reportUser = () => {
@@ -256,9 +259,11 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-green-700 text-3xl font-bold text-white shadow-sm">
-                {initial}
-              </div>
+              <UserAvatar
+                user={user}
+                size="lg"
+                className="ring-4 ring-[#f8f3ef]"
+              />
               <div className="min-w-0">
                 <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
                   Perfil publico

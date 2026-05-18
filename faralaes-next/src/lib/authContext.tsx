@@ -13,6 +13,7 @@ export type AuthUser = {
   email: string;
   username: string;
   displayName: string;
+  avatarUrl: string | null;
   role: "ADMIN" | "USER";
   profile: {
     displayName: string;

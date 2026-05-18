@@ -30,6 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     email: user.email,
     username: user.username,
     displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
     role: user.role,
     profile,
     profileComplete: isProfileComplete(profile),

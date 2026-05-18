@@ -6,12 +6,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import NavBar from "../../components/NavBar";
 import ReportModal from "../../components/ReportModal";
+import UserAvatar from "../../components/UserAvatar";
 import { formatPrice } from "../../lib/formatPrice";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { getCanonical, getSeoProductLinks } from "../../lib/seo";
 import { getOperationLabel, isDonationListing } from "../../lib/listingOperation";
-import { getInitial } from "../../lib/userIdentity";
 import {
   getCategoryLabel,
   getConditionLabel,
@@ -45,6 +45,7 @@ type Producto = {
     id: string;
     username: string;
     displayName: string;
+    avatarUrl: string | null;
     profile?: {
       phone?: string | null;
       location?: string | null;
@@ -174,6 +175,7 @@ const loadProductFallback = async (
       sellerProfileDisplayName: string | null;
       sellerPhone: string | null;
       sellerLocation: string | null;
+      sellerAvatarUrl: string | null;
     }[]
   >`
     SELECT
@@ -192,6 +194,7 @@ const loadProductFallback = async (
       l."status",
       l."createdAt",
       u."email" AS "sellerEmail",
+      u."avatarUrl" AS "sellerAvatarUrl",
       p."displayName" AS "sellerProfileDisplayName",
       p."phone" AS "sellerPhone",
       p."location" AS "sellerLocation"
@@ -237,6 +240,7 @@ const loadProductFallback = async (
     seller: {
       id: row.sellerId,
       username: "",
+      avatarUrl: row.sellerAvatarUrl,
       displayName:
         row.sellerProfileDisplayName ||
         row.sellerEmail?.split("@")[0] ||
@@ -379,6 +383,7 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
             id: true,
             username: true,
             displayName: true,
+            avatarUrl: true,
             profile: {
               select: {
                 phone: true,
@@ -627,7 +632,6 @@ export default function ProductoDetalle({
   const sellerUsername = producto.seller?.username || "";
   const sellerProfileSlug = sellerUsername || producto.seller?.id || "";
   const sellerDisplayName = producto.seller?.displayName || "Usuario Faralaes";
-  const sellerInitial = getInitial(sellerDisplayName, sellerUsername);
   const puedeWhatsapp =
     userId &&
     !esPropio &&
@@ -961,8 +965,16 @@ export default function ProductoDetalle({
                   }}
                   className="tap-feedback flex w-full items-center gap-4 rounded-3xl border border-gray-200 bg-white p-4 text-left shadow-[0_12px_32px_rgba(34,24,20,0.06)] hover:border-green-700"
                 >
-                  <span className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-stone-950 to-red-900 text-xl font-black text-white shadow-md">
-                    <span>{sellerInitial}</span>
+                  <span className="relative shrink-0">
+                    <UserAvatar
+                      user={{
+                        displayName: sellerDisplayName,
+                        username: sellerUsername,
+                        avatarUrl: producto.seller.avatarUrl,
+                      }}
+                      size="md"
+                      className="shadow-md"
+                    />
                     <span className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-green-600" />
                   </span>
                   <span className="min-w-0 flex-1">

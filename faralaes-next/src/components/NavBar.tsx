@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "../lib/authContext";
 import { categoryOptions } from "../lib/listingOptions";
 import PwaInstallBanner from "./PwaInstallBanner";
+import UserAvatar from "./UserAvatar";
 
 const categoryLinks = categoryOptions.map((category) => ({
   value: category.value,
@@ -22,8 +23,6 @@ type AvatarUser = {
   displayName?: string | null;
   username?: string | null;
   email?: string | null;
-  avatarUrl?: string | null;
-  image?: string | null;
 };
 
 const getUserName = (user: AvatarUser | null) =>
@@ -43,44 +42,6 @@ const getUserSecondaryText = (user: AvatarUser | null) => {
 
   return email || "";
 };
-
-const getAvatarLabel = (user: AvatarUser | null) =>
-  (getUserName(user) || user?.email || "F").trim();
-
-const getAvatarInitial = (user: AvatarUser | null) =>
-  getAvatarLabel(user).charAt(0).toUpperCase() || "F";
-
-const getAvatarUrl = (user: AvatarUser | null) =>
-  user?.avatarUrl?.trim() || user?.image?.trim() || "";
-
-function UserAvatar({
-  user,
-  size = "sm",
-}: {
-  user: AvatarUser | null;
-  size?: "sm" | "lg";
-}) {
-  const avatarUrl = getAvatarUrl(user);
-  const avatarInitial = getAvatarInitial(user);
-  const sizeClass = size === "lg" ? "h-14 w-14 text-xl" : "h-8 w-8 text-sm";
-
-  return (
-    <span
-      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-red-900 to-stone-950 font-bold text-white shadow-sm ${sizeClass}`}
-      aria-hidden="true"
-    >
-      {avatarUrl ? (
-        <img
-          src={avatarUrl}
-          alt=""
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        avatarInitial
-      )}
-    </span>
-  );
-}
 
 export default function NavBar() {
   const router = useRouter();
@@ -207,7 +168,7 @@ export default function NavBar() {
       <div className="border-b border-stone-100 px-4 py-4">
         {user ? (
           <div className="flex items-center gap-3">
-            <UserAvatar user={user} size="lg" />
+            <UserAvatar user={user} size="md" />
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-red-800">
                 Tu cuenta
@@ -390,7 +351,7 @@ export default function NavBar() {
             >
               {user ? (
                 <>
-                  <UserAvatar user={user} />
+                  <UserAvatar user={user} size="xs" />
                   <span className="hidden min-w-0 max-w-[8.5rem] truncate text-left text-xs font-bold leading-tight text-stone-900 sm:block">
                     {userDisplayName}
                   </span>
