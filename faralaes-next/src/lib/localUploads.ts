@@ -112,5 +112,20 @@ export async function uploadAvatarImage(file: File) {
     throw new Error(data?.error || "No se ha podido subir la imagen.");
   }
 
-  return { url: data.url as string };
+  const url = typeof data?.url === "string" ? data.url : "";
+
+  if (!/^\/uploads\/avatars\/[a-z0-9._-]+\.(jpe?g|png|webp)$/i.test(url)) {
+    throw new Error("La URL de avatar devuelta no es válida.");
+  }
+
+  const publicRes = await fetch(`${url}?v=${Date.now()}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!publicRes.ok) {
+    throw new Error("La imagen se ha subido, pero no está disponible públicamente.");
+  }
+
+  return { url };
 }

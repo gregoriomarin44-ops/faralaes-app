@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, stat, writeFile } from "fs/promises";
 import path from "path";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireSessionUser } from "../../../lib/auth";
@@ -116,16 +116,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const filename = `${user.id}-${Date.now()}-${crypto.randomUUID()}.${extension}`;
   const targetPath = path.join(UPLOAD_DIR, filename);
+  const url = `/uploads/avatars/${filename}`;
 
   await writeFile(targetPath, buffer, { flag: "wx" });
 
-  const url = `/uploads/avatars/${filename}`;
+  let savedFile;
 
-  console.log("[avatar-upload] OK", {
+  try {
+    savedFile = await stat(targetPath);
+  } catch (error) {
+    console.error("[avatar-upload] saved file missing after write", {
+      userId: user.id,
+      absolutePath: targetPath,
+      url,
+      error,
+    });
+
+    return res.status(500).json({
+      error: "No se ha podido confirmar el guardado de la imagen.",
+    });
+  }
+
+  if (!savedFile.isFile() || savedFile.size !== buffer.length) {
+    console.error("[avatar-upload] invalid saved file", {
+      userId: user.id,
+      absolutePath: targetPath,
+      url,
+      expectedBytes: buffer.length,
+      actualBytes: savedFile.size,
+      isFile: savedFile.isFile(),
+    });
+
+    return res.status(500).json({
+      error: "No se ha podido confirmar el guardado de la imagen.",
+    });
+  }
+
+  console.log("[avatar-upload] saved file", {
     userId: user.id,
+    absolutePath: targetPath,
     url,
     mimeType,
-    bytes: buffer.length,
+    bytes: savedFile.size,
   });
 
   return res.status(201).json({ url });
