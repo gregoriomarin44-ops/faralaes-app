@@ -77,6 +77,47 @@ const getExtension = (mimeType: string) => {
   return "";
 };
 
+const getRequestOrigin = (req: NextApiRequest) => {
+  const host = req.headers.host;
+
+  if (!host) {
+    return "";
+  }
+
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const protocol =
+    typeof forwardedProto === "string"
+      ? forwardedProto.split(",")[0].trim()
+      : host.includes("localhost") || host.startsWith("127.")
+        ? "http"
+        : "https";
+
+  return `${protocol}://${host}`;
+};
+
+const verifyPublicAccess = async (req: NextApiRequest, url: string) => {
+  const origin = getRequestOrigin(req);
+
+  if (!origin) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${origin}${url}`, {
+      method: "HEAD",
+      cache: "no-store",
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error("[avatar-upload] public access check failed", {
+      url,
+      error,
+    });
+    return false;
+  }
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -149,6 +190,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(500).json({
       error: "No se ha podido confirmar el guardado de la imagen.",
+    });
+  }
+
+  const isPublic = await verifyPublicAccess(req, url);
+
+  if (!isPublic) {
+    console.error("[avatar-upload] public URL unavailable after write", {
+      userId: user.id,
+      absolutePath: targetPath,
+      url,
+      bytes: savedFile.size,
+    });
+
+    return res.status(500).json({
+      error: "La imagen se ha guardado, pero no está disponible públicamente.",
     });
   }
 
