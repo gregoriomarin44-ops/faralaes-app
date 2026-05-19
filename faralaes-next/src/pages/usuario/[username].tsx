@@ -482,101 +482,105 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
       <main className="min-h-screen bg-[#f8f3ef] px-4 py-8 sm:px-6 lg:py-12">
         <section className="mx-auto max-w-6xl">
           <div className="overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-[0_18px_48px_rgba(34,24,20,0.08)]">
-            <div className="h-24 bg-gradient-to-r from-stone-950 via-red-950 to-green-900 sm:h-32" />
-            <div className="px-5 pb-6 sm:px-8 sm:pb-8">
-              <div className="-mt-14 flex flex-col gap-5 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                  <UserAvatar
-                    user={user}
-                    size="xl"
-                    className="ring-4 ring-white"
-                    expandable
-                    imageAlt={user.displayName}
-                  />
-                  <div className="min-w-0 pb-1">
-                    <p className="text-xs font-black uppercase tracking-[0.22em] text-red-700">
-                      Perfil de vendedor
-                    </p>
-                    <h1 className="mt-2 font-serif text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
-                      {user.displayName}
-                    </h1>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-stone-500">
-                      <span>@{user.username}</span>
-                      {user.location && <span>{user.location}</span>}
-                      {memberSince && <span>Miembro {memberSince}</span>}
+            <div className="relative h-32 bg-gradient-to-r from-stone-950 via-red-950 to-green-900 sm:h-40">
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white/35 to-transparent" />
+            </div>
+            <div className="px-3 pb-6 sm:px-6 sm:pb-8">
+              <div className="relative -mt-8 rounded-[1.35rem] border border-white/80 bg-white p-5 shadow-[0_18px_40px_rgba(34,24,20,0.14)] sm:-mt-10 sm:p-6 lg:p-7">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <UserAvatar
+                      user={user}
+                      size="xl"
+                      className="ring-4 ring-[#f8f3ef]"
+                      expandable
+                      imageAlt={user.displayName}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-black uppercase tracking-[0.22em] text-red-700">
+                        Perfil de vendedor
+                      </p>
+                      <h1 className="mt-2 font-serif text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
+                        {user.displayName}
+                      </h1>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-bold text-stone-600">
+                        <span>@{user.username}</span>
+                        {user.location && <span>{user.location}</span>}
+                        {memberSince && <span>Miembro {memberSince}</span>}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-2 sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => contactSeller()}
-                    disabled={contacting}
-                    className="tap-feedback rounded-full bg-green-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-green-800 disabled:cursor-wait disabled:bg-stone-400"
-                  >
-                    {isOwnProfile ? "Editar perfil" : contacting ? "Abriendo..." : "Contactar"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={shareProfile}
-                    className="tap-feedback rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-black text-stone-800 shadow-sm transition hover:border-green-700 hover:text-green-700"
-                  >
-                    Compartir perfil
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.42fr)]">
-                <div>
-                  {user.bio ? (
-                    <p className="max-w-3xl text-[15px] leading-7 text-stone-700">
-                      {user.bio}
-                    </p>
-                  ) : (
-                    <p className="max-w-3xl text-[15px] leading-7 text-stone-500">
-                      Perfil activo en Faralaes con anuncios de moda flamenca publicados.
-                    </p>
-                  )}
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <TrustBadge
-                      label="Anuncios activos"
-                      value={`${user.listings.length} publicados`}
-                    />
-                    <TrustBadge label="Respuestas" value="Rápidas" />
-                    <TrustBadge label="Verificación" value="Preparado" />
-                    <TrustBadge label="Tipo" value="Diseñador / tienda" />
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => contactSeller()}
+                      disabled={contacting}
+                      className="tap-feedback rounded-full bg-green-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-green-800 disabled:cursor-wait disabled:bg-stone-400"
+                    >
+                      {isOwnProfile ? "Editar perfil" : contacting ? "Abriendo..." : "Contactar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={shareProfile}
+                      className="tap-feedback rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-black text-stone-800 shadow-sm transition hover:border-green-700 hover:text-green-700"
+                    >
+                      Compartir perfil
+                    </button>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-stone-200 bg-[#f8f3ef] p-4">
-                  {hasReviews ? (
-                    <>
-                      <div className="flex items-end gap-3">
-                        <p className="text-4xl font-black text-amber-700">
-                          {reviewAverage.toFixed(1)}
+
+                <div className="mt-7 grid gap-6 border-t border-stone-100 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.42fr)]">
+                  <div>
+                    {user.bio ? (
+                      <p className="max-w-3xl text-[15px] leading-7 text-stone-700">
+                        {user.bio}
+                      </p>
+                    ) : (
+                      <p className="max-w-3xl text-[15px] leading-7 text-stone-500">
+                        Perfil activo en Faralaes con anuncios de moda flamenca publicados.
+                      </p>
+                    )}
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      <TrustBadge
+                        label="Anuncios activos"
+                        value={`${user.listings.length} publicados`}
+                      />
+                      <TrustBadge label="Respuestas" value="Rápidas" />
+                      <TrustBadge label="Verificación" value="Preparado" />
+                      <TrustBadge label="Tipo" value="Diseñador / tienda" />
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-stone-200 bg-[#f8f3ef] p-4">
+                    {hasReviews ? (
+                      <>
+                        <div className="flex items-end gap-3">
+                          <p className="text-4xl font-black text-amber-700">
+                            {reviewAverage.toFixed(1)}
+                          </p>
+                          <Stars value={reviewAverage} size="pb-1 text-2xl" />
+                        </div>
+                        <p className="mt-1 text-sm font-bold text-stone-700">
+                          {reviewCount} {reviewCount === 1 ? "reseña" : "reseñas"} en Faralaes
                         </p>
-                        <Stars value={reviewAverage} size="pb-1 text-2xl" />
-                      </div>
-                      <p className="mt-1 text-sm font-bold text-stone-600">
-                        {reviewCount} {reviewCount === 1 ? "reseña" : "reseñas"} en Faralaes
+                      </>
+                    ) : (
+                      <>
+                        <Stars value={0} size="text-2xl" />
+                        <p className="mt-2 text-sm font-bold text-stone-700">
+                          Todavía no tiene valoraciones
+                        </p>
+                      </>
+                    )}
+                    {(contactError || shareMessage) && (
+                      <p
+                        className={`mt-3 text-xs font-bold ${
+                          contactError ? "text-red-700" : "text-green-700"
+                        }`}
+                      >
+                        {contactError || shareMessage}
                       </p>
-                    </>
-                  ) : (
-                    <>
-                      <Stars value={0} size="text-2xl" />
-                      <p className="mt-2 text-sm font-bold text-stone-600">
-                        Todavía no tiene valoraciones
-                      </p>
-                    </>
-                  )}
-                  {(contactError || shareMessage) && (
-                    <p
-                      className={`mt-3 text-xs font-bold ${
-                        contactError ? "text-red-700" : "text-green-700"
-                      }`}
-                    >
-                      {contactError || shareMessage}
-                    </p>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
