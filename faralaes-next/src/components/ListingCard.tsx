@@ -227,6 +227,8 @@ export default function ListingCard({
                 avatarUrl: listing.seller?.avatarUrl,
               }}
               size="xs"
+              expandable
+              imageAlt={sellerName}
             />
             <p className="min-w-0 truncate text-xs font-bold text-stone-600">
               {sellerName}

@@ -974,6 +974,8 @@ export default function ProductoDetalle({
                       }}
                       size="md"
                       className="shadow-md"
+                      expandable
+                      imageAlt={sellerDisplayName}
                     />
                     <span className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-green-600" />
                   </span>

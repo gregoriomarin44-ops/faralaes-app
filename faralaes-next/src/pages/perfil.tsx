@@ -308,22 +308,24 @@ export default function Perfil() {
             Perfil
           </p>
           <div className="mb-6 mt-3 flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              disabled={uploadingAvatar}
-              className="relative rounded-full outline-none transition hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-75"
-              aria-label="Cambiar foto de perfil"
-            >
+            <div className="relative shrink-0">
               <UserAvatar
                 user={{ displayName, username, avatarUrl: visibleAvatarUrl }}
                 size="lg"
                 className="ring-4 ring-[#f8f3ef]"
+                expandable
+                imageAlt={displayName || username || "Foto de perfil"}
               />
-              <span className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-green-700 text-sm text-white shadow-sm">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-green-700 text-sm text-white shadow-sm transition hover:bg-green-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-75"
+                aria-label="Cambiar foto de perfil"
+              >
                 <CameraIcon />
-              </span>
-            </button>
+              </button>
+            </div>
             <div>
               <h1 className="font-serif text-4xl">Tus datos</h1>
               {username && (
@@ -340,25 +342,33 @@ export default function Perfil() {
             <form onSubmit={guardar} className="space-y-4">
               <div className="rounded-2xl border border-gray-200 bg-[#f8f3ef] p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <button
-                    type="button"
-                    onClick={() => avatarInputRef.current?.click()}
-                    disabled={uploadingAvatar}
-                    className="group relative mx-auto rounded-full outline-none transition hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-75 sm:mx-0"
-                    aria-label="Subir foto de perfil o logo"
-                  >
+                  <div className="group relative mx-auto shrink-0 sm:mx-0">
                     <UserAvatar
                       user={{ displayName, username, avatarUrl: visibleAvatarUrl }}
                       size="xl"
                       className="ring-4 ring-white"
+                      expandable
+                      imageAlt={displayName || username || "Foto de perfil o logo"}
                     />
-                    <span className="absolute inset-x-2 bottom-2 rounded-full bg-stone-950/70 px-2 py-1 text-center text-[11px] font-bold text-white opacity-100 backdrop-blur transition group-hover:bg-green-700">
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="absolute inset-x-2 bottom-2 rounded-full bg-stone-950/70 px-2 py-1 text-center text-[11px] font-bold text-white opacity-100 backdrop-blur transition hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-wait disabled:opacity-75"
+                      aria-label="Subir foto de perfil o logo"
+                    >
                       {uploadingAvatar ? "Subiendo..." : "Cambiar"}
-                    </span>
-                    <span className="absolute -right-1 top-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-green-700 text-sm text-white shadow-sm">
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="absolute -right-1 top-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-green-700 text-sm text-white shadow-sm transition hover:bg-green-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-75"
+                      aria-label="Subir foto de perfil o logo"
+                    >
                       <CameraIcon />
-                    </span>
-                  </button>
+                    </button>
+                  </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-gray-950">
                       Foto de perfil o logo

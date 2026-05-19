@@ -263,6 +263,8 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                 user={user}
                 size="lg"
                 className="ring-4 ring-[#f8f3ef]"
+                expandable
+                imageAlt={user.displayName}
               />
               <div className="min-w-0">
                 <p className="text-sm font-semibold uppercase tracking-widest text-red-700">

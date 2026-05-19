@@ -508,7 +508,12 @@ export default function Mensajes() {
                           }}
                           className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-gray-500 transition hover:text-green-700"
                         >
-                          <UserAvatar user={otherUser} size="xs" />
+                          <UserAvatar
+                            user={otherUser}
+                            size="xs"
+                            expandable
+                            imageAlt={getDisplayName(otherUser)}
+                          />
                           <span className="truncate">Con: {getDisplayName(otherUser)}</span>
                         </button>
                       </div>
@@ -580,6 +585,10 @@ export default function Mensajes() {
                               <UserAvatar
                                 user={getOtherUser(conversacionSeleccionada, userId)}
                                 size="xs"
+                                expandable
+                                imageAlt={getDisplayName(
+                                  getOtherUser(conversacionSeleccionada, userId)
+                                )}
                               />
                               <span className="truncate">
                                 Con:{" "}
@@ -615,6 +624,9 @@ export default function Mensajes() {
                               avatarUrl: user?.avatarUrl || null,
                             }
                           : getOtherUser(conversacionSeleccionada, userId);
+                        const messageUserName =
+                          messageUser.displayName ||
+                          (messageUser.username ? `@${messageUser.username}` : "Avatar");
 
                         return (
                           <div
@@ -623,7 +635,14 @@ export default function Mensajes() {
                               propio ? "justify-end" : "justify-start"
                             }`}
                           >
-                            {!propio && <UserAvatar user={messageUser} size="xs" />}
+                            {!propio && (
+                              <UserAvatar
+                                user={messageUser}
+                                size="xs"
+                                expandable
+                                imageAlt={messageUserName}
+                              />
+                            )}
                             <div
                               className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
                                 propio
@@ -646,7 +665,14 @@ export default function Mensajes() {
                                 )}
                               </div>
                             </div>
-                            {propio && <UserAvatar user={messageUser} size="xs" />}
+                            {propio && (
+                              <UserAvatar
+                                user={messageUser}
+                                size="xs"
+                                expandable
+                                imageAlt={messageUserName}
+                              />
+                            )}
                           </div>
                         );
                       })}

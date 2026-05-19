@@ -168,7 +168,12 @@ export default function NavBar() {
       <div className="border-b border-stone-100 px-4 py-4">
         {user ? (
           <div className="flex items-center gap-3">
-            <UserAvatar user={user} size="md" />
+            <UserAvatar
+              user={user}
+              size="md"
+              expandable
+              imageAlt={userDisplayName}
+            />
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-red-800">
                 Tu cuenta
