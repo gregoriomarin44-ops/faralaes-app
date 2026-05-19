@@ -281,10 +281,6 @@ const borrarListingConRelaciones = async (listingId: string) => {
       });
       await tx.conversation.deleteMany({ where: { listingId } });
       await tx.favorite.deleteMany({ where: { listingId } });
-      await tx.review.updateMany({
-        where: { listingId },
-        data: { listingId: null },
-      });
       await tx.report.deleteMany({
         where: {
           targetType: "listing",
@@ -321,10 +317,6 @@ const borrarListingConRelaciones = async (listingId: string) => {
 
         IF to_regclass('"Favorite"') IS NOT NULL THEN
           DELETE FROM "Favorite" WHERE "listingId"::text = '${listingId}';
-        END IF;
-
-        IF to_regclass('"Review"') IS NOT NULL THEN
-          UPDATE "Review" SET "listingId" = NULL WHERE "listingId"::text = '${listingId}';
         END IF;
 
         IF to_regclass('reports') IS NOT NULL THEN

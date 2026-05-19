@@ -2,6 +2,47 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireSessionUser } from "../../../lib/auth";
 import { prisma } from "../../../lib/prisma";
 
+const MAX_COMMENT_LENGTH = 600;
+const MIN_REVIEW_INTERVAL_MS = 30_000;
+
+const sanitizeComment = (value: unknown) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/[<>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_COMMENT_LENGTH);
+
+  return normalized || null;
+};
+
+const getConversationBetweenUsers = async (
+  reviewerId: string,
+  reviewedUserId: string,
+  conversationId: unknown
+) => {
+  const conversationWhere =
+    typeof conversationId === "string" && conversationId.trim()
+      ? { id: conversationId.trim() }
+      : {};
+
+  return prisma.conversation.findFirst({
+    where: {
+      ...conversationWhere,
+      OR: [
+        { buyerId: reviewerId, sellerId: reviewedUserId },
+        { buyerId: reviewedUserId, sellerId: reviewerId },
+      ],
+    },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true },
+  });
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -15,10 +56,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    const { reviewedUserId, listingId, rating, comment } = req.body;
+    const { reviewedUserId, conversationId, rating, comment } = req.body;
     const normalizedRating = Number(rating);
-    const normalizedListingId =
-      typeof listingId === "string" && listingId.trim() ? listingId : null;
 
     if (!reviewedUserId || typeof reviewedUserId !== "string") {
       return res.status(400).json({ error: "Usuario valorado no válido." });
@@ -41,54 +80,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Usuario no encontrado." });
     }
 
-    if (normalizedListingId) {
-      const listing = await prisma.listing.findFirst({
-        where: {
-          id: normalizedListingId,
-          sellerId: reviewedUserId,
-          status: "published",
-        },
-        select: { id: true },
-      });
+    const conversation = await getConversationBetweenUsers(
+      user.id,
+      reviewedUserId,
+      conversationId
+    );
 
-      if (!listing) {
-        return res.status(400).json({
-          error: "El anuncio no pertenece al usuario valorado.",
-        });
-      }
+    if (!conversation) {
+      return res.status(403).json({
+        error: "Sólo puedes valorar a usuarios con los que ya tienes conversación.",
+      });
     }
 
-    const existingReview = await prisma.review.findFirst({
+    const existingReview = await prisma.review.findUnique({
       where: {
-        reviewerId: user.id,
-        reviewedUserId,
-        listingId: normalizedListingId,
+        reviewerId_reviewedUserId: {
+          reviewerId: user.id,
+          reviewedUserId,
+        },
       },
       select: { id: true },
     });
 
     if (existingReview) {
       return res.status(409).json({
-        error: "Ya has valorado a este vendedor para este anuncio.",
+        error: "Ya has valorado a este usuario.",
+      });
+    }
+
+    const latestReview = await prisma.review.findFirst({
+      where: { reviewerId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+
+    if (
+      latestReview &&
+      Date.now() - latestReview.createdAt.getTime() < MIN_REVIEW_INTERVAL_MS
+    ) {
+      return res.status(429).json({
+        error: "Espera unos segundos antes de publicar otra valoración.",
       });
     }
 
     const review = await prisma.review.create({
       data: {
         rating: normalizedRating,
-        comment:
-          typeof comment === "string" && comment.trim()
-            ? comment.trim().slice(0, 600)
-            : null,
+        comment: sanitizeComment(comment),
         reviewerId: user.id,
         reviewedUserId,
-        listingId: normalizedListingId,
+        conversationId: conversation.id,
       },
       include: {
         reviewer: {
           select: {
             username: true,
             displayName: true,
+            avatarUrl: true,
           },
         },
       },
@@ -103,7 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error.code === "P2002"
     ) {
       return res.status(409).json({
-        error: "Ya has valorado a este vendedor para este anuncio.",
+        error: "Ya has valorado a este usuario.",
       });
     }
 

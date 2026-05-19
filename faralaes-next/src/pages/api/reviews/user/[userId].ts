@@ -34,12 +34,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             select: {
               username: true,
               displayName: true,
+              avatarUrl: true,
             },
           },
-          listing: {
+          conversation: {
             select: {
               id: true,
-              title: true,
+              listing: {
+                select: {
+                  id: true,
+                  title: true,
+                },
+              },
             },
           },
         },
@@ -64,11 +70,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             review.reviewer.displayName,
             review.reviewer.username
           ),
+          avatarUrl: review.reviewer.avatarUrl,
         },
-        listing: review.listing
+        conversationId: review.conversationId,
+        listing: review.conversation?.listing
           ? {
-              id: review.listing.id,
-              title: review.listing.title || "Anuncio",
+              id: review.conversation.listing.id,
+              title: review.conversation.listing.title || "Anuncio",
             }
           : null,
       })),

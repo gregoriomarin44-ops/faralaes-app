@@ -35,7 +35,9 @@ type PublicUserPageProps = {
       reviewer: {
         username: string;
         displayName: string;
+        avatarUrl: string | null;
       };
+      conversationId?: string | null;
       listing: {
         id: string;
         title: string;
@@ -57,6 +59,53 @@ const getDisplayName = (
 
 const getSafeAverage = (value: number | null | undefined) =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
+
+const formatRelativeDate = (value: string) => {
+  const timestamp = new Date(value).getTime();
+
+  if (!Number.isFinite(timestamp)) {
+    return "";
+  }
+
+  const seconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
+  const units: { limit: number; divisor: number; unit: Intl.RelativeTimeFormatUnit }[] = [
+    { limit: 60, divisor: 1, unit: "second" },
+    { limit: 3600, divisor: 60, unit: "minute" },
+    { limit: 86400, divisor: 3600, unit: "hour" },
+    { limit: 2592000, divisor: 86400, unit: "day" },
+    { limit: 31536000, divisor: 2592000, unit: "month" },
+    { limit: Infinity, divisor: 31536000, unit: "year" },
+  ];
+  const selected = units.find((unit) => seconds < unit.limit) || units[units.length - 1];
+
+  return new Intl.RelativeTimeFormat("es-ES", { numeric: "auto" }).format(
+    -Math.floor(seconds / selected.divisor),
+    selected.unit
+  );
+};
+
+const Stars = ({
+  value,
+  size = "text-lg",
+}: {
+  value: number;
+  size?: string;
+}) => (
+  <span
+    className={`inline-flex items-center gap-0.5 ${size}`}
+    aria-label={`${value} de 5 estrellas`}
+  >
+    {[1, 2, 3, 4, 5].map((star) => (
+      <span
+        key={star}
+        className={star <= Math.round(value) ? "text-amber-500" : "text-stone-300"}
+        aria-hidden="true"
+      >
+        ★
+      </span>
+    ))}
+  </span>
+);
 
 export const getServerSideProps: GetServerSideProps<
   PublicUserPageProps
@@ -123,12 +172,18 @@ export const getServerSideProps: GetServerSideProps<
             select: {
               username: true,
               displayName: true,
+              avatarUrl: true,
             },
           },
-          listing: {
+          conversation: {
             select: {
               id: true,
-              title: true,
+              listing: {
+                select: {
+                  id: true,
+                  title: true,
+                },
+              },
             },
           },
         },
@@ -144,15 +199,17 @@ export const getServerSideProps: GetServerSideProps<
       createdAt: review.createdAt.toISOString(),
       reviewer: {
         username: review.reviewer.username || "usuario",
+        avatarUrl: review.reviewer.avatarUrl,
         displayName: getDisplayName(
           review.reviewer.displayName,
           review.reviewer.username
         ),
       },
-      listing: review.listing
+      conversationId: review.conversationId,
+      listing: review.conversation?.listing
         ? {
-            id: review.listing.id,
-            title: review.listing.title || "Anuncio",
+            id: review.conversation.listing.id,
+            title: review.conversation.listing.title || "Anuncio",
           }
         : null,
     }));
@@ -192,6 +249,7 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
   const [comment, setComment] = useState("");
   const [reviewMessage, setReviewMessage] = useState("");
   const [reviewError, setReviewError] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
   const [reviews, setReviews] = useState(user?.reviews || []);
   const [reviewAverage, setReviewAverage] = useState(
     getSafeAverage(user?.reviewAverage)
@@ -222,6 +280,7 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
       return;
     }
 
+    setSubmittingReview(true);
     const res = await fetch("/api/reviews/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -235,6 +294,7 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
     if (!res.ok) {
       const data = await res.json().catch(() => null);
       setReviewError(data?.error || "No se ha podido publicar la valoración.");
+      setSubmittingReview(false);
       return;
     }
 
@@ -249,6 +309,7 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
       setReviewAverage(getSafeAverage(data.average));
       setReviewCount(data.count ?? 0);
     }
+    setSubmittingReview(false);
   };
 
   return (
@@ -283,13 +344,16 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                   </div>
                 )}
                 {hasReviews ? (
-                  <p className="mt-4 text-sm font-bold text-amber-700">
-                    ⭐ {reviewAverage.toFixed(1)} · {reviewCount}{" "}
-                    {reviewCount === 1 ? "reseña" : "reseñas"}
-                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-sm font-bold text-amber-700">
+                    <Stars value={reviewAverage} />
+                    <span>
+                      {reviewAverage.toFixed(1)} · {reviewCount}{" "}
+                      {reviewCount === 1 ? "reseña" : "reseñas"}
+                    </span>
+                  </div>
                 ) : (
                   <p className="mt-4 text-sm font-semibold text-gray-500">
-                    Aún no tiene valoraciones
+                    Todavía no tiene valoraciones
                   </p>
                 )}
               </div>
@@ -316,16 +380,19 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
               </h2>
               {hasReviews ? (
                 <div className="mt-4">
-                  <p className="text-4xl font-black text-amber-700">
-                    ⭐ {reviewAverage.toFixed(1)}
-                  </p>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <p className="text-4xl font-black text-amber-700">
+                      {reviewAverage.toFixed(1)}
+                    </p>
+                    <Stars value={reviewAverage} size="pb-1 text-2xl" />
+                  </div>
                   <p className="mt-1 text-sm font-semibold text-gray-500">
                     Basado en {reviewCount} {reviewCount === 1 ? "reseña" : "reseñas"}
                   </p>
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-gray-600">
-                  Aún no tiene valoraciones
+                  Todavía no tiene valoraciones
                 </p>
               )}
 
@@ -333,17 +400,24 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                 <form onSubmit={submitReview} className="mt-6 space-y-3">
                   <label className="block text-sm font-bold text-gray-700">
                     Estrellas
-                    <select
-                      value={rating}
-                      onChange={(event) => setRating(Number(event.target.value))}
-                      className="mt-2 h-11 w-full rounded border border-gray-300 bg-white px-3"
-                    >
-                      {[5, 4, 3, 2, 1].map((value) => (
-                        <option key={value} value={value}>
-                          {"⭐".repeat(value)} {value}
-                        </option>
+                    <div className="mt-2 grid grid-cols-5 gap-1 rounded-2xl border border-gray-200 bg-[#f8f3ef] p-1">
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setRating(value)}
+                          className={`rounded-xl px-2 py-2 text-lg transition ${
+                            value <= rating
+                              ? "bg-white text-amber-500 shadow-sm"
+                              : "text-stone-300 hover:bg-white/70 hover:text-amber-400"
+                          }`}
+                          aria-label={`${value} de 5 estrellas`}
+                          aria-pressed={value === rating}
+                        >
+                          ★
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   </label>
                   <label className="block text-sm font-bold text-gray-700">
                     Comentario opcional
@@ -357,9 +431,10 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                   </label>
                   <button
                     type="submit"
-                    className="w-full rounded-full bg-green-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-green-800"
+                    disabled={submittingReview}
+                    className="w-full rounded-full bg-green-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-green-800 disabled:cursor-wait disabled:bg-gray-400"
                   >
-                    Publicar valoración
+                    {submittingReview ? "Publicando..." : "Publicar valoración"}
                   </button>
                   {reviewMessage && (
                     <p className="text-sm font-semibold text-green-700">{reviewMessage}</p>
@@ -377,7 +452,7 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
               </h2>
               {reviews.length === 0 ? (
                 <p className="mt-4 text-sm text-gray-600">
-                  Aún no tiene valoraciones
+                  Todavía no tiene valoraciones
                 </p>
               ) : (
                 <div className="mt-4 space-y-3">
@@ -387,17 +462,26 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                       className="rounded-xl border border-gray-100 bg-[#f8f3ef] p-4"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-bold text-gray-950">
-                            {review.reviewer.displayName}
-                          </p>
-                          <p className="text-xs font-semibold text-gray-500">
-                            @{review.reviewer.username}
-                          </p>
+                        <div className="flex min-w-0 items-start gap-3">
+                          <UserAvatar
+                            user={review.reviewer}
+                            size="xs"
+                            expandable
+                            imageAlt={review.reviewer.displayName}
+                          />
+                          <div className="min-w-0">
+                            <p className="truncate font-bold text-gray-950">
+                              {review.reviewer.displayName}
+                            </p>
+                            <p className="truncate text-xs font-semibold text-gray-500">
+                              @{review.reviewer.username}
+                            </p>
+                            <p className="mt-1 text-xs font-semibold text-gray-400">
+                              {formatRelativeDate(review.createdAt)}
+                            </p>
+                          </div>
                         </div>
-                        <p className="shrink-0 text-sm font-black text-amber-700">
-                          ⭐ {review.rating}
-                        </p>
+                        <Stars value={review.rating} size="shrink-0 text-sm" />
                       </div>
                       {review.comment && (
                         <p className="mt-3 text-sm leading-6 text-gray-700">

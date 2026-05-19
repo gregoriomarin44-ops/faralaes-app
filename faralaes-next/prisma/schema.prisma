@@ -115,26 +115,24 @@ model Listing {
   images                 ListingImage[]
   favorites              Favorite[]
   conversations          Conversation[]
-  reviews                Review[]
 }
 
 model Review {
-  id             String   @id @default(uuid()) @db.Uuid
+  id             String        @id @default(uuid()) @db.Uuid
   rating         Int
   comment        String?
-  reviewerId     String   @db.Uuid
-  reviewedUserId String   @db.Uuid
-  listingId      String?  @db.Uuid
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  reviewer       User     @relation("ReviewerReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
-  reviewedUser   User     @relation("ReviewedUserReviews", fields: [reviewedUserId], references: [id], onDelete: Cascade)
-  listing        Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  reviewerId     String        @db.Uuid
+  reviewedUserId String        @db.Uuid
+  conversationId String?       @db.Uuid
+  createdAt      DateTime      @default(now())
+  reviewer       User          @relation("ReviewerReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewedUser   User          @relation("ReviewedUserReviews", fields: [reviewedUserId], references: [id], onDelete: Cascade)
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
-  @@unique([reviewerId, reviewedUserId, listingId])
+  @@unique([reviewerId, reviewedUserId])
   @@index([reviewedUserId, createdAt])
   @@index([reviewerId])
-  @@index([listingId])
+  @@index([conversationId])
 }
 
 model ListingImage {
@@ -168,6 +166,7 @@ model Conversation {
   seller    User      @relation("SellerConversations", fields: [sellerId], references: [id], onDelete: Cascade)
   messages  Message[]
   emailNotifications MessageEmailNotification[]
+  reviews   Review[]
 }
 
 model Message {
