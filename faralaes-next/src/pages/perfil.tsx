@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import NavBar from "../components/NavBar";
 import UserAvatar from "../components/UserAvatar";
+import { accountTypeDescriptions, accountTypeLabels, accountTypes, type AccountType } from "../lib/accountTypes";
 import { useAuth } from "../lib/authContext";
 import { uploadAvatarImage } from "../lib/localUploads";
 
@@ -19,11 +20,15 @@ type ProfileResponse = {
     username: string;
     displayName: string;
     avatarUrl: string | null;
+    accountType: AccountType;
+    verified: boolean;
   };
 };
 
 type ProfileUpdateResponse = Profile & {
   avatarUrl: string | null;
+  accountType: AccountType;
+  verified: boolean;
 };
 
 const CameraIcon = () => (
@@ -50,6 +55,7 @@ export default function Perfil() {
   const [phone, setPhone] = useState("");
   const [location, setLocation] = useState("");
   const [bio, setBio] = useState("");
+  const [accountType, setAccountType] = useState<AccountType>("individual");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState("");
   const [avatarStatus, setAvatarStatus] = useState("");
@@ -100,6 +106,7 @@ export default function Perfil() {
         const profile = data.profile;
         setDisplayName(data.user.displayName || profile?.displayName || "");
         setUsername(data.user.username);
+        setAccountType(data.user.accountType || "individual");
         if (requestVersion === avatarRequestVersionRef.current) {
           setAvatarUrl(data.user.avatarUrl);
         }
@@ -144,6 +151,7 @@ export default function Perfil() {
         location,
         bio,
         avatarUrl,
+        accountType,
       }),
     });
 
@@ -173,6 +181,7 @@ export default function Perfil() {
         location,
         bio,
         avatarUrl: nextAvatarUrl,
+        accountType,
       }),
     });
 
@@ -447,6 +456,44 @@ export default function Perfil() {
                 placeholder="Bio"
                 rows={4}
               />
+
+              <fieldset className="rounded-2xl border border-gray-200 bg-[#f8f3ef] p-4">
+                <legend className="px-1 text-sm font-bold text-gray-950">
+                  Tipo de cuenta
+                </legend>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {accountTypes.map((type) => (
+                    <label
+                      key={type}
+                      className={`cursor-pointer rounded-xl border bg-white p-3 transition ${
+                        accountType === type
+                          ? "border-green-700 ring-2 ring-green-700/10"
+                          : "border-gray-200 hover:border-green-700"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="accountType"
+                        value={type}
+                        checked={accountType === type}
+                        onChange={() => setAccountType(type)}
+                        className="sr-only"
+                      />
+                      <span className="block text-sm font-black text-gray-950">
+                        {accountTypeLabels[type]}
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-gray-600">
+                        {accountTypeDescriptions[type]}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {user?.verified && (
+                  <p className="mt-3 text-xs font-bold text-amber-700">
+                    Cuenta verificada por Faralaes.
+                  </p>
+                )}
+              </fieldset>
 
               <button
                 className="w-full rounded bg-green-700 p-3 font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-gray-400"

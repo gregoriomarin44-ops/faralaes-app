@@ -5,6 +5,7 @@ import Head from "next/head";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import NavBar from "../../components/NavBar";
+import AccountBadges from "../../components/AccountBadges";
 import ReportModal from "../../components/ReportModal";
 import UserAvatar from "../../components/UserAvatar";
 import { formatPrice } from "../../lib/formatPrice";
@@ -46,6 +47,8 @@ type Producto = {
     username: string;
     displayName: string;
     avatarUrl: string | null;
+    accountType?: string | null;
+    verified?: boolean | null;
     profile?: {
       phone?: string | null;
       location?: string | null;
@@ -176,6 +179,8 @@ const loadProductFallback = async (
       sellerPhone: string | null;
       sellerLocation: string | null;
       sellerAvatarUrl: string | null;
+      sellerAccountType: string | null;
+      sellerVerified: boolean | null;
     }[]
   >`
     SELECT
@@ -195,6 +200,8 @@ const loadProductFallback = async (
       l."createdAt",
       u."email" AS "sellerEmail",
       u."avatarUrl" AS "sellerAvatarUrl",
+      u."accountType" AS "sellerAccountType",
+      u."verified" AS "sellerVerified",
       p."displayName" AS "sellerProfileDisplayName",
       p."phone" AS "sellerPhone",
       p."location" AS "sellerLocation"
@@ -241,6 +248,8 @@ const loadProductFallback = async (
       id: row.sellerId,
       username: "",
       avatarUrl: row.sellerAvatarUrl,
+      accountType: row.sellerAccountType || "individual",
+      verified: Boolean(row.sellerVerified),
       displayName:
         row.sellerProfileDisplayName ||
         row.sellerEmail?.split("@")[0] ||
@@ -384,6 +393,8 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
             username: true,
             displayName: true,
             avatarUrl: true,
+            accountType: true,
+            verified: true,
             profile: {
               select: {
                 phone: true,
@@ -986,8 +997,8 @@ export default function ProductoDetalle({
                     <span className="block text-sm font-semibold text-gray-500">
                       {sellerUsername ? `@${sellerUsername}` : "Perfil de Faralaes"}
                     </span>
-                    <span className="mt-1 block text-xs font-semibold text-green-700">
-                      Perfil verificado por Faralaes
+                    <span className="mt-2 block">
+                      <AccountBadges user={producto.seller} compact />
                     </span>
                   </span>
                   <span className="text-xl text-gray-300" aria-hidden="true">

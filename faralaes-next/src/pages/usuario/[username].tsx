@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { useState, type FormEvent, type MouseEvent } from "react";
 import ListingCard, { type ListingCardItem } from "../../components/ListingCard";
 import NavBar from "../../components/NavBar";
+import AccountBadges from "../../components/AccountBadges";
 import ReportModal from "../../components/ReportModal";
 import UserAvatar from "../../components/UserAvatar";
 import { useAuth } from "../../lib/authContext";
@@ -20,6 +21,8 @@ type PublicUserPageProps = {
     username: string;
     displayName: string;
     avatarUrl: string | null;
+    accountType: string;
+    verified: boolean;
     bio: string | null;
     location: string | null;
     createdAt: string;
@@ -140,6 +143,8 @@ export const getServerSideProps: GetServerSideProps<
       username: true,
       displayName: true,
       avatarUrl: true,
+      accountType: true,
+      verified: true,
       createdAt: true,
       disabled: true,
       profile: {
@@ -253,6 +258,8 @@ export const getServerSideProps: GetServerSideProps<
     username: safeUsername,
     displayName: safeDisplayName,
     avatarUrl: user.avatarUrl,
+    accountType: user.accountType,
+    verified: user.verified,
   };
 
   return {
@@ -262,6 +269,8 @@ export const getServerSideProps: GetServerSideProps<
         username: safeUsername,
         displayName: safeDisplayName,
         avatarUrl: user.avatarUrl,
+        accountType: user.accountType,
+        verified: user.verified,
         bio: user.profile?.bio || null,
         location: user.profile?.location || null,
         createdAt: user.createdAt.toISOString(),
@@ -312,7 +321,7 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
   const firstListing = user.listings[0];
   const sellerJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Person",
+    "@type": user.accountType === "shop" ? "Organization" : "Person",
     name: user.displayName,
     alternateName: `@${user.username}`,
     url: profileUrl,
@@ -507,6 +516,9 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                         <span>@{user.username}</span>
                         {user.location && <span>{user.location}</span>}
                         {memberSince && <span>Miembro {memberSince}</span>}
+                      </div>
+                      <div className="mt-3">
+                        <AccountBadges user={user} />
                       </div>
                     </div>
                   </div>

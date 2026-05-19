@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import NavBar from "../components/NavBar";
+import AccountBadges from "../components/AccountBadges";
 import UserAvatar from "../components/UserAvatar";
 import { formatPrice } from "../lib/formatPrice";
 import { useAuth } from "../lib/authContext";
@@ -40,6 +41,8 @@ type User = {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  accountType?: string | null;
+  verified?: boolean | null;
 };
 
 const getLastMessage = (conversation: Conversation) =>
@@ -597,6 +600,10 @@ export default function Mensajes() {
                                 )}
                               </span>
                             </button>
+                            <AccountBadges
+                              user={getOtherUser(conversacionSeleccionada, userId)}
+                              compact
+                            />
                           </div>
                         </div>
                       </div>

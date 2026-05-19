@@ -98,6 +98,8 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
       sellerPhone: string | null;
       sellerLocation: string | null;
       sellerAvatarUrl: string | null;
+      sellerAccountType: string | null;
+      sellerVerified: boolean | null;
     }[]
   >`
     SELECT
@@ -117,6 +119,8 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
       l."createdAt",
       u."email" AS "sellerEmail",
       u."avatarUrl" AS "sellerAvatarUrl",
+      u."accountType" AS "sellerAccountType",
+      u."verified" AS "sellerVerified",
       p."displayName" AS "sellerProfileDisplayName",
       p."phone" AS "sellerPhone",
       p."location" AS "sellerLocation"
@@ -163,6 +167,8 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
       id: row.sellerId,
       username: "",
       avatarUrl: row.sellerAvatarUrl,
+      accountType: row.sellerAccountType || "individual",
+      verified: Boolean(row.sellerVerified),
       displayName:
         row.sellerProfileDisplayName ||
         row.sellerEmail?.split("@")[0] ||
@@ -230,6 +236,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               username: true,
               displayName: true,
               avatarUrl: true,
+              accountType: true,
+              verified: true,
               profile: {
                 select: {
                   phone: true,

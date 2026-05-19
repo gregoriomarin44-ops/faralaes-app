@@ -31,6 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     username: user.username,
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
+    accountType: user.accountType,
+    verified: user.verified,
     role: user.role,
     profile,
     profileComplete: isProfileComplete(profile),

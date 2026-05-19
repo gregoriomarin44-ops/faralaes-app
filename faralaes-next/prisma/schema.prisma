@@ -18,6 +18,8 @@ model User {
   username      String         @unique
   displayName   String
   avatarUrl     String?
+  accountType   String         @default("individual")
+  verified      Boolean        @default(false)
   passwordHash  String?
   role          Role           @default(USER)
   disabled      Boolean        @default(false)

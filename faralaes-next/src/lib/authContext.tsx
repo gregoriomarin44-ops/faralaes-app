@@ -14,6 +14,8 @@ export type AuthUser = {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  accountType: string;
+  verified: boolean;
   role: "ADMIN" | "USER";
   profile: {
     displayName: string;

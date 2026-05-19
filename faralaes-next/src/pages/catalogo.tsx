@@ -41,6 +41,8 @@ type Producto = {
     username?: string | null;
     displayName?: string | null;
     avatarUrl?: string | null;
+    accountType?: string | null;
+    verified?: boolean | null;
   } | null;
   images?: {
     url: string;

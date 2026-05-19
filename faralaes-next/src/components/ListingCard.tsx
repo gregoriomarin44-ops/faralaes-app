@@ -1,4 +1,5 @@
 import type { MouseEvent } from "react";
+import AccountBadges from "./AccountBadges";
 import { formatPrice } from "../lib/formatPrice";
 import { getConditionLabel } from "../lib/listingOptions";
 import { getOperationLabel, isDonationListing } from "../lib/listingOperation";
@@ -30,6 +31,8 @@ export type ListingCardItem = {
     username?: string | null;
     displayName?: string | null;
     avatarUrl?: string | null;
+    accountType?: string | null;
+    verified?: boolean | null;
   } | null;
   images?: {
     url: string;
@@ -443,7 +446,7 @@ export default function ListingCard({
         )}
 
         {sellerName && (
-          <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-stone-100 pt-3">
+          <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2 border-t border-stone-100 pt-3">
             <UserAvatar
               user={{
                 displayName: listing.seller?.displayName,
@@ -461,7 +464,7 @@ export default function ListingCard({
                 onSellerClick?.(event);
               }}
               disabled={!onSellerClick}
-              className="min-w-0 flex-1 text-left disabled:cursor-default"
+              className="min-w-[7rem] flex-1 text-left disabled:cursor-default"
               aria-label={`Ver perfil de ${sellerName}`}
             >
               <span className="block truncate text-xs font-black text-stone-700 transition group-hover:text-stone-900">
@@ -475,6 +478,7 @@ export default function ListingCard({
                     : "Perfil Faralaes"}
               </span>
             </button>
+            <AccountBadges user={listing.seller} compact />
           </div>
         )}
 

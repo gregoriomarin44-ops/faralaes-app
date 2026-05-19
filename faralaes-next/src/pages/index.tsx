@@ -2,6 +2,7 @@ import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { type MouseEvent } from "react";
+import AccountBadges from "../components/AccountBadges";
 import ListingCard, { type ListingCardItem } from "../components/ListingCard";
 import NavBar from "../components/NavBar";
 import UserAvatar from "../components/UserAvatar";
@@ -12,6 +13,8 @@ type SellerCard = {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  accountType: string;
+  verified: boolean;
   location: string | null;
   listingCount: number;
   reviewAverage: number | null;
@@ -107,6 +110,8 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
               username: true,
               displayName: true,
               avatarUrl: true,
+              accountType: true,
+              verified: true,
             },
           },
         },
@@ -146,6 +151,8 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
             username: true,
             displayName: true,
             avatarUrl: true,
+            accountType: true,
+            verified: true,
             profile: { select: { location: true } },
           },
         })
@@ -210,6 +217,8 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
               username: listing.seller.username,
               displayName: listing.seller.displayName,
               avatarUrl: listing.seller.avatarUrl,
+              accountType: listing.seller.accountType,
+              verified: listing.seller.verified,
             }
           : null,
       })),
@@ -228,6 +237,8 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
             username: seller.username,
             displayName: getDisplayName(seller.displayName, seller.username),
             avatarUrl: seller.avatarUrl,
+            accountType: seller.accountType,
+            verified: seller.verified,
             location: seller.profile?.location || null,
             listingCount: listingCountBySeller.get(sellerId) || 0,
             reviewAverage: review?.average || null,
@@ -577,6 +588,9 @@ export default function Home({
                     <p className="mt-1 truncate text-sm font-bold text-stone-500">
                       {seller.location || "Andalucía"}
                     </p>
+                    <div className="mt-3">
+                      <AccountBadges user={seller} compact />
+                    </div>
                     <div className="mt-3 flex items-center gap-2 text-sm font-bold text-stone-700">
                       {seller.reviewAverage ? (
                         <>

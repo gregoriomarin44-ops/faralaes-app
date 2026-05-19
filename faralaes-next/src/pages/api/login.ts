@@ -237,6 +237,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         username: true,
         displayName: true,
         avatarUrl: true,
+        accountType: true,
+        verified: true,
         role: true,
         passwordHash: true,
         emailVerified: true,
@@ -299,6 +301,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       username: user.username || user.email.split("@")[0],
       displayName: user.displayName || user.email.split("@")[0],
       avatarUrl: user.avatarUrl,
+      accountType: user.accountType,
+      verified: user.verified,
       role: user.role,
     });
   } catch (error) {

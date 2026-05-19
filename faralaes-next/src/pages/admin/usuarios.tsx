@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import AdminLayout, { useAdminSession } from "../../components/admin/AdminLayout";
+import { accountTypeLabels, normalizeAccountType } from "../../lib/accountTypes";
 
 type AdminUserRow = {
   id: string;
   email: string;
   role: "ADMIN" | "USER";
   disabled: boolean;
+  accountType: string;
+  verified: boolean;
   createdAt: string;
   profile: {
     displayName: string;
@@ -118,6 +121,49 @@ export default function AdminUsers() {
     );
   };
 
+  const toggleSellerVerified = async (targetUser: AdminUserRow) => {
+    const nextVerified = !targetUser.verified;
+    const confirmed = confirm(
+      nextVerified
+        ? "¿Seguro que quieres marcar este vendedor como verificado?"
+        : "¿Seguro que quieres retirar la verificación de vendedor?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: session.userId,
+        targetUserId: targetUser.id,
+        verified: nextVerified,
+      }),
+    });
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      setError(data?.error || "No se ha podido cambiar la verificación.");
+      setSuccessMessage("");
+      return;
+    }
+
+    setUsers((prev) =>
+      prev.map((user) => (user.id === targetUser.id ? data : user))
+    );
+    setSelectedUser((prev) =>
+      prev?.id === targetUser.id ? (data as AdminUserRow) : prev
+    );
+    setError("");
+    setSuccessMessage(
+      nextVerified
+        ? "Vendedor verificado correctamente"
+        : "Verificación retirada correctamente"
+    );
+  };
+
   const resetPassword = async (targetUserId: string) => {
     const confirmed = confirm(
       "¿Seguro que quieres resetear la contraseña de este usuario?"
@@ -204,6 +250,8 @@ export default function AdminUsers() {
                 <tr>
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Nombre</th>
+                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Verificado</th>
                   <th className="px-4 py-3">Alta</th>
                   <th className="px-4 py-3">Rol</th>
                   <th className="px-4 py-3">Detalle</th>
@@ -217,6 +265,22 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-4 py-4 text-stone-600">
                       {user.profile?.displayName || "Sin perfil"}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-stone-700">
+                        {accountTypeLabels[normalizeAccountType(user.accountType)]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`rounded-full border px-2.5 py-1 text-xs font-black uppercase tracking-wide ${
+                          user.verified
+                            ? "border-amber-100 bg-amber-50 text-amber-800"
+                            : "border-stone-200 bg-stone-50 text-stone-500"
+                        }`}
+                      >
+                        {user.verified ? "Sí" : "No"}
+                      </span>
                     </td>
                     <td className="px-4 py-4 text-stone-600">
                       {formatDate(user.createdAt)}
@@ -258,7 +322,15 @@ export default function AdminUsers() {
                           onClick={() => verifyUser(user.id)}
                           className="rounded-lg border border-stone-200 px-3 py-2 font-semibold text-stone-700 transition hover:border-green-700 hover:text-green-800"
                         >
-                          Verificar usuario
+                          Verificar email
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleSellerVerified(user)}
+                          disabled={user.id === session.userId}
+                          className="rounded-lg border border-stone-200 px-3 py-2 font-semibold text-stone-700 transition hover:border-amber-600 hover:text-amber-700 disabled:cursor-not-allowed disabled:bg-stone-100"
+                        >
+                          {user.verified ? "Quitar verificación" : "Verificar vendedor"}
                         </button>
                         <button
                           type="button"
@@ -312,6 +384,14 @@ export default function AdminUsers() {
               <div>
                 <p className="font-semibold text-stone-500">Rol</p>
                 <p>{selectedUser.role}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-stone-500">Tipo de cuenta</p>
+                <p>{accountTypeLabels[normalizeAccountType(selectedUser.accountType)]}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-stone-500">Verificación vendedor</p>
+                <p>{selectedUser.verified ? "Verificado" : "No verificado"}</p>
               </div>
               <div>
                 <p className="font-semibold text-stone-500">Estado</p>

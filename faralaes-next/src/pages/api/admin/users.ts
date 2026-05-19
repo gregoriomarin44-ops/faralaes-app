@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdmin } from "../../../lib/adminAuth";
 import { prisma } from "../../../lib/prisma";
+import { normalizeAccountType } from "../../../lib/accountTypes";
 
 const allowedRoles = ["USER", "ADMIN"] as const;
 type UserRole = (typeof allowedRoles)[number];
@@ -50,10 +51,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "PATCH") {
-    const { targetUserId, role, disabled } = req.body as {
+    const { targetUserId, role, disabled, verified, accountType } = req.body as {
       targetUserId?: unknown;
       role?: unknown;
       disabled?: unknown;
+      verified?: unknown;
+      accountType?: unknown;
     };
 
     if (typeof targetUserId !== "string") {
@@ -110,6 +113,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .status(500)
           .json({ error: "No se ha podido cambiar el estado del usuario." });
       }
+    }
+
+    if (typeof verified === "boolean") {
+      if (targetUserId === admin.id && verified) {
+        return res
+          .status(400)
+          .json({ error: "No puedes verificar tu propia cuenta de vendedor." });
+      }
+
+      const user = await prisma.user.update({
+        where: { id: targetUserId },
+        data: { verified },
+        include: {
+          profile: true,
+        },
+      });
+
+      return res.status(200).json(user);
+    }
+
+    if (typeof accountType === "string") {
+      const user = await prisma.user.update({
+        where: { id: targetUserId },
+        data: { accountType: normalizeAccountType(accountType) },
+        include: {
+          profile: true,
+        },
+      });
+
+      return res.status(200).json(user);
     }
 
     if (typeof role !== "string" || !allowedRoles.includes(role as UserRole)) {

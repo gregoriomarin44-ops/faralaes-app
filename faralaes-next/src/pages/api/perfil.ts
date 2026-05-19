@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireSessionUser } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
+import { normalizeAccountType } from "../../lib/accountTypes";
 import { normalizeDisplayName } from "../../lib/userIdentity";
 
 const normalizeAvatarUrl = (value: unknown) => {
@@ -50,14 +51,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           username: user.username,
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
+          accountType: user.accountType,
+          verified: user.verified,
         },
       });
     }
 
     if (req.method === "PUT") {
-      const { displayName, phone, location, bio, avatarUrl } = req.body;
+      const { displayName, phone, location, bio, avatarUrl, accountType } = req.body;
       const normalizedDisplayName = normalizeDisplayName(displayName);
       const preparedAvatar = normalizeAvatarUrl(avatarUrl);
+      const normalizedAccountType = normalizeAccountType(accountType);
 
       if (!normalizedDisplayName) {
         return res.status(400).json({ error: "Nombre público obligatorio" });
@@ -72,6 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           where: { id: user.id },
           data: {
             displayName: normalizedDisplayName,
+            accountType: normalizedAccountType,
             ...(preparedAvatar.avatarUrl !== undefined
               ? { avatarUrl: preparedAvatar.avatarUrl }
               : {}),
@@ -106,6 +111,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ...profile,
         displayName: normalizedDisplayName,
         avatarUrl: updatedUser.avatarUrl,
+        accountType: updatedUser.accountType,
+        verified: updatedUser.verified,
       });
     }
 

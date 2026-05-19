@@ -34,6 +34,8 @@ type PublicListingFallback = {
     username: string | null;
     displayName: string | null;
     avatarUrl: string | null;
+    accountType: string | null;
+    verified: boolean | null;
   } | null;
 };
 
@@ -359,6 +361,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               username: true,
               displayName: true,
               avatarUrl: true,
+              accountType: true,
+              verified: true,
             },
           },
         },
@@ -445,6 +449,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               username: true,
               displayName: true,
               avatarUrl: true,
+              accountType: true,
+              verified: true,
             },
           },
         },
@@ -552,6 +558,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         include: {
           images: {
             orderBy: { sortOrder: "asc" },
+          },
+          seller: {
+            select: {
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+              accountType: true,
+              verified: true,
+            },
           },
         },
       });

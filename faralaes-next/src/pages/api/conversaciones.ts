@@ -54,6 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               username: true,
               displayName: true,
               avatarUrl: true,
+              accountType: true,
+              verified: true,
             },
           },
           seller: {
@@ -62,6 +64,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               username: true,
               displayName: true,
               avatarUrl: true,
+              accountType: true,
+              verified: true,
             },
           },
           messages: {
@@ -94,6 +98,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               username: true,
               displayName: true,
               avatarUrl: true,
+              accountType: true,
+              verified: true,
             },
           },
           seller: {
@@ -102,6 +108,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               username: true,
               displayName: true,
               avatarUrl: true,
+              accountType: true,
+              verified: true,
             },
           },
           messages: {
@@ -133,6 +141,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               username: true,
               displayName: true,
               avatarUrl: true,
+              accountType: true,
+              verified: true,
             },
           },
           seller: {
@@ -141,6 +151,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               username: true,
               displayName: true,
               avatarUrl: true,
+              accountType: true,
+              verified: true,
             },
           },
           messages: {
