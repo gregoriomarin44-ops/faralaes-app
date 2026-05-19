@@ -1,21 +1,18 @@
 import type { GetServerSideProps } from "next";
+import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type MouseEvent } from "react";
+import ListingCard, { type ListingCardItem } from "../../components/ListingCard";
 import NavBar from "../../components/NavBar";
 import ReportModal from "../../components/ReportModal";
 import UserAvatar from "../../components/UserAvatar";
-import { formatPrice } from "../../lib/formatPrice";
 import { useAuth } from "../../lib/authContext";
 import { prisma } from "../../lib/prisma";
+import { getCanonical } from "../../lib/seo";
 import { normalizeUsername } from "../../lib/userIdentity";
 
-type PublicListing = {
-  id: string;
-  title: string;
-  priceCents: number;
-  images: { url: string }[];
-};
+type PublicListing = ListingCardItem;
 
 type PublicUserPageProps = {
   user: {
@@ -25,6 +22,7 @@ type PublicUserPageProps = {
     avatarUrl: string | null;
     bio: string | null;
     location: string | null;
+    createdAt: string;
     reviewAverage: number | null;
     reviewCount: number;
     reviews: {
@@ -107,6 +105,24 @@ const Stars = ({
   </span>
 );
 
+const TrustBadge = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-sm">
+    <span className="h-2 w-2 rounded-full bg-green-700" aria-hidden="true" />
+    <span>
+      <span className="block text-[10px] font-black uppercase tracking-wide text-stone-400">
+        {label}
+      </span>
+      <span className="block leading-tight">{value}</span>
+    </span>
+  </span>
+);
+
 export const getServerSideProps: GetServerSideProps<
   PublicUserPageProps
 > = async ({ params }) => {
@@ -124,6 +140,7 @@ export const getServerSideProps: GetServerSideProps<
       username: true,
       displayName: true,
       avatarUrl: true,
+      createdAt: true,
       disabled: true,
       profile: {
         select: {
@@ -137,8 +154,18 @@ export const getServerSideProps: GetServerSideProps<
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
+          sellerId: true,
           title: true,
+          description: true,
           priceCents: true,
+          operationType: true,
+          location: true,
+          size: true,
+          color: true,
+          brand: true,
+          condition: true,
+          shippingAvailable: true,
+          whatsappContactAllowed: true,
           images: {
             orderBy: { sortOrder: "asc" },
             select: { url: true },
@@ -222,6 +249,11 @@ export const getServerSideProps: GetServerSideProps<
     user.displayName || user.profile?.displayName,
     safeUsername
   );
+  const sellerSummary = {
+    username: safeUsername,
+    displayName: safeDisplayName,
+    avatarUrl: user.avatarUrl,
+  };
 
   return {
     props: {
@@ -232,10 +264,16 @@ export const getServerSideProps: GetServerSideProps<
         avatarUrl: user.avatarUrl,
         bio: user.profile?.bio || null,
         location: user.profile?.location || null,
+        createdAt: user.createdAt.toISOString(),
         reviewAverage,
         reviewCount,
         reviews,
-        listings: user.listings,
+        listings: user.listings.map((listing) => ({
+          ...listing,
+          seller: sellerSummary,
+          sellerRatingAverage: reviewAverage,
+          sellerReviewCount: reviewCount,
+        })),
       },
     },
   };
@@ -249,6 +287,9 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
   const [comment, setComment] = useState("");
   const [reviewMessage, setReviewMessage] = useState("");
   const [reviewError, setReviewError] = useState("");
+  const [contactError, setContactError] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
+  const [contacting, setContacting] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviews, setReviews] = useState(user?.reviews || []);
   const [reviewAverage, setReviewAverage] = useState(
@@ -262,6 +303,52 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
 
   const isOwnProfile = currentUser?.id === user.id;
   const hasReviews = reviewCount > 0 && reviewAverage !== null;
+  const profilePath = `/usuario/${user.username}`;
+  const profileUrl = getCanonical(profilePath);
+  const seoLocation = user.location ? ` en ${user.location}` : "";
+  const seoTitle = `${user.displayName}${seoLocation} | moda flamenca en Faralaes`;
+  const seoDescription = `${user.displayName} vende moda flamenca en Faralaes${seoLocation}. Consulta reseñas, anuncios activos y perfil de confianza.`;
+  const memberSince = formatRelativeDate(user.createdAt);
+  const firstListing = user.listings[0];
+  const sellerJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: user.displayName,
+    alternateName: `@${user.username}`,
+    url: profileUrl,
+    image: user.avatarUrl ? getCanonical(user.avatarUrl) : undefined,
+    address: user.location
+      ? {
+          "@type": "PostalAddress",
+          addressLocality: user.location,
+          addressCountry: "ES",
+        }
+      : undefined,
+    description: user.bio || seoDescription,
+    aggregateRating: hasReviews
+      ? {
+          "@type": "AggregateRating",
+          ratingValue: reviewAverage.toFixed(1),
+          reviewCount,
+          bestRating: 5,
+          worstRating: 1,
+        }
+      : undefined,
+    makesOffer: user.listings.slice(0, 6).map((listing) => ({
+      "@type": "Offer",
+      itemOffered: {
+        "@type": "Product",
+        name: listing.title,
+        image: listing.images?.[0]?.url
+          ? getCanonical(listing.images[0].url)
+          : undefined,
+        url: getCanonical(`/producto/${listing.id}`),
+      },
+      price: (listing.priceCents / 100).toFixed(2),
+      priceCurrency: "EUR",
+    })),
+  };
+
   const reportUser = () => {
     if (!currentUser) {
       router.push(`/login?next=${encodeURIComponent(router.asPath)}`);
@@ -270,6 +357,62 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
 
     setShowReportModal(true);
   };
+
+  const contactSeller = async (listingId = firstListing?.id) => {
+    setContactError("");
+
+    if (isOwnProfile) {
+      router.push("/perfil");
+      return;
+    }
+
+    if (!currentUser) {
+      router.push(`/login?next=${encodeURIComponent(router.asPath)}`);
+      return;
+    }
+
+    if (!listingId) {
+      setContactError("Este vendedor no tiene anuncios activos para iniciar una conversación.");
+      return;
+    }
+
+    setContacting(true);
+    const res = await fetch("/api/conversaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId }),
+    });
+
+    if (!res.ok) {
+      setContacting(false);
+      setContactError("No se ha podido iniciar la conversación.");
+      return;
+    }
+
+    const conversation = await res.json();
+    router.push(`/mensajes?conversationId=${conversation.id}`);
+  };
+
+  const shareProfile = async () => {
+    setShareMessage("");
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: seoTitle,
+          text: seoDescription,
+          url: window.location.href,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(window.location.href);
+      setShareMessage("Enlace copiado.");
+    } catch {
+      setShareMessage("No se ha podido compartir el perfil.");
+    }
+  };
+
   const submitReview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setReviewMessage("");
@@ -312,61 +455,130 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
     setSubmittingReview(false);
   };
 
+  const openListing = (listingId: string) => {
+    router.push(`/producto/${listingId}`);
+  };
+
+  const contactFromListing =
+    isOwnProfile
+      ? undefined
+      : (listingId: string) => (event: MouseEvent<HTMLButtonElement>) => {
+          event.stopPropagation();
+          contactSeller(listingId);
+        };
+
   return (
     <>
+      <Head>
+        <title>{seoTitle}</title>
+        <meta name="description" content={seoDescription.slice(0, 160)} />
+        <link rel="canonical" href={profileUrl} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(sellerJsonLd) }}
+        />
+      </Head>
       <NavBar />
-      <main className="min-h-screen bg-[#f8f3ef] px-6 py-12">
+      <main className="min-h-screen bg-[#f8f3ef] px-4 py-8 sm:px-6 lg:py-12">
         <section className="mx-auto max-w-6xl">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              <UserAvatar
-                user={user}
-                size="lg"
-                className="ring-4 ring-[#f8f3ef]"
-                expandable
-                imageAlt={user.displayName}
-              />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
-                  Perfil publico
-                </p>
-                <h1 className="mt-2 font-serif text-4xl text-gray-950">
-                  {user.displayName}
-                </h1>
-                <p className="mt-1 text-lg font-semibold text-gray-500">
-                  @{user.username}
-                </p>
-                {(user.location || user.bio) && (
-                  <div className="mt-4 max-w-2xl space-y-1 text-gray-600">
-                    {user.location && <p>{user.location}</p>}
-                    {user.bio && <p>{user.bio}</p>}
+          <div className="overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-[0_18px_48px_rgba(34,24,20,0.08)]">
+            <div className="h-24 bg-gradient-to-r from-stone-950 via-red-950 to-green-900 sm:h-32" />
+            <div className="px-5 pb-6 sm:px-8 sm:pb-8">
+              <div className="-mt-14 flex flex-col gap-5 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                  <UserAvatar
+                    user={user}
+                    size="xl"
+                    className="ring-4 ring-white"
+                    expandable
+                    imageAlt={user.displayName}
+                  />
+                  <div className="min-w-0 pb-1">
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-red-700">
+                      Perfil de vendedor
+                    </p>
+                    <h1 className="mt-2 font-serif text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
+                      {user.displayName}
+                    </h1>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-stone-500">
+                      <span>@{user.username}</span>
+                      {user.location && <span>{user.location}</span>}
+                      {memberSince && <span>Miembro {memberSince}</span>}
+                    </div>
                   </div>
-                )}
-                {hasReviews ? (
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-sm font-bold text-amber-700">
-                    <Stars value={reviewAverage} />
-                    <span>
-                      {reviewAverage.toFixed(1)} · {reviewCount}{" "}
-                      {reviewCount === 1 ? "reseña" : "reseñas"}
-                    </span>
+                </div>
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => contactSeller()}
+                    disabled={contacting}
+                    className="tap-feedback rounded-full bg-green-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-green-800 disabled:cursor-wait disabled:bg-stone-400"
+                  >
+                    {isOwnProfile ? "Editar perfil" : contacting ? "Abriendo..." : "Contactar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={shareProfile}
+                    className="tap-feedback rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-black text-stone-800 shadow-sm transition hover:border-green-700 hover:text-green-700"
+                  >
+                    Compartir perfil
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.42fr)]">
+                <div>
+                  {user.bio ? (
+                    <p className="max-w-3xl text-[15px] leading-7 text-stone-700">
+                      {user.bio}
+                    </p>
+                  ) : (
+                    <p className="max-w-3xl text-[15px] leading-7 text-stone-500">
+                      Perfil activo en Faralaes con anuncios de moda flamenca publicados.
+                    </p>
+                  )}
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <TrustBadge
+                      label="Anuncios activos"
+                      value={`${user.listings.length} publicados`}
+                    />
+                    <TrustBadge label="Respuestas" value="Rápidas" />
+                    <TrustBadge label="Verificación" value="Preparado" />
+                    <TrustBadge label="Tipo" value="Diseñador / tienda" />
                   </div>
-                ) : (
-                  <p className="mt-4 text-sm font-semibold text-gray-500">
-                    Todavía no tiene valoraciones
-                  </p>
-                )}
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-[#f8f3ef] p-4">
+                  {hasReviews ? (
+                    <>
+                      <div className="flex items-end gap-3">
+                        <p className="text-4xl font-black text-amber-700">
+                          {reviewAverage.toFixed(1)}
+                        </p>
+                        <Stars value={reviewAverage} size="pb-1 text-2xl" />
+                      </div>
+                      <p className="mt-1 text-sm font-bold text-stone-600">
+                        {reviewCount} {reviewCount === 1 ? "reseña" : "reseñas"} en Faralaes
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Stars value={0} size="text-2xl" />
+                      <p className="mt-2 text-sm font-bold text-stone-600">
+                        Todavía no tiene valoraciones
+                      </p>
+                    </>
+                  )}
+                  {(contactError || shareMessage) && (
+                    <p
+                      className={`mt-3 text-xs font-bold ${
+                        contactError ? "text-red-700" : "text-green-700"
+                      }`}
+                    >
+                      {contactError || shareMessage}
+                    </p>
+                  )}
+                </div>
               </div>
-              </div>
-              {!isOwnProfile && (
-                <button
-                  type="button"
-                  onClick={reportUser}
-                  className="self-start rounded-full border border-red-700 bg-white px-5 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 sm:self-center"
-                >
-                  Reportar usuario
-                </button>
-              )}
             </div>
           </div>
 
@@ -503,55 +715,51 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
             </div>
           </section>
 
-          <div className="mt-10 flex items-end justify-between gap-4">
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
-                Anuncios
+                Anuncios activos
               </p>
               <h2 className="mt-2 font-serif text-3xl text-gray-950">
-                Publicados por {user.displayName}
+                Mini tienda de {user.displayName}
               </h2>
             </div>
             <p className="text-sm font-semibold text-gray-500">
-              {user.listings.length} anuncios
+              {user.listings.length} anuncios publicados
             </p>
           </div>
 
           {user.listings.length === 0 ? (
-            <p className="mt-6 text-gray-600">
-              Este usuario todavia no tiene anuncios publicados.
-            </p>
+            <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-600 shadow-sm">
+              Este usuario todavía no tiene anuncios publicados.
+            </div>
           ) : (
-            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {user.listings.map((listing) => (
-                <Link
+                <ListingCard
                   key={listing.id}
-                  href={`/producto/${listing.id}`}
-                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-lg"
-                >
-                  <div className="aspect-[4/5] overflow-hidden bg-gray-200">
-                    {listing.images[0]?.url ? (
-                      <img
-                        src={listing.images[0].url}
-                        alt={listing.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-gray-400">
-                        Sin imagen
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-serif text-xl text-gray-950">
-                      {listing.title}
-                    </h3>
-                    <p className="mt-3 text-2xl font-semibold text-red-700">
-                      {formatPrice(listing.priceCents)}
-                    </p>
-                  </div>
-                </Link>
+                  listing={listing}
+                  isOwnListing={isOwnProfile}
+                  onClick={() => openListing(listing.id)}
+                  onDetailsClick={(event) => {
+                    event.stopPropagation();
+                    openListing(listing.id);
+                  }}
+                  onMessageClick={contactFromListing?.(listing.id)}
+                />
               ))}
+            </div>
+          )}
+
+          {!isOwnProfile && (
+            <div className="mt-8 flex justify-end">
+              <button
+                type="button"
+                onClick={reportUser}
+                className="rounded-full border border-red-700 bg-white px-5 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
+              >
+                Reportar usuario
+              </button>
             </div>
           )}
         </section>
