@@ -529,6 +529,13 @@ export default function Home({
                     listing={producto}
                     onClick={() => router.push(`/producto/${producto.id}`)}
                     onMessageClick={(event) => enviarMensaje(event, producto)}
+                    onSellerClick={(event) => {
+                      event.stopPropagation();
+                      const sellerSlug = producto.seller?.username || producto.sellerId;
+                      if (sellerSlug) {
+                        router.push(`/usuario/${sellerSlug}`);
+                      }
+                    }}
                   />
                 </div>
               ))}

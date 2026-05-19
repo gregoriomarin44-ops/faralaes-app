@@ -23,6 +23,8 @@ type Producto = {
   description: string | null;
   priceCents: number;
   operationType?: string | null;
+  status?: string | null;
+  createdAt?: string | null;
   category: string;
   size: string | null;
   color: string | null;
@@ -33,6 +35,13 @@ type Producto = {
   attributes: Record<string, string | number | boolean> | null;
   shippingAvailable: boolean;
   whatsappContactAllowed: boolean;
+  sellerRatingAverage?: number | null;
+  sellerReviewCount?: number;
+  seller?: {
+    username?: string | null;
+    displayName?: string | null;
+    avatarUrl?: string | null;
+  } | null;
   images?: {
     url: string;
   }[];
@@ -687,6 +696,11 @@ export default function Catalogo() {
       onClick={() => abrirProducto(p)}
       onFavoriteClick={(event) => toggleFavorito(event, p.id)}
       onMessageClick={(event) => enviarMensaje(event, p)}
+      onSellerClick={(event) => {
+        event.stopPropagation();
+        const sellerSlug = p.seller?.username || p.sellerId;
+        router.push(`/usuario/${sellerSlug}`);
+      }}
     />
   );
 

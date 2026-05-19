@@ -750,6 +750,10 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                     openListing(listing.id);
                   }}
                   onMessageClick={contactFromListing?.(listing.id)}
+                  onSellerClick={(event) => {
+                    event.stopPropagation();
+                    router.push(`/usuario/${user.username}`);
+                  }}
                 />
               ))}
             </div>

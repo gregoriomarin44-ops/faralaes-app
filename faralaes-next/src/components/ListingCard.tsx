@@ -11,6 +11,8 @@ export type ListingCardItem = {
   description?: string | null;
   priceCents: number;
   operationType?: string | null;
+  status?: string | null;
+  createdAt?: string | Date | null;
   location?: string | null;
   size?: string | null;
   color?: string | null;
@@ -20,6 +22,7 @@ export type ListingCardItem = {
   whatsappContactAllowed?: boolean;
   sellerVerified?: boolean;
   sellerFeatured?: boolean;
+  sellerActiveListingCount?: number;
   listingFeatured?: boolean;
   sellerRatingAverage?: number | null;
   sellerReviewCount?: number;
@@ -41,7 +44,31 @@ type ListingCardProps = {
   onFavoriteClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onMessageClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onDetailsClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onSellerClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 };
+
+type BadgeTone = "light" | "green" | "red" | "amber" | "dark";
+
+type ListingBadge = {
+  label: string;
+  tone: BadgeTone;
+};
+
+const badgeToneClasses: Record<BadgeTone, string> = {
+  light: "border-white/70 bg-white/90 text-stone-800",
+  green: "border-green-100 bg-green-50 text-green-800",
+  red: "border-red-100 bg-red-50 text-red-800",
+  amber: "border-amber-100 bg-amber-50 text-amber-800",
+  dark: "border-white/10 bg-stone-950/72 text-white",
+};
+
+const Badge = ({ label, tone }: ListingBadge) => (
+  <span
+    className={`inline-flex h-7 max-w-full items-center rounded-full border px-2.5 text-[11px] font-black uppercase tracking-wide shadow-sm backdrop-blur ${badgeToneClasses[tone]}`}
+  >
+    <span className="truncate">{label}</span>
+  </span>
+);
 
 const ShippingIcon = () => (
   <svg
@@ -61,6 +88,70 @@ const ShippingIcon = () => (
   </svg>
 );
 
+const MessageIcon = () => (
+  <svg
+    aria-hidden="true"
+    className="h-4 w-4"
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+  >
+    <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+  </svg>
+);
+
+const EyeIcon = () => (
+  <svg
+    aria-hidden="true"
+    className="h-4 w-4"
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+  >
+    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+  </svg>
+);
+
+const ShareIcon = () => (
+  <svg
+    aria-hidden="true"
+    className="h-4 w-4"
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+  >
+    <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
+    <path d="M16 6l-4-4-4 4" />
+    <path d="M12 2v13" />
+  </svg>
+);
+
+const CopyIcon = () => (
+  <svg
+    aria-hidden="true"
+    className="h-4 w-4"
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+  >
+    <path d="M8 8h11v11H8z" />
+    <path d="M5 16H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1" />
+  </svg>
+);
+
 const WhatsappIcon = () => (
   <svg
     aria-hidden="true"
@@ -77,6 +168,89 @@ const WhatsappIcon = () => (
   </svg>
 );
 
+const getRelativeDate = (value: ListingCardItem["createdAt"]) => {
+  if (!value) {
+    return "";
+  }
+
+  const timestamp = new Date(value).getTime();
+
+  if (!Number.isFinite(timestamp)) {
+    return "";
+  }
+
+  const hours = Math.max(1, Math.floor((Date.now() - timestamp) / 3600000));
+
+  if (hours < 24) {
+    return `hace ${hours} h`;
+  }
+
+  const days = Math.floor(hours / 24);
+
+  if (days < 30) {
+    return `hace ${days} d`;
+  }
+
+  const months = Math.floor(days / 30);
+
+  return `hace ${months} mes${months === 1 ? "" : "es"}`;
+};
+
+const getListingUrl = (listingId: string) => {
+  if (typeof window === "undefined") {
+    return `/producto/${listingId}`;
+  }
+
+  return `${window.location.origin}/producto/${listingId}`;
+};
+
+const getBadges = ({
+  isDonation,
+  listing,
+  ratingAverage,
+}: {
+  isDonation: boolean;
+  listing: ListingCardItem;
+  ratingAverage: number | null;
+}) => {
+  const badges: ListingBadge[] = [];
+  const status = listing.status?.toLowerCase();
+  const createdAt = listing.createdAt ? new Date(listing.createdAt).getTime() : NaN;
+  const isNew =
+    Number.isFinite(createdAt) && Date.now() - createdAt < 1000 * 60 * 60 * 24 * 7;
+
+  if (status === "sold") {
+    badges.push({ label: "Vendido", tone: "dark" });
+  } else if (status === "reserved") {
+    badges.push({ label: "Reservado", tone: "amber" });
+  } else if (isDonation) {
+    badges.push({ label: "Donación", tone: "green" });
+  } else if (isNew) {
+    badges.push({ label: "Nuevo", tone: "red" });
+  }
+
+  if (ratingAverage !== null && ratingAverage >= 4.8) {
+    badges.push({ label: "5 estrellas", tone: "light" });
+  }
+
+  if (listing.shippingAvailable) {
+    badges.push({ label: "Envío", tone: "light" });
+  }
+
+  if (listing.sellerVerified) {
+    badges.push({ label: "Verificado", tone: "green" });
+  }
+
+  if (listing.listingFeatured || listing.sellerFeatured) {
+    badges.push({
+      label: listing.listingFeatured ? "Destacado" : "Tienda destacada",
+      tone: "dark",
+    });
+  }
+
+  return badges.slice(0, 3);
+};
+
 export default function ListingCard({
   listing,
   isFavorite = false,
@@ -85,9 +259,12 @@ export default function ListingCard({
   onFavoriteClick,
   onMessageClick,
   onDetailsClick,
+  onSellerClick,
 }: ListingCardProps) {
   const imageCount = listing.images?.length || 0;
+  const primaryImage = listing.images?.[0]?.url || "";
   const isDonation = isDonationListing(listing.operationType);
+  const relativeDate = getRelativeDate(listing.createdAt);
   const ratingAverage =
     typeof listing.sellerRatingAverage === "number" &&
     Number.isFinite(listing.sellerRatingAverage)
@@ -98,103 +275,156 @@ export default function ListingCard({
     Number.isFinite(listing.sellerReviewCount)
       ? listing.sellerReviewCount
       : 0;
-  const profileBadge = listing.listingFeatured
-    ? "Anuncio destacado"
-    : listing.sellerFeatured
-    ? "Vendedora destacada"
-    : listing.sellerVerified
-      ? "Verificado"
-      : "";
+  const badges = getBadges({ isDonation, listing, ratingAverage });
+  const sellerName =
+    listing.seller?.displayName?.trim() ||
+    listing.seller?.username?.trim() ||
+    "";
   const chips = [
     listing.size ? `Talla ${listing.size}` : "",
     listing.color || "",
     listing.brand || "",
     listing.condition ? getConditionLabel(listing.condition) : "",
-  ].filter(Boolean).slice(0, 3);
-  const sellerName =
-    listing.seller?.displayName?.trim() ||
-    listing.seller?.username?.trim() ||
-    "";
+  ].filter(Boolean).slice(0, 2);
+
+  const handleCopyLink = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    await navigator.clipboard?.writeText(getListingUrl(listing.id)).catch(() => null);
+  };
+
+  const handleShare = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const url = getListingUrl(listing.id);
+
+    if (navigator.share) {
+      await navigator
+        .share({
+          title: listing.title,
+          text: `Mira este anuncio en Faralaes: ${listing.title}`,
+          url,
+        })
+        .catch(() => null);
+      return;
+    }
+
+    await navigator.clipboard?.writeText(url).catch(() => null);
+  };
+
+  const handleWhatsappShare = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const url = encodeURIComponent(getListingUrl(listing.id));
+    const text = encodeURIComponent(`Mira este anuncio de Faralaes: ${listing.title}`);
+
+    window.open(`https://wa.me/?text=${text}%20${url}`, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <article
       onClick={onClick}
-      className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-[0_6px_18px_rgba(34,24,20,0.06)] transition duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-[0_16px_34px_rgba(34,24,20,0.12)]"
+      className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-[0_8px_24px_rgba(34,24,20,0.07)] transition duration-200 hover:-translate-y-1 hover:border-stone-300 hover:shadow-[0_20px_42px_rgba(34,24,20,0.14)]"
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
-        {listing.images?.[0]?.url ? (
+      <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">
+        {primaryImage ? (
           <img
-            src={listing.images[0].url}
+            src={primaryImage}
             alt={listing.title}
             loading="lazy"
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]"
+            className="motion-image h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.035]"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm font-semibold text-stone-400">
-            Sin imagen
+          <div className="skeleton flex h-full w-full items-center justify-center">
+            <span className="relative z-10 font-serif text-4xl text-stone-300">
+              Faralaes
+            </span>
           </div>
         )}
 
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-stone-950/45 via-stone-950/10 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-stone-950/45 via-stone-950/12 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-stone-950/58 via-stone-950/16 to-transparent" />
 
-        {(profileBadge || isOwnListing) && (
-          <span className="absolute left-2.5 top-2.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-900 shadow-sm backdrop-blur">
-            {isOwnListing ? "Tu anuncio" : profileBadge}
-          </span>
-        )}
+        <div className="absolute left-2.5 top-2.5 flex max-w-[calc(100%-5rem)] flex-wrap gap-1.5">
+          {isOwnListing ? <Badge label="Tu anuncio" tone="light" /> : null}
+          {badges.map((badge) => (
+            <Badge key={`${badge.label}-${badge.tone}`} {...badge} />
+          ))}
+        </div>
 
-        {onFavoriteClick && (
+        <div className="absolute right-2.5 top-2.5 flex flex-col gap-1.5">
+          {onFavoriteClick && (
+            <button
+              type="button"
+              onClick={onFavoriteClick}
+              className="tap-feedback flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/90 text-xl leading-none shadow-sm backdrop-blur transition hover:scale-105"
+              aria-label={isFavorite ? "Quitar de favoritos" : "Guardar en favoritos"}
+            >
+              <span className={isFavorite ? "text-red-700" : "text-stone-500"}>
+                ♥
+              </span>
+            </button>
+          )}
           <button
             type="button"
-            onClick={onFavoriteClick}
-            className="tap-feedback absolute right-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/90 text-2xl leading-none shadow-sm backdrop-blur transition hover:scale-105"
-            aria-label={isFavorite ? "Quitar de favoritos" : "Guardar en favoritos"}
+            onClick={handleShare}
+            className="tap-feedback flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/90 text-stone-700 shadow-sm backdrop-blur transition hover:scale-105 hover:text-green-700"
+            aria-label="Compartir anuncio"
           >
-            <span className={isFavorite ? "text-red-700" : "text-stone-500"}>
-              ♥
-            </span>
+            <ShareIcon />
           </button>
-        )}
+        </div>
 
-        {imageCount > 1 && (
-          <span className="absolute bottom-2.5 left-2.5 rounded-full bg-stone-950/70 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm backdrop-blur">
-            1/{imageCount}
-          </span>
-        )}
+        <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-end justify-between gap-2">
+          {imageCount > 1 ? (
+            <span className="rounded-full bg-stone-950/75 px-2.5 py-1 text-[11px] font-black text-white shadow-sm backdrop-blur">
+              1/{imageCount}
+            </span>
+          ) : (
+            <span />
+          )}
 
-        {ratingAverage !== null && reviewCount > 0 ? (
-          <span className="absolute bottom-2.5 right-2.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-black text-stone-900 shadow-sm backdrop-blur">
-            ⭐ {ratingAverage.toFixed(1)}
-          </span>
-        ) : null}
+          {ratingAverage !== null && reviewCount > 0 ? (
+            <span className="rounded-full bg-white/92 px-2.5 py-1 text-[11px] font-black text-stone-900 shadow-sm backdrop-blur">
+              {ratingAverage.toFixed(1)} estrellas
+            </span>
+          ) : null}
+        </div>
       </div>
 
-      <div className="flex flex-1 flex-col px-3.5 py-3">
-        {isDonation ? (
-          <p className="inline-flex w-fit rounded-full bg-green-50 px-3 py-1 text-[13px] font-black uppercase tracking-wide text-green-800">
-            {getOperationLabel(listing.operationType)}
-          </p>
-        ) : (
-          <p className="text-[1.4rem] font-black leading-none tracking-normal text-red-800">
-            {formatPrice(listing.priceCents)}
-          </p>
-        )}
+      <div className="flex flex-1 flex-col px-3.5 py-3.5">
+        <div className="flex items-start justify-between gap-2">
+          {isDonation ? (
+            <p className="inline-flex w-fit rounded-full bg-green-50 px-3 py-1 text-[13px] font-black uppercase tracking-wide text-green-800">
+              {getOperationLabel(listing.operationType)}
+            </p>
+          ) : (
+            <p className="text-[1.55rem] font-black leading-none tracking-normal text-red-800">
+              {formatPrice(listing.priceCents)}
+            </p>
+          )}
+          {relativeDate && (
+            <p className="shrink-0 pt-1 text-[11px] font-bold uppercase tracking-wide text-stone-400">
+              {relativeDate}
+            </p>
+          )}
+        </div>
 
-        <h2 className="mt-1.5 line-clamp-2 text-[15px] font-bold leading-5 text-stone-950">
+        <h2 className="mt-2 line-clamp-2 min-h-10 text-[15px] font-black leading-5 text-stone-950">
           {listing.title}
         </h2>
 
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-stone-700">
+        <div className="mt-2 flex items-center justify-between gap-2 text-xs font-semibold text-stone-500">
+          <p className="min-w-0 truncate">
+            {listing.location || "Andalucía"}
+          </p>
           {listing.shippingAvailable && (
-            <span className="inline-flex items-center gap-1 text-green-800">
+            <span className="inline-flex shrink-0 items-center gap-1 text-green-800">
               <ShippingIcon />
-              Envío disponible
-            </span>
-          )}
-          {listing.whatsappContactAllowed && (
-            <span className="inline-flex items-center gap-1 text-green-800">
-              <WhatsappIcon />
-              WhatsApp
+              Envío
             </span>
           )}
         </div>
@@ -212,12 +442,6 @@ export default function ListingCard({
           </div>
         )}
 
-        <div className="mt-2 text-xs text-stone-500">
-          <p className="min-w-0 truncate font-medium">
-            {listing.location || "Andalucía"}
-          </p>
-        </div>
-
         {sellerName && (
           <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-stone-100 pt-3">
             <UserAvatar
@@ -230,31 +454,69 @@ export default function ListingCard({
               expandable
               imageAlt={sellerName}
             />
-            <p className="min-w-0 truncate text-xs font-bold text-stone-600">
-              {sellerName}
-            </p>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onSellerClick?.(event);
+              }}
+              disabled={!onSellerClick}
+              className="min-w-0 flex-1 text-left disabled:cursor-default"
+              aria-label={`Ver perfil de ${sellerName}`}
+            >
+              <span className="block truncate text-xs font-black text-stone-700 transition group-hover:text-stone-900">
+                {sellerName}
+              </span>
+              <span className="block truncate text-[11px] font-semibold text-stone-500">
+                {ratingAverage !== null && reviewCount > 0
+                  ? `${ratingAverage.toFixed(1)} estrellas · ${reviewCount} reseñas`
+                  : listing.sellerActiveListingCount
+                    ? `${listing.sellerActiveListingCount} anuncios activos`
+                    : "Perfil Faralaes"}
+              </span>
+            </button>
           </div>
         )}
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onMessageClick}
-            className="tap-feedback h-9 rounded-full bg-green-700 px-3 text-xs font-black text-white shadow-sm transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-stone-300"
-            disabled={!onMessageClick}
-          >
-            Mensaje
-          </button>
-          <button
-            type="button"
-            onClick={onDetailsClick || ((event) => {
-              event.stopPropagation();
-              onClick();
-            })}
-            className="tap-feedback h-9 rounded-full border border-stone-300 bg-white px-3 text-xs font-black text-stone-700 transition hover:border-green-700 hover:text-green-700"
-          >
-            Ver detalles
-          </button>
+        <div className="mt-auto pt-3">
+          <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-1.5">
+            <button
+              type="button"
+              onClick={onMessageClick}
+              className="tap-feedback inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-green-700 px-3 text-xs font-black text-white shadow-sm transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-stone-300"
+              disabled={!onMessageClick}
+            >
+              <MessageIcon />
+              Mensaje
+            </button>
+            <button
+              type="button"
+              onClick={onDetailsClick || ((event) => {
+                event.stopPropagation();
+                onClick();
+              })}
+              className="tap-feedback inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-3 text-xs font-black text-stone-700 transition hover:border-green-700 hover:text-green-700"
+            >
+              <EyeIcon />
+              Ver
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="tap-feedback hidden h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-600 transition hover:border-green-700 hover:text-green-700 sm:inline-flex"
+              aria-label="Copiar enlace"
+            >
+              <CopyIcon />
+            </button>
+            <button
+              type="button"
+              onClick={handleWhatsappShare}
+              className="tap-feedback flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-white text-green-800 transition hover:border-green-700"
+              aria-label="Compartir por WhatsApp"
+            >
+              <WhatsappIcon />
+            </button>
+          </div>
         </div>
       </div>
     </article>
