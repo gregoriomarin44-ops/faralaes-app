@@ -1,5 +1,7 @@
 import type { MouseEvent } from "react";
 import AccountBadges from "./AccountBadges";
+import QuickResponseBadge from "./QuickResponseBadge";
+import UserActivityBadge from "./UserActivityBadge";
 import { formatPrice } from "../lib/formatPrice";
 import { getConditionLabel } from "../lib/listingOptions";
 import { getOperationLabel, isDonationListing } from "../lib/listingOperation";
@@ -27,12 +29,15 @@ export type ListingCardItem = {
   listingFeatured?: boolean;
   sellerRatingAverage?: number | null;
   sellerReviewCount?: number;
+  sellerRespondsQuickly?: boolean;
   seller?: {
     username?: string | null;
     displayName?: string | null;
     avatarUrl?: string | null;
     accountType?: string | null;
     verified?: boolean | null;
+    lastSeenAt?: string | null;
+    respondsQuickly?: boolean | null;
   } | null;
   images?: {
     url: string;
@@ -479,6 +484,11 @@ export default function ListingCard({
               </span>
             </button>
             <AccountBadges user={listing.seller} compact />
+            <QuickResponseBadge
+              show={listing.seller?.respondsQuickly || listing.sellerRespondsQuickly}
+              compact
+            />
+            <UserActivityBadge user={listing.seller} compact />
           </div>
         )}
 

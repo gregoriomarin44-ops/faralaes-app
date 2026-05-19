@@ -16,6 +16,7 @@ export type AuthUser = {
   avatarUrl: string | null;
   accountType: string;
   verified: boolean;
+  lastSeenAt: string | null;
   role: "ADMIN" | "USER";
   profile: {
     displayName: string;

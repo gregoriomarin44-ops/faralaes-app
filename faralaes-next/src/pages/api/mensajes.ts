@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireVerifiedSessionUser } from "../../lib/auth";
 import { sendMessageNotificationEmail } from "../../lib/messageNotifications";
 import { prisma } from "../../lib/prisma";
+import { touchUserLastSeen } from "../../lib/serverUserActivity";
 
 const getErrorLogDetails = (error: unknown) => {
   if (error instanceof Error) {
@@ -62,6 +63,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { id: conversationId },
         data: { updatedAt: new Date() },
       });
+      await touchUserLastSeen(user.id, user.lastSeenAt, { force: true }).catch(
+        () => null
+      );
 
       try {
         await sendMessageNotificationEmail({

@@ -20,6 +20,7 @@ model User {
   avatarUrl     String?
   accountType   String         @default("individual")
   verified      Boolean        @default(false)
+  lastSeenAt    DateTime?
   passwordHash  String?
   role          Role           @default(USER)
   disabled      Boolean        @default(false)

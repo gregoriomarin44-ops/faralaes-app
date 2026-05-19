@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import NavBar from "../components/NavBar";
 import AccountBadges from "../components/AccountBadges";
+import UserActivityBadge from "../components/UserActivityBadge";
 import UserAvatar from "../components/UserAvatar";
 import { formatPrice } from "../lib/formatPrice";
 import { useAuth } from "../lib/authContext";
@@ -43,6 +44,7 @@ type User = {
   avatarUrl: string | null;
   accountType?: string | null;
   verified?: boolean | null;
+  lastSeenAt?: string | null;
 };
 
 const getLastMessage = (conversation: Conversation) =>
@@ -601,6 +603,10 @@ export default function Mensajes() {
                               </span>
                             </button>
                             <AccountBadges
+                              user={getOtherUser(conversacionSeleccionada, userId)}
+                              compact
+                            />
+                            <UserActivityBadge
                               user={getOtherUser(conversacionSeleccionada, userId)}
                               compact
                             />

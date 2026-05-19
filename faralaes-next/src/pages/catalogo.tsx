@@ -43,6 +43,8 @@ type Producto = {
     avatarUrl?: string | null;
     accountType?: string | null;
     verified?: boolean | null;
+    lastSeenAt?: string | null;
+    respondsQuickly?: boolean | null;
   } | null;
   images?: {
     url: string;

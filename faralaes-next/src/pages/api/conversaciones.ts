@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireVerifiedSessionUser } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
+import { touchUserLastSeen } from "../../lib/serverUserActivity";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -28,6 +29,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!listing) {
         return res.status(404).json({ error: "Anuncio no encontrado" });
       }
+      await touchUserLastSeen(user.id, user.lastSeenAt, { force: true }).catch(
+        () => null
+      );
 
       if (listing.sellerId === user.id) {
         return res
@@ -56,6 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               avatarUrl: true,
               accountType: true,
               verified: true,
+              lastSeenAt: true,
             },
           },
           seller: {
@@ -66,6 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               avatarUrl: true,
               accountType: true,
               verified: true,
+              lastSeenAt: true,
             },
           },
           messages: {
@@ -100,6 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               avatarUrl: true,
               accountType: true,
               verified: true,
+              lastSeenAt: true,
             },
           },
           seller: {
@@ -110,6 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               avatarUrl: true,
               accountType: true,
               verified: true,
+              lastSeenAt: true,
             },
           },
           messages: {
@@ -143,6 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               avatarUrl: true,
               accountType: true,
               verified: true,
+              lastSeenAt: true,
             },
           },
           seller: {
@@ -153,6 +162,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               avatarUrl: true,
               accountType: true,
               verified: true,
+              lastSeenAt: true,
             },
           },
           messages: {

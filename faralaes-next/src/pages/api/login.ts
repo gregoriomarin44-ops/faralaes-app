@@ -7,6 +7,7 @@ import {
   sendUserVerificationEmail,
 } from "../../lib/emailVerification";
 import { prisma } from "../../lib/prisma";
+import { touchUserLastSeen } from "../../lib/serverUserActivity";
 import {
   normalizeDisplayName,
   normalizeUsername,
@@ -239,6 +240,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         avatarUrl: true,
         accountType: true,
         verified: true,
+        lastSeenAt: true,
         role: true,
         passwordHash: true,
         emailVerified: true,
@@ -294,6 +296,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    const lastSeenAt =
+      (await touchUserLastSeen(user.id, user.lastSeenAt, { force: true }).catch(
+        () => null
+      )) || user.lastSeenAt;
+
     setSessionCookie(res, user.id);
     return res.status(200).json({
       id: user.id,
@@ -303,6 +310,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       avatarUrl: user.avatarUrl,
       accountType: user.accountType,
       verified: user.verified,
+      lastSeenAt,
       role: user.role,
     });
   } catch (error) {

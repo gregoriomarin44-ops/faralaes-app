@@ -6,7 +6,9 @@ import { useState, type FormEvent, type MouseEvent } from "react";
 import ListingCard, { type ListingCardItem } from "../../components/ListingCard";
 import NavBar from "../../components/NavBar";
 import AccountBadges from "../../components/AccountBadges";
+import QuickResponseBadge from "../../components/QuickResponseBadge";
 import ReportModal from "../../components/ReportModal";
+import UserActivityBadge from "../../components/UserActivityBadge";
 import UserAvatar from "../../components/UserAvatar";
 import { useAuth } from "../../lib/authContext";
 import { prisma } from "../../lib/prisma";
@@ -23,6 +25,8 @@ type PublicUserPageProps = {
     avatarUrl: string | null;
     accountType: string;
     verified: boolean;
+    lastSeenAt: string | null;
+    respondsQuickly: boolean;
     bio: string | null;
     location: string | null;
     createdAt: string;
@@ -145,6 +149,7 @@ export const getServerSideProps: GetServerSideProps<
       avatarUrl: true,
       accountType: true,
       verified: true,
+      lastSeenAt: true,
       createdAt: true,
       disabled: true,
       profile: {
@@ -254,12 +259,28 @@ export const getServerSideProps: GetServerSideProps<
     user.displayName || user.profile?.displayName,
     safeUsername
   );
+  let respondsQuickly = false;
+
+  try {
+    respondsQuickly =
+      (await prisma.message.count({
+        where: {
+          senderId: user.id,
+          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      })) > 0;
+  } catch (error) {
+    console.error("No se ha podido cargar la actividad de respuesta.", error);
+  }
+
   const sellerSummary = {
     username: safeUsername,
     displayName: safeDisplayName,
     avatarUrl: user.avatarUrl,
     accountType: user.accountType,
     verified: user.verified,
+    lastSeenAt: user.lastSeenAt ? user.lastSeenAt.toISOString() : null,
+    respondsQuickly,
   };
 
   return {
@@ -271,6 +292,8 @@ export const getServerSideProps: GetServerSideProps<
         avatarUrl: user.avatarUrl,
         accountType: user.accountType,
         verified: user.verified,
+        lastSeenAt: user.lastSeenAt ? user.lastSeenAt.toISOString() : null,
+        respondsQuickly,
         bio: user.profile?.bio || null,
         location: user.profile?.location || null,
         createdAt: user.createdAt.toISOString(),
@@ -519,6 +542,10 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                       </div>
                       <div className="mt-3">
                         <AccountBadges user={user} />
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <QuickResponseBadge show={user.respondsQuickly} />
+                        <UserActivityBadge user={user} />
                       </div>
                     </div>
                   </div>

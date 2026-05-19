@@ -4,6 +4,7 @@ import { requireSessionUser, requireVerifiedSessionUser } from "../../lib/auth";
 import { normalizeAttributesForCategory } from "../../lib/listingOptions";
 import { normalizeOperationType } from "../../lib/listingOperation";
 import { prisma } from "../../lib/prisma";
+import { getRecentResponderIds, touchUserLastSeen } from "../../lib/serverUserActivity";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
@@ -190,14 +191,35 @@ const añadirResumenReviews = async <T extends { sellerId: string }>(productos: 
       },
     ])
   );
+  let responsiveSellerIds = new Set<string>();
+
+  try {
+    responsiveSellerIds = await getRecentResponderIds(sellerIds);
+  } catch (error) {
+    logApiError("/api/productos responders", error, {
+      filtrosRecibidos: {},
+      queryParamsRecibidos: {},
+      sellerIds,
+    });
+  }
 
   return productos.map((producto) => {
     const reviewSummary = reviewsBySeller.get(producto.sellerId);
+    const respondsQuickly = responsiveSellerIds.has(producto.sellerId);
+    const seller =
+      "seller" in producto && producto.seller && typeof producto.seller === "object"
+        ? {
+            ...(producto.seller as Record<string, unknown>),
+            respondsQuickly,
+          }
+        : (producto as { seller?: unknown }).seller;
 
     return {
       ...producto,
+      seller,
       sellerRatingAverage: reviewSummary?.average || null,
       sellerReviewCount: reviewSummary?.count || 0,
+      sellerRespondsQuickly: respondsQuickly,
     };
   });
 };
@@ -363,6 +385,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               avatarUrl: true,
               accountType: true,
               verified: true,
+              lastSeenAt: true,
             },
           },
         },
@@ -405,6 +428,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!user) {
         return;
       }
+      await touchUserLastSeen(user.id, user.lastSeenAt, { force: true }).catch(
+        () => null
+      );
 
       const { images: imagenes, error } = prepararImagenes(images);
 
@@ -451,6 +477,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               avatarUrl: true,
               accountType: true,
               verified: true,
+              lastSeenAt: true,
             },
           },
         },
@@ -488,6 +515,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!user) {
         return;
       }
+      await touchUserLastSeen(user.id, user.lastSeenAt, { force: true }).catch(
+        () => null
+      );
 
       const operation = prepararOperacion(operationType, priceCents);
 
@@ -566,6 +596,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               avatarUrl: true,
               accountType: true,
               verified: true,
+              lastSeenAt: true,
             },
           },
         },
@@ -586,6 +617,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!user) {
         return;
       }
+      await touchUserLastSeen(user.id, user.lastSeenAt, { force: true }).catch(
+        () => null
+      );
       const isAdmin = user.role === "ADMIN";
 
       const productoActual = await prisma.listing.findUnique({

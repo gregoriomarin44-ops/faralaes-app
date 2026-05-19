@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import type { User } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import { prisma } from "./prisma";
+import { touchUserLastSeen } from "./serverUserActivity";
 
 export const AUTH_COOKIE_NAME = "faralaes_session";
 
@@ -76,7 +78,9 @@ export const clearSessionCookie = (res: NextApiResponse) => {
   );
 };
 
-export const getSessionUser = async (req: NextApiRequest) => {
+export const getSessionUser = async (
+  req: NextApiRequest
+): Promise<User | null> => {
   const token = req.cookies[AUTH_COOKIE_NAME];
 
   if (!token) {
@@ -93,8 +97,19 @@ export const getSessionUser = async (req: NextApiRequest) => {
     where: { id: session.userId },
   });
 
-  if (user?.disabled) {
+  if (!user || user.disabled) {
     return null;
+  }
+
+  const touchedAt = await touchUserLastSeen(user.id, user.lastSeenAt).catch(
+    () => null
+  );
+
+  if (touchedAt) {
+    return {
+      ...user,
+      lastSeenAt: touchedAt,
+    };
   }
 
   return user;

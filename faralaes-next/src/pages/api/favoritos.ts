@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireSessionUser, requireVerifiedSessionUser } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
+import { touchUserLastSeen } from "../../lib/serverUserActivity";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -57,6 +58,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           listingId,
         },
       });
+      await touchUserLastSeen(user.id, user.lastSeenAt, { force: true }).catch(
+        () => null
+      );
 
       return res.status(200).json(favorito);
     }
@@ -74,6 +78,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           listingId,
         },
       });
+      await touchUserLastSeen(user.id, user.lastSeenAt, { force: true }).catch(
+        () => null
+      );
 
       return res.status(200).json({ ok: true });
     }

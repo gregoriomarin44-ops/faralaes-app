@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireSessionUser } from "../../../lib/auth";
 import { prisma } from "../../../lib/prisma";
+import { touchUserLastSeen } from "../../../lib/serverUserActivity";
 
 const MAX_COMMENT_LENGTH = 600;
 const MIN_REVIEW_INTERVAL_MS = 30_000;
@@ -141,6 +142,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       },
     });
+    await touchUserLastSeen(user.id, user.lastSeenAt, { force: true }).catch(
+      () => null
+    );
 
     return res.status(201).json(review);
   } catch (error: unknown) {

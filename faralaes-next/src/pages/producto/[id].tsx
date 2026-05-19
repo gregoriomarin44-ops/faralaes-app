@@ -6,13 +6,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import NavBar from "../../components/NavBar";
 import AccountBadges from "../../components/AccountBadges";
+import QuickResponseBadge from "../../components/QuickResponseBadge";
 import ReportModal from "../../components/ReportModal";
+import UserActivityBadge from "../../components/UserActivityBadge";
 import UserAvatar from "../../components/UserAvatar";
 import { formatPrice } from "../../lib/formatPrice";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { getCanonical, getSeoProductLinks } from "../../lib/seo";
 import { getOperationLabel, isDonationListing } from "../../lib/listingOperation";
+import { userActivityStatus } from "../../lib/userActivity";
 import {
   getCategoryLabel,
   getConditionLabel,
@@ -49,6 +52,8 @@ type Producto = {
     avatarUrl: string | null;
     accountType?: string | null;
     verified?: boolean | null;
+    lastSeenAt?: string | null;
+    respondsQuickly?: boolean | null;
     profile?: {
       phone?: string | null;
       location?: string | null;
@@ -181,6 +186,7 @@ const loadProductFallback = async (
       sellerAvatarUrl: string | null;
       sellerAccountType: string | null;
       sellerVerified: boolean | null;
+      sellerLastSeenAt: Date | null;
     }[]
   >`
     SELECT
@@ -202,6 +208,7 @@ const loadProductFallback = async (
       u."avatarUrl" AS "sellerAvatarUrl",
       u."accountType" AS "sellerAccountType",
       u."verified" AS "sellerVerified",
+      u."lastSeenAt" AS "sellerLastSeenAt",
       p."displayName" AS "sellerProfileDisplayName",
       p."phone" AS "sellerPhone",
       p."location" AS "sellerLocation"
@@ -250,6 +257,8 @@ const loadProductFallback = async (
       avatarUrl: row.sellerAvatarUrl,
       accountType: row.sellerAccountType || "individual",
       verified: Boolean(row.sellerVerified),
+      lastSeenAt: row.sellerLastSeenAt ? row.sellerLastSeenAt.toISOString() : null,
+      respondsQuickly: false,
       displayName:
         row.sellerProfileDisplayName ||
         row.sellerEmail?.split("@")[0] ||
@@ -395,6 +404,7 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
             avatarUrl: true,
             accountType: true,
             verified: true,
+            lastSeenAt: true,
             profile: {
               select: {
                 phone: true,
@@ -417,6 +427,30 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
 
   if (!producto) {
     return { notFound: true };
+  }
+
+  if (producto.seller) {
+    try {
+      const recentSellerMessages = await prisma.message.count({
+        where: {
+          senderId: producto.sellerId,
+          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      });
+      producto = {
+        ...producto,
+        seller: {
+          ...producto.seller,
+          respondsQuickly: recentSellerMessages > 0,
+        },
+      };
+    } catch (error) {
+      logProductError("/producto/[id] seller responsiveness", error, {
+        listingId: id,
+        userId,
+        isAdmin,
+      });
+    }
   }
 
   try {
@@ -643,6 +677,7 @@ export default function ProductoDetalle({
   const sellerUsername = producto.seller?.username || "";
   const sellerProfileSlug = sellerUsername || producto.seller?.id || "";
   const sellerDisplayName = producto.seller?.displayName || "Usuario Faralaes";
+  const sellerActivity = userActivityStatus(producto.seller);
   const puedeWhatsapp =
     userId &&
     !esPropio &&
@@ -988,7 +1023,11 @@ export default function ProductoDetalle({
                       expandable
                       imageAlt={sellerDisplayName}
                     />
-                    <span className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-green-600" />
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white ${
+                        sellerActivity?.online ? "bg-green-600" : "bg-stone-400"
+                      }`}
+                    />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-base font-bold text-gray-950">
@@ -999,6 +1038,13 @@ export default function ProductoDetalle({
                     </span>
                     <span className="mt-2 block">
                       <AccountBadges user={producto.seller} compact />
+                    </span>
+                    <span className="mt-2 flex flex-wrap gap-1.5">
+                      <QuickResponseBadge
+                        show={producto.seller.respondsQuickly}
+                        compact
+                      />
+                      <UserActivityBadge user={producto.seller} compact />
                     </span>
                   </span>
                   <span className="text-xl text-gray-300" aria-hidden="true">

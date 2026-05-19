@@ -5,6 +5,8 @@ import { type MouseEvent } from "react";
 import AccountBadges from "../components/AccountBadges";
 import ListingCard, { type ListingCardItem } from "../components/ListingCard";
 import NavBar from "../components/NavBar";
+import QuickResponseBadge from "../components/QuickResponseBadge";
+import UserActivityBadge from "../components/UserActivityBadge";
 import UserAvatar from "../components/UserAvatar";
 import { prisma } from "../lib/prisma";
 
@@ -15,6 +17,8 @@ type SellerCard = {
   avatarUrl: string | null;
   accountType: string;
   verified: boolean;
+  lastSeenAt: string | null;
+  respondsQuickly: boolean;
   location: string | null;
   listingCount: number;
   reviewAverage: number | null;
@@ -112,6 +116,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
               avatarUrl: true,
               accountType: true,
               verified: true,
+              lastSeenAt: true,
             },
           },
         },
@@ -142,7 +147,8 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
     ]);
 
   const sellerIds = sellerGroups.map((group) => group.sellerId);
-  const [sellers, sellerReviews, categoryImages] = await Promise.all([
+  const [sellers, sellerReviews, responsiveSellerRows, categoryImages] =
+    await Promise.all([
     sellerIds.length
       ? prisma.user.findMany({
           where: { id: { in: sellerIds }, disabled: false },
@@ -153,6 +159,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
             avatarUrl: true,
             accountType: true,
             verified: true,
+            lastSeenAt: true,
             profile: { select: { location: true } },
           },
         })
@@ -162,6 +169,16 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
           by: ["reviewedUserId"],
           where: { reviewedUserId: { in: sellerIds } },
           _avg: { rating: true },
+          _count: { _all: true },
+        })
+      : [],
+    sellerIds.length
+      ? prisma.message.groupBy({
+          by: ["senderId"],
+          where: {
+            senderId: { in: sellerIds },
+            createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+          },
           _count: { _all: true },
         })
       : [],
@@ -197,6 +214,9 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
       },
     ])
   );
+  const responsiveSellerIds = new Set(
+    responsiveSellerRows.map((row) => row.senderId)
+  );
   const listingCountBySeller = new Map(
     sellerGroups.map((group) => [group.sellerId, group._count.sellerId])
   );
@@ -219,8 +239,11 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
               avatarUrl: listing.seller.avatarUrl,
               accountType: listing.seller.accountType,
               verified: listing.seller.verified,
+              lastSeenAt: listing.seller.lastSeenAt?.toISOString() || null,
+              respondsQuickly: responsiveSellerIds.has(listing.sellerId),
             }
           : null,
+        sellerRespondsQuickly: responsiveSellerIds.has(listing.sellerId),
       })),
       featuredSellers: sellerIds
         .map((sellerId) => {
@@ -239,6 +262,8 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
             avatarUrl: seller.avatarUrl,
             accountType: seller.accountType,
             verified: seller.verified,
+            lastSeenAt: seller.lastSeenAt?.toISOString() || null,
+            respondsQuickly: responsiveSellerIds.has(sellerId),
             location: seller.profile?.location || null,
             listingCount: listingCountBySeller.get(sellerId) || 0,
             reviewAverage: review?.average || null,
@@ -590,6 +615,10 @@ export default function Home({
                     </p>
                     <div className="mt-3">
                       <AccountBadges user={seller} compact />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <QuickResponseBadge show={seller.respondsQuickly} compact />
+                      <UserActivityBadge user={seller} compact />
                     </div>
                     <div className="mt-3 flex items-center gap-2 text-sm font-bold text-stone-700">
                       {seller.reviewAverage ? (

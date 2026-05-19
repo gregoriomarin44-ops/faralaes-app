@@ -22,6 +22,7 @@ type ProfileResponse = {
     avatarUrl: string | null;
     accountType: AccountType;
     verified: boolean;
+    lastSeenAt: string | null;
   };
 };
 
@@ -29,6 +30,7 @@ type ProfileUpdateResponse = Profile & {
   avatarUrl: string | null;
   accountType: AccountType;
   verified: boolean;
+  lastSeenAt: string | null;
 };
 
 const CameraIcon = () => (
