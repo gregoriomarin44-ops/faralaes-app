@@ -4,7 +4,6 @@ import {
   getFacebookShareUrl,
   getListingPublicUrl,
   getWhatsappShareUrl,
-  openShareWindow,
   shareListingNative,
   type ShareableListing,
 } from "../lib/listingShare";
@@ -70,7 +69,13 @@ export default function ListingShareActions({
         ) : null}
         <button
           type="button"
-          onClick={() => openShareWindow(getWhatsappShareUrl(listing, url))}
+          onClick={() =>
+            window.open(
+              getWhatsappShareUrl(listing, url),
+              "_blank",
+              "noopener,noreferrer"
+            )
+          }
           className={`${buttonBase} border-green-200 bg-green-50 text-green-900 hover:border-green-700 ${
             compact ? "px-3 text-xs" : ""
           }`}
@@ -79,7 +84,7 @@ export default function ListingShareActions({
         </button>
         <button
           type="button"
-          onClick={() => openShareWindow(getFacebookShareUrl(url))}
+          onClick={() => window.open(getFacebookShareUrl(url))}
           className={`${buttonBase} border-blue-200 bg-blue-50 text-blue-900 hover:border-blue-700 ${
             compact ? "px-3 text-xs" : ""
           }`}

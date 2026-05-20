@@ -344,7 +344,7 @@ export default function ListingCard({
     event.preventDefault();
     event.stopPropagation();
 
-    openShareWindow(getFacebookShareUrl(getListingPublicUrl(listing.id)));
+    window.open(getFacebookShareUrl(getListingPublicUrl(listing.id)));
   };
 
   return (
