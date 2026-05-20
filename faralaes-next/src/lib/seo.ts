@@ -1,6 +1,26 @@
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://faralaes.com";
 
+export const FARALAES_OG_FALLBACK_IMAGE = `${SITE_URL}/icons/icon-512.png`;
+
+export const getAbsoluteUrl = (pathOrUrl: string) => {
+  if (/^https?:\/\//i.test(pathOrUrl)) {
+    return pathOrUrl;
+  }
+
+  return `${SITE_URL}${pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`}`;
+};
+
+export const getAbsoluteImageUrl = (imageUrl?: string | null) => {
+  const value = imageUrl?.trim();
+
+  if (!value || /^data:image\//i.test(value) || /^blob:/i.test(value)) {
+    return FARALAES_OG_FALLBACK_IMAGE;
+  }
+
+  return getAbsoluteUrl(value);
+};
+
 export const categorySeo = {
   "trajes-flamenca": {
     category: "traje",

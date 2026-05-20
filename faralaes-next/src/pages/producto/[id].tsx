@@ -10,11 +10,13 @@ import QuickResponseBadge from "../../components/QuickResponseBadge";
 import ReportModal from "../../components/ReportModal";
 import UserActivityBadge from "../../components/UserActivityBadge";
 import UserAvatar from "../../components/UserAvatar";
+import ListingShareActions from "../../components/ListingShareActions";
 import { formatPrice } from "../../lib/formatPrice";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
-import { getCanonical, getSeoProductLinks } from "../../lib/seo";
+import { getAbsoluteImageUrl, getCanonical, getSeoProductLinks } from "../../lib/seo";
 import { getOperationLabel, isDonationListing } from "../../lib/listingOperation";
+import { getListingShareTitle } from "../../lib/listingShare";
 import { userActivityStatus } from "../../lib/userActivity";
 import {
   getCategoryLabel,
@@ -705,9 +707,12 @@ export default function ProductoDetalle({
       !link.label.includes(" talla ")
   );
   const productUrl = getCanonical(`/producto/${producto.id}`);
+  const ogTitle = getListingShareTitle(producto);
+  const ogImage = getAbsoluteImageUrl(images[0]?.url);
+  const seoLocation = producto.location || "España";
+  const seoCategory = getCategoryLabel(producto.category);
   const metaDescription =
-    producto.description?.slice(0, 150) ||
-    `${producto.title}${producto.brand ? ` de ${producto.brand}` : ""} en Faralaes${isDonation ? " como regalo o donación" : ` por ${formatPrice(producto.priceCents)}`}${producto.location ? ` en ${producto.location}` : ""}.`;
+    `${seoCategory}. Moda flamenca de segunda mano en ${seoLocation}. Contacta directamente en Faralaes.`;
   const breadcrumbItems = [
     { href: "/", label: "Inicio" },
     { href: categoryPath, label: categoryInfo.label },
@@ -722,7 +727,7 @@ export default function ProductoDetalle({
     "@type": "Product",
     name: producto.title,
     description: metaDescription,
-    image: images.map((image) => image.url),
+    image: images.length > 0 ? images.map((image) => getAbsoluteImageUrl(image.url)) : [ogImage],
     category: categoryInfo.label,
     brand: producto.brand ? { "@type": "Brand", name: producto.brand } : undefined,
     additionalProperty: [
@@ -750,6 +755,10 @@ export default function ProductoDetalle({
       priceCurrency: "EUR",
       availability: "https://schema.org/InStock",
       url: productUrl,
+      seller: {
+        "@type": producto.seller?.accountType === "professional" ? "Organization" : "Person",
+        name: sellerDisplayName,
+      },
     },
   };
   const breadcrumbJsonLd = {
@@ -830,12 +839,22 @@ export default function ProductoDetalle({
   return (
     <>
       <Head>
-        <title>{producto.title} | Faralaes</title>
+        <title>{ogTitle}</title>
         <meta name="description" content={metaDescription} />
         {producto.status !== "published" && (
           <meta name="robots" content="noindex,nofollow" />
         )}
         <link rel="canonical" href={productUrl} />
+        <meta property="og:title" content={ogTitle} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:url" content={productUrl} />
+        <meta property="og:type" content="product" />
+        <meta property="og:site_name" content="Faralaes" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={ogTitle} />
+        <meta name="twitter:description" content={metaDescription} />
+        <meta name="twitter:image" content={ogImage} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
@@ -1057,6 +1076,13 @@ export default function ProductoDetalle({
             <div className="mt-6 hidden space-y-3 lg:block">
               {primaryCta}
               {secondaryCta}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-gray-200 bg-[#f8f3ef] p-4">
+              <p className="mb-3 text-sm font-black uppercase tracking-wide text-stone-500">
+                Compartir anuncio
+              </p>
+              <ListingShareActions listing={producto} compact />
             </div>
 
             {!esPropio && (

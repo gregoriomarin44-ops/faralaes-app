@@ -1,10 +1,19 @@
 import type { MouseEvent } from "react";
+import { useState } from "react";
 import AccountBadges from "./AccountBadges";
 import QuickResponseBadge from "./QuickResponseBadge";
 import UserActivityBadge from "./UserActivityBadge";
 import { formatPrice } from "../lib/formatPrice";
 import { getConditionLabel } from "../lib/listingOptions";
 import { getOperationLabel, isDonationListing } from "../lib/listingOperation";
+import {
+  copyListingLink,
+  getFacebookShareUrl,
+  getListingPublicUrl,
+  getWhatsappShareUrl,
+  openShareWindow,
+  shareListingNative,
+} from "../lib/listingShare";
 import UserAvatar from "./UserAvatar";
 
 export type ListingCardItem = {
@@ -176,6 +185,12 @@ const WhatsappIcon = () => (
   </svg>
 );
 
+const FacebookIcon = () => (
+  <span aria-hidden="true" className="text-sm font-black leading-none">
+    f
+  </span>
+);
+
 const getRelativeDate = (value: ListingCardItem["createdAt"]) => {
   if (!value) {
     return "";
@@ -202,14 +217,6 @@ const getRelativeDate = (value: ListingCardItem["createdAt"]) => {
   const months = Math.floor(days / 30);
 
   return `hace ${months} mes${months === 1 ? "" : "es"}`;
-};
-
-const getListingUrl = (listingId: string) => {
-  if (typeof window === "undefined") {
-    return `/producto/${listingId}`;
-  }
-
-  return `${window.location.origin}/producto/${listingId}`;
 };
 
 const getBadges = ({
@@ -294,42 +301,50 @@ export default function ListingCard({
     listing.brand || "",
     listing.condition ? getConditionLabel(listing.condition) : "",
   ].filter(Boolean).slice(0, 2);
+  const [shareMessage, setShareMessage] = useState("");
 
   const handleCopyLink = async (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
 
-    await navigator.clipboard?.writeText(getListingUrl(listing.id)).catch(() => null);
+    try {
+      await copyListingLink(getListingPublicUrl(listing.id));
+      setShareMessage("Enlace copiado");
+    } catch {
+      setShareMessage("No se pudo copiar");
+    }
   };
 
   const handleShare = async (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
 
-    const url = getListingUrl(listing.id);
+    const url = getListingPublicUrl(listing.id);
 
-    if (navigator.share) {
-      await navigator
-        .share({
-          title: listing.title,
-          text: `Mira este anuncio en Faralaes: ${listing.title}`,
-          url,
-        })
-        .catch(() => null);
-      return;
+    try {
+      const shared = await shareListingNative(listing, url);
+
+      if (!shared) {
+        await copyListingLink(url);
+        setShareMessage("Enlace copiado");
+      }
+    } catch {
+      setShareMessage("No se pudo compartir");
     }
-
-    await navigator.clipboard?.writeText(url).catch(() => null);
   };
 
   const handleWhatsappShare = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
 
-    const url = encodeURIComponent(getListingUrl(listing.id));
-    const text = encodeURIComponent(`Mira este anuncio de Faralaes: ${listing.title}`);
+    openShareWindow(getWhatsappShareUrl(listing, getListingPublicUrl(listing.id)));
+  };
 
-    window.open(`https://wa.me/?text=${text}%20${url}`, "_blank", "noopener,noreferrer");
+  const handleFacebookShare = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    openShareWindow(getFacebookShareUrl(getListingPublicUrl(listing.id)));
   };
 
   return (
@@ -493,7 +508,7 @@ export default function ListingCard({
         )}
 
         <div className="mt-auto pt-3">
-          <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-1.5">
+          <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-1.5">
             <button
               type="button"
               onClick={onMessageClick}
@@ -530,7 +545,20 @@ export default function ListingCard({
             >
               <WhatsappIcon />
             </button>
+            <button
+              type="button"
+              onClick={handleFacebookShare}
+              className="tap-feedback hidden h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-white text-blue-800 transition hover:border-blue-700 sm:inline-flex"
+              aria-label="Compartir en Facebook"
+            >
+              <FacebookIcon />
+            </button>
           </div>
+          {shareMessage ? (
+            <p className="mt-2 text-xs font-bold text-green-800" role="status">
+              {shareMessage}
+            </p>
+          ) : null}
         </div>
       </div>
     </article>

@@ -1,8 +1,14 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import ListingShareActions from "../components/ListingShareActions";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../lib/authContext";
+import {
+  uploadListingImage,
+  validateListingImageFile,
+  type PendingListingImage,
+} from "../lib/listingImages";
 import {
   categoryOptions,
   conditionOptions,
@@ -11,8 +17,6 @@ import {
 } from "../lib/listingOptions";
 
 const MAX_IMAGES = 5;
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
-
 const precioAcentimos = (valor: string) => {
   const normalizado = valor.trim().replace(",", ".");
   const numero = Number(normalizado);
@@ -56,9 +60,15 @@ export default function Publicar() {
   const [estado, setEstado] = useState("muy_bueno");
   const [shippingAvailable, setShippingAvailable] = useState(false);
   const [contactoWhatsapp, setContactoWhatsapp] = useState(false);
-  const [imagenes, setImagenes] = useState<string[]>([]);
+  const [imagenes, setImagenes] = useState<PendingListingImage[]>([]);
   const [mensaje, setMensaje] = useState("");
   const [acceptedLegal, setAcceptedLegal] = useState(false);
+  const [publishedListing, setPublishedListing] = useState<{
+    id: string;
+    title: string;
+    priceCents: number;
+    operationType?: string | null;
+  } | null>(null);
 
   const schema = getCategoryAttributeSchema(categoria);
   const hasDynamicSizeField = schema.some((field) =>
@@ -76,22 +86,6 @@ export default function Publicar() {
     }
   }, [authLoading, router, router.asPath, router.isReady, user]);
 
-  const convertirImagenABase64 = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === "string") {
-          resolve(reader.result);
-          return;
-        }
-
-        reject(new Error("No se ha podido leer la imagen seleccionada."));
-      };
-      reader.onerror = () =>
-        reject(new Error("No se ha podido leer la imagen seleccionada."));
-      reader.readAsDataURL(file);
-    });
-
   const seleccionarImagenes = async (files: FileList | null) => {
     if (!files?.length) return;
 
@@ -105,20 +99,16 @@ export default function Publicar() {
       return;
     }
 
-    const imagenGrande = seleccionadas.find((file) => file.size > MAX_IMAGE_SIZE);
-
-    if (imagenGrande) {
-      setMensaje(`La imagen "${imagenGrande.name}" supera el máximo de 2MB.`);
-      setImagenes([]);
-      return;
-    }
-
     setMensaje("");
+    setPublishedListing(null);
 
     try {
-      const nuevasImagenes = await Promise.all(
-        seleccionadas.map((file) => convertirImagenABase64(file))
-      );
+      await Promise.all(seleccionadas.map((file) => validateListingImageFile(file)));
+      const nuevasImagenes = seleccionadas.map((file) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
+      imagenes.forEach((imagen) => URL.revokeObjectURL(imagen.previewUrl));
       setImagenes(nuevasImagenes);
     } catch (error) {
       setMensaje(
@@ -173,33 +163,55 @@ export default function Publicar() {
       return;
     }
 
-    const res = await fetch("/api/productos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: titulo,
-        description: descripcion,
-        priceCents,
-        operationType,
-        category: categoria,
-        size:
-          getStringAttribute(attributes, ["talla", "talla_edad", "numero"]) ||
-          talla ||
-          null,
-        color: getStringAttribute(attributes, ["color"]) || color || null,
-        brand: marca || null,
-        usage: uso || null,
-        location: ubicacion || null,
-        condition: estado,
-        attributes,
-        shippingAvailable,
-        whatsappContactAllowed: contactoWhatsapp,
-        images: imagenes,
-      }),
-    });
+    let res: Response;
+
+    try {
+      const uploadedImages = await Promise.all(
+        imagenes.map((imagen) => uploadListingImage(imagen.file))
+      );
+
+      res = await fetch("/api/productos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: titulo,
+          description: descripcion,
+          priceCents,
+          operationType,
+          category: categoria,
+          size:
+            getStringAttribute(attributes, ["talla", "talla_edad", "numero"]) ||
+            talla ||
+            null,
+          color: getStringAttribute(attributes, ["color"]) || color || null,
+          brand: marca || null,
+          usage: uso || null,
+          location: ubicacion || null,
+          condition: estado,
+          attributes,
+          shippingAvailable,
+          whatsappContactAllowed: contactoWhatsapp,
+          images: uploadedImages,
+        }),
+      });
+    } catch (error) {
+      setMensaje(
+        error instanceof Error
+          ? error.message
+          : "No se han podido subir las imágenes."
+      );
+      return;
+    }
 
     if (res.ok) {
+      const producto = await res.json();
       setMensaje("Anuncio publicado correctamente.");
+      setPublishedListing({
+        id: producto.id,
+        title: producto.title,
+        priceCents: producto.priceCents,
+        operationType: producto.operationType,
+      });
       setTitulo("");
       setOperationType("sale");
       setPrecio("");
@@ -214,6 +226,7 @@ export default function Publicar() {
       setEstado("muy_bueno");
       setShippingAvailable(false);
       setContactoWhatsapp(false);
+      imagenes.forEach((imagen) => URL.revokeObjectURL(imagen.previewUrl));
       setImagenes([]);
       setAcceptedLegal(false);
     } else if (res.status === 401) {
@@ -238,6 +251,7 @@ export default function Publicar() {
     setCategoria(value);
     setAttributes({});
     setMensaje("");
+    setPublishedListing(null);
   };
 
   const renderAttributeFields = () => {
@@ -321,6 +335,25 @@ export default function Publicar() {
 
           {!authLoading && user && !categoria && (
             <div className="space-y-5">
+              {publishedListing && (
+                <div className="rounded-2xl border border-green-100 bg-green-50 p-5">
+                  <p className="font-serif text-2xl text-gray-950">
+                    Tu anuncio ya está publicado
+                  </p>
+                  <ListingShareActions
+                    listing={publishedListing}
+                    className="mt-4"
+                    showNative={false}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/producto/${publishedListing.id}`)}
+                    className="tap-feedback mt-3 inline-flex min-h-10 items-center justify-center rounded-full bg-stone-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-950"
+                  >
+                    Ver anuncio
+                  </button>
+                </div>
+              )}
               <div>
                 <p className="text-sm font-semibold uppercase tracking-widest text-red-700">
                   ¿Qué quieres anunciar?
@@ -484,21 +517,22 @@ export default function Publicar() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
                   {imagenes.map((imagen, index) => (
                     <div
-                      key={`${imagen.slice(0, 40)}-${index}`}
+                      key={`${imagen.previewUrl}-${index}`}
                       className="relative aspect-square min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100"
                     >
                       <img
-                        src={imagen}
+                        src={imagen.previewUrl}
                         alt={`Imagen ${index + 1}`}
                         className="h-full w-full object-cover"
                       />
                       <button
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
+                          URL.revokeObjectURL(imagen.previewUrl);
                           setImagenes((prev) =>
                             prev.filter((_, imageIndex) => imageIndex !== index)
-                          )
-                        }
+                          );
+                        }}
                         className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-bold leading-none text-red-700 shadow"
                         aria-label={`Eliminar imagen ${index + 1}`}
                       >
