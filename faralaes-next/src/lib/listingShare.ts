@@ -9,6 +9,8 @@ export type ShareableListing = {
   operationType?: string | null;
 };
 
+export const INSTAGRAM_PROFILE_URL = "https://www.instagram.com/faralaes.app/";
+
 export const getListingPublicUrl = (listingId: string) => {
   if (typeof window !== "undefined") {
     return `${window.location.origin}/producto/${listingId}`;

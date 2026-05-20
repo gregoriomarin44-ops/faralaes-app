@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { primarySeoFooterLinks } from "../lib/seo";
+import { useState } from "react";
+import {
+  copyListingLink,
+  getFacebookShareUrl,
+  INSTAGRAM_PROFILE_URL,
+} from "../lib/listingShare";
+import { SITE_URL, primarySeoFooterLinks } from "../lib/seo";
+import SocialIcon from "./SocialIcon";
 
 const mainLinks = [
   { href: "/", label: "Inicio" },
@@ -22,6 +29,10 @@ const legalLinks = [
   { href: "/cookies", label: "Cookies" },
   { href: "/condiciones", label: "Condiciones" },
 ];
+
+const whatsappFooterUrl = `https://wa.me/?text=${encodeURIComponent(
+  `Descubre Faralaes, el marketplace de moda flamenca de segunda mano: ${SITE_URL}`
+)}`;
 
 type FooterLink = {
   href: string;
@@ -60,6 +71,20 @@ function FooterColumn({
 }
 
 export default function Footer() {
+  const [copyMessage, setCopyMessage] = useState("");
+
+  const copySiteLink = async () => {
+    try {
+      await copyListingLink(SITE_URL);
+      setCopyMessage("Enlace copiado");
+    } catch {
+      setCopyMessage("No se pudo copiar");
+    }
+  };
+
+  const socialButtonClass =
+    "tap-feedback inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-3 py-2 text-sm font-black transition";
+
   return (
     <footer className="border-t border-stone-200 bg-white text-stone-800">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 py-14 md:grid-cols-[1.35fr_1fr_1fr_1fr_1fr] md:gap-9 md:py-14">
@@ -78,16 +103,55 @@ export default function Footer() {
             Compra y vende trajes de flamenca, mantoncillos, pendientes y
             complementos flamencos de segunda mano en una comunidad especializada.
           </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-2 md:justify-start">
-            {["Instagram", "TikTok", "Pinterest"].map((network) => (
-              <span
-                key={network}
-                className="rounded-full border border-stone-200 bg-[#f8f3ef] px-3 py-1.5 text-xs font-black text-stone-600"
-              >
-                {network}
-              </span>
-            ))}
+          <div className="mt-5 grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center md:justify-start">
+            <a
+              href={INSTAGRAM_PROFILE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Abrir Instagram de Faralaes"
+              title="Instagram de Faralaes"
+              className={`${socialButtonClass} border-pink-200 bg-pink-50 text-pink-900 hover:border-pink-700`}
+            >
+              <SocialIcon name="instagram" />
+              Instagram
+            </a>
+            <a
+              href={whatsappFooterUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Compartir Faralaes por WhatsApp"
+              title="Compartir por WhatsApp"
+              className={`${socialButtonClass} border-green-200 bg-green-50 text-green-900 hover:border-green-700`}
+            >
+              <SocialIcon name="whatsapp" />
+              WhatsApp
+            </a>
+            <button
+              type="button"
+              onClick={() => window.open(getFacebookShareUrl(SITE_URL))}
+              aria-label="Compartir Faralaes en Facebook"
+              title="Compartir en Facebook"
+              className={`${socialButtonClass} border-blue-200 bg-blue-50 text-blue-900 hover:border-blue-700`}
+            >
+              <SocialIcon name="facebook" />
+              Facebook
+            </button>
+            <button
+              type="button"
+              onClick={copySiteLink}
+              aria-label="Copiar enlace de Faralaes"
+              title="Copiar enlace"
+              className={`${socialButtonClass} border-stone-300 bg-white text-stone-800 hover:border-green-700 hover:text-green-800`}
+            >
+              <SocialIcon name="copy" />
+              Copiar
+            </button>
           </div>
+          {copyMessage ? (
+            <p className="mt-2 text-sm font-semibold text-green-800" role="status">
+              {copyMessage}
+            </p>
+          ) : null}
         </div>
 
         <FooterColumn title="Principal" links={mainLinks} />

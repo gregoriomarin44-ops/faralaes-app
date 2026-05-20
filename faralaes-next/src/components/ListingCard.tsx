@@ -14,6 +14,7 @@ import {
   openShareWindow,
   shareListingNative,
 } from "../lib/listingShare";
+import SocialIcon from "./SocialIcon";
 import UserAvatar from "./UserAvatar";
 
 export type ListingCardItem = {
@@ -134,61 +135,6 @@ const EyeIcon = () => (
     <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
     <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
   </svg>
-);
-
-const ShareIcon = () => (
-  <svg
-    aria-hidden="true"
-    className="h-4 w-4"
-    fill="none"
-    stroke="currentColor"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-  >
-    <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
-    <path d="M16 6l-4-4-4 4" />
-    <path d="M12 2v13" />
-  </svg>
-);
-
-const CopyIcon = () => (
-  <svg
-    aria-hidden="true"
-    className="h-4 w-4"
-    fill="none"
-    stroke="currentColor"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-  >
-    <path d="M8 8h11v11H8z" />
-    <path d="M5 16H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1" />
-  </svg>
-);
-
-const WhatsappIcon = () => (
-  <svg
-    aria-hidden="true"
-    className="h-4 w-4"
-    fill="none"
-    stroke="currentColor"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-  >
-    <path d="M20 11.5a8 8 0 0 1-11.7 7.1L4 20l1.4-4.1A8 8 0 1 1 20 11.5Z" />
-    <path d="M9 9.5c.5 2 2 3.5 4 4l1.2-1.2" />
-  </svg>
-);
-
-const FacebookIcon = () => (
-  <span aria-hidden="true" className="text-sm font-black leading-none">
-    f
-  </span>
 );
 
 const getRelativeDate = (value: ListingCardItem["createdAt"]) => {
@@ -396,8 +342,9 @@ export default function ListingCard({
             onClick={handleShare}
             className="tap-feedback flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/90 text-stone-700 shadow-sm backdrop-blur transition hover:scale-105 hover:text-green-700"
             aria-label="Compartir anuncio"
+            title="Compartir anuncio"
           >
-            <ShareIcon />
+            <SocialIcon name="share" />
           </button>
         </div>
 
@@ -534,24 +481,27 @@ export default function ListingCard({
               onClick={handleCopyLink}
               className="tap-feedback hidden h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-600 transition hover:border-green-700 hover:text-green-700 sm:inline-flex"
               aria-label="Copiar enlace"
+              title="Copiar enlace"
             >
-              <CopyIcon />
+              <SocialIcon name="copy" />
             </button>
             <button
               type="button"
               onClick={handleWhatsappShare}
               className="tap-feedback flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-white text-green-800 transition hover:border-green-700"
               aria-label="Compartir por WhatsApp"
+              title="Compartir por WhatsApp"
             >
-              <WhatsappIcon />
+              <SocialIcon name="whatsapp" />
             </button>
             <button
               type="button"
               onClick={handleFacebookShare}
               className="tap-feedback hidden h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-white text-blue-800 transition hover:border-blue-700 sm:inline-flex"
               aria-label="Compartir en Facebook"
+              title="Compartir en Facebook"
             >
-              <FacebookIcon />
+              <SocialIcon name="facebook" />
             </button>
           </div>
           {shareMessage ? (
