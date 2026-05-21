@@ -251,9 +251,7 @@ export default function MisAnuncios() {
                         Visitas
                       </p>
                       <p className="mt-1 text-lg font-black text-stone-950">
-                        {producto.views && producto.views > 0
-                          ? formatMetricCount(producto.views)
-                          : "Nuevo"}
+                        {formatMetricCount(Math.max(0, producto.views || 0))}
                       </p>
                     </div>
                     <div className="rounded-xl bg-[#f8f3ef] p-3">

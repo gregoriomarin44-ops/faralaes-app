@@ -789,10 +789,13 @@ export default function ProductoDetalle({
   const viewCount = getViewCount(producto);
   const favoriteCount = getFavoriteCount(producto);
   const interestMetrics = [
-    viewCount >= 5
+    viewCount > 0
       ? {
           key: "views",
-          label: `${formatMetricCount(viewCount)} visitas`,
+          label:
+            viewCount === 1
+              ? "1 visita"
+              : `${formatMetricCount(viewCount)} visitas`,
           icon: <EyeMetricIcon />,
         }
       : {

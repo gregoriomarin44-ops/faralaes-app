@@ -37,6 +37,7 @@ type Producto = {
   whatsappContactAllowed: boolean;
   sellerRatingAverage?: number | null;
   sellerReviewCount?: number;
+  views?: number | null;
   seller?: {
     username?: string | null;
     displayName?: string | null;

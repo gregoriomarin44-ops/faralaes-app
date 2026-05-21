@@ -292,10 +292,13 @@ export default function ListingCard({
       ? listing._count.favorites
       : 0;
   const cardMetrics = [
-    viewCount >= 10
+    viewCount > 0
       ? {
           key: "views",
-          label: `${formatMetricCount(viewCount)} visitas`,
+          label:
+            viewCount === 1
+              ? "1 visita"
+              : `${formatMetricCount(viewCount)} visitas`,
           icon: <MetricEyeIcon />,
         }
       : null,
