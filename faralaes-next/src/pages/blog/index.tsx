@@ -2,7 +2,7 @@ import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
 import NavBar from "../../components/NavBar";
-import { getAbsoluteImageUrl, getCanonical } from "../../lib/seo";
+import { buildSeoPath, getAbsoluteImageUrl, getCanonical } from "../../lib/seo";
 import { prisma } from "../../lib/prisma";
 
 type BlogListPost = {
@@ -10,6 +10,7 @@ type BlogListPost = {
   title: string;
   slug: string;
   excerpt: string;
+  content: string;
   coverImageUrl: string | null;
   publishedAt: string;
 };
@@ -25,6 +26,59 @@ const formatDate = (value: string) =>
     year: "numeric",
   }).format(new Date(value));
 
+const getReadingMinutes = (content: string) => {
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 220));
+};
+
+const heroChips = [
+  { href: buildSeoPath({ categorySlug: "trajes-flamenca" }), label: "Trajes de flamenca" },
+  { href: "/catalogo?q=segunda%20mano", label: "Segunda mano" },
+  { href: "/catalogo?q=feria", label: "Ferias" },
+  { href: buildSeoPath({ categorySlug: "moda-rociera" }), label: "Moda rociera" },
+  { href: "/catalogo?q=dise%C3%B1adora", label: "Diseñadoras" },
+  { href: buildSeoPath({ categorySlug: "mantoncillos" }), label: "Mantoncillos" },
+];
+
+const popularTopics = [
+  {
+    href: "/catalogo?q=segunda%20mano",
+    icon: "2",
+    label: "Segunda mano",
+    text: "Guías para comprar, vender y cuidar prendas con historia.",
+  },
+  {
+    href: "/catalogo?q=feria%20de%20abril",
+    icon: "F",
+    label: "Feria de Abril",
+    text: "Ideas para llegar a feria con un look completo y realista.",
+  },
+  {
+    href: buildSeoPath({ categorySlug: "moda-rociera" }),
+    icon: "R",
+    label: "Moda rociera",
+    text: "Prendas cómodas, romería y piezas listas para el camino.",
+  },
+  {
+    href: buildSeoPath({ categorySlug: "complementos-flamencos" }),
+    icon: "C",
+    label: "Complementos",
+    text: "Flores, pendientes, bolsos y detalles que cambian el conjunto.",
+  },
+  {
+    href: "/catalogo?q=dise%C3%B1adora",
+    icon: "D",
+    label: "Diseñadoras",
+    text: "Firmas, cortes y señales para reconocer una buena pieza.",
+  },
+  {
+    href: "/catalogo?q=romeria",
+    icon: "M",
+    label: "Romerías",
+    text: "Consejos para elegir moda flamenca práctica y con carácter.",
+  },
+];
+
 export const getServerSideProps: GetServerSideProps<BlogIndexProps> = async () => {
   const posts = await prisma.blogPost.findMany({
     where: {
@@ -37,6 +91,7 @@ export const getServerSideProps: GetServerSideProps<BlogIndexProps> = async () =
       title: true,
       slug: true,
       excerpt: true,
+      content: true,
       coverImageUrl: true,
       publishedAt: true,
     },
@@ -72,7 +127,7 @@ export default function BlogIndex({ posts }: BlogIndexProps) {
       </Head>
       <NavBar />
       <main className="min-h-screen bg-[#f8f3ef] text-stone-950">
-        <section className="border-b border-stone-200 bg-white px-4 py-10 sm:px-6">
+        <section className="border-b border-stone-200 bg-white px-4 py-7 sm:px-6 sm:py-8">
           <div className="mx-auto max-w-6xl">
             <nav className="flex gap-2 text-sm font-semibold text-stone-500">
               <Link href="/" className="transition hover:text-red-800">
@@ -81,17 +136,17 @@ export default function BlogIndex({ posts }: BlogIndexProps) {
               <span>/</span>
               <span className="text-stone-900">Blog</span>
             </nav>
-            <p className="mt-8 text-sm font-black uppercase tracking-[0.22em] text-red-700">
+            <p className="mt-6 text-sm font-black uppercase tracking-[0.22em] text-red-700">
               Blog Faralaes
             </p>
-            <h1 className="mt-4 max-w-4xl font-serif text-5xl leading-tight text-stone-950 sm:text-6xl">
+            <h1 className="mt-3 max-w-4xl font-serif text-4xl leading-tight text-stone-950 sm:text-5xl">
               Guia viva de moda flamenca y segunda mano
             </h1>
-            <p className="mt-5 max-w-3xl text-lg leading-8 text-stone-700">
+            <p className="mt-4 max-w-3xl text-base leading-7 text-stone-700 sm:text-lg">
               Ideas para comprar mejor, vender con claridad y preparar feria o
               romeria con piezas flamencas que merecen seguir bailando.
             </p>
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               <Link
                 href="/catalogo"
                 className="rounded-full bg-green-700 px-5 py-2.5 text-sm font-black text-white transition hover:bg-green-800"
@@ -105,51 +160,121 @@ export default function BlogIndex({ posts }: BlogIndexProps) {
                 Publicar anuncio
               </Link>
             </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {heroChips.map((chip) => (
+                <Link
+                  key={chip.href}
+                  href={chip.href}
+                  className="rounded-full border border-stone-200 bg-[#f8f3ef] px-3.5 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:-translate-y-0.5 hover:border-red-800 hover:bg-white hover:text-red-800"
+                >
+                  {chip.label}
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
 
         <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-          {posts.length === 0 ? (
-            <div className="rounded-lg border border-stone-200 bg-white p-8 text-center shadow-sm">
-              <h2 className="font-serif text-3xl text-stone-950">
-                Todavia no hay articulos publicados
-              </h2>
-              <p className="mx-auto mt-3 max-w-xl leading-7 text-stone-600">
-                Vuelve pronto para leer guias sobre trajes de flamenca,
-                complementos, ferias y compraventa de segunda mano.
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-red-700">
+                Editorial Faralaes
               </p>
+              <h2 className="mt-2 font-serif text-4xl text-stone-950">
+                Ultimos articulos
+              </h2>
+            </div>
+            <Link
+              href="/catalogo"
+              className="w-fit rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-black text-stone-700 transition hover:border-green-700 hover:text-green-800"
+            >
+              Explorar marketplace
+            </Link>
+          </div>
+
+          {posts.length === 0 ? (
+            <div className="overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
+              <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
+                <div className="p-7 sm:p-9">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-red-700">
+                    Proximamente
+                  </p>
+                  <h3 className="mt-3 font-serif text-4xl leading-tight text-stone-950">
+                    Estamos preparando guias para comprar y vender moda flamenca
+                  </h3>
+                  <p className="mt-4 max-w-2xl leading-7 text-stone-600">
+                    Mientras llegan los primeros articulos, puedes explorar
+                    anuncios activos de trajes de flamenca, mantoncillos,
+                    complementos y moda rociera de segunda mano.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    <Link
+                      href="/catalogo"
+                      className="rounded-full bg-green-700 px-5 py-2.5 text-sm font-black text-white transition hover:bg-green-800"
+                    >
+                      Ver catalogo
+                    </Link>
+                    <Link
+                      href="/publicar"
+                      className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-black text-stone-800 transition hover:border-red-800 hover:text-red-800"
+                    >
+                      Publicar anuncio
+                    </Link>
+                  </div>
+                </div>
+                <div className="min-h-64 bg-gradient-to-br from-stone-950 via-red-950 to-green-900 p-6 text-white">
+                  <div className="grid h-full content-end gap-3">
+                    <span className="w-fit rounded-full bg-white/15 px-3 py-1 text-xs font-black uppercase tracking-wide">
+                      Marketplace activo
+                    </span>
+                    <p className="max-w-sm font-serif text-3xl leading-tight">
+                      Moda flamenca con fotos, precio y piezas listas para otra feria.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ${
+                posts.length === 1 ? "mx-auto max-w-xl sm:grid-cols-1 lg:grid-cols-1" : ""
+              }`}
+            >
               {posts.map((post) => (
                 <Link
                   key={post.id}
                   href={`/blog/${post.slug}`}
-                  className="group overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl"
+                  className="group overflow-hidden rounded-lg border border-stone-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-stone-300 hover:shadow-[0_18px_45px_rgba(34,24,20,0.13)]"
                 >
-                  {post.coverImageUrl ? (
-                    <img
-                      src={post.coverImageUrl}
-                      alt=""
-                      className="aspect-[16/10] w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex aspect-[16/10] w-full items-center justify-center bg-gradient-to-br from-stone-950 via-red-950 to-green-900 font-serif text-5xl text-white">
-                      F
+                  <div className="overflow-hidden bg-stone-200">
+                    {post.coverImageUrl ? (
+                      <img
+                        src={post.coverImageUrl}
+                        alt=""
+                        className="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.05]"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex aspect-[4/3] w-full items-center justify-center bg-gradient-to-br from-stone-950 via-red-950 to-green-900 font-serif text-6xl text-white">
+                        F
+                      </div>
+                    )}
+                  </div>
+                  <article className="p-5 sm:p-6">
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-wide text-stone-500">
+                      <span className="text-red-700">
+                        {formatDate(post.publishedAt)}
+                      </span>
+                      <span className="h-1 w-1 rounded-full bg-stone-300" />
+                      <span>{getReadingMinutes(post.content)} min lectura</span>
                     </div>
-                  )}
-                  <article className="p-5">
-                    <p className="text-xs font-black uppercase tracking-wide text-red-700">
-                      {formatDate(post.publishedAt)}
-                    </p>
-                    <h2 className="mt-3 font-serif text-2xl leading-tight text-stone-950">
+                    <h3 className="mt-3 font-serif text-2xl leading-tight text-stone-950">
                       {post.title}
-                    </h2>
-                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-stone-600">
+                    </h3>
+                    <p className="mt-3 line-clamp-3 text-base leading-7 text-stone-600">
                       {post.excerpt}
                     </p>
-                    <span className="mt-5 inline-flex text-sm font-black text-green-800">
+                    <span className="mt-5 inline-flex text-sm font-black text-green-800 transition group-hover:text-red-800">
                       Leer articulo
                     </span>
                   </article>
@@ -157,6 +282,72 @@ export default function BlogIndex({ posts }: BlogIndexProps) {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="border-y border-stone-200 bg-white px-4 py-10 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-6">
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-red-700">
+                Navega por interes
+              </p>
+              <h2 className="mt-2 font-serif text-4xl text-stone-950">
+                Temas populares
+              </h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {popularTopics.map((topic) => (
+                <Link
+                  key={topic.href}
+                  href={topic.href}
+                  className="group rounded-lg border border-stone-200 bg-[#f8f3ef] p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-red-800 hover:bg-white hover:shadow-md"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-900 font-serif text-lg text-white transition group-hover:bg-green-700">
+                      {topic.icon}
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-stone-950">{topic.label}</h3>
+                      <p className="mt-1 text-sm leading-6 text-stone-600">
+                        {topic.text}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-10 sm:px-6">
+          <div className="mx-auto max-w-6xl overflow-hidden rounded-lg bg-red-950 px-6 py-9 text-white shadow-[0_22px_55px_rgba(69,10,10,0.22)] sm:px-9">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.22em] text-red-100">
+                  Vende en Faralaes
+                </p>
+                <h2 className="mt-3 max-w-3xl font-serif text-4xl leading-tight sm:text-5xl">
+                  ¿Tienes moda flamenca guardada en el armario?
+                </h2>
+                <p className="mt-4 max-w-2xl text-lg leading-8 text-white/85">
+                  Publica gratis tus trajes, mantones y complementos en Faralaes.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+                <Link
+                  href="/publicar"
+                  className="rounded-full bg-green-700 px-6 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-green-800"
+                >
+                  Publicar anuncio
+                </Link>
+                <Link
+                  href="/catalogo"
+                  className="rounded-full border border-white/30 bg-white/10 px-6 py-3 text-center text-sm font-black text-white transition hover:bg-white hover:text-red-950"
+                >
+                  Ver catalogo
+                </Link>
+              </div>
+            </div>
+          </div>
         </section>
       </main>
     </>
