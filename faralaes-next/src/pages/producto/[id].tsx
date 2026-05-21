@@ -106,7 +106,7 @@ const logProductError = (
   });
 };
 
-const VIEW_THROTTLE_MS = 6 * 60 * 60 * 1000;
+const VIEW_FRONTEND_DEBOUNCE_MS = 60 * 1000;
 
 const formatMetricCount = (value: number) =>
   new Intl.NumberFormat("es-ES").format(value);
@@ -581,6 +581,7 @@ export default function ProductoDetalle({
     initialProducto?.images?.[0]?.url || ""
   );
   const [userId, setUserId] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [loading, setLoading] = useState(!initialProducto);
   const [error, setError] = useState("");
@@ -591,7 +592,8 @@ export default function ProductoDetalle({
     fetch("/api/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((user) => setUserId(user?.id || ""))
-      .catch(() => setUserId(""));
+      .catch(() => setUserId(""))
+      .finally(() => setAuthChecked(true));
 
     if (initialProducto) {
       return;
@@ -633,19 +635,27 @@ export default function ProductoDetalle({
   }, [id, initialProducto, router.isReady]);
 
   useEffect(() => {
-    if (!router.isReady || !producto?.id || typeof window === "undefined") {
+    if (
+      !router.isReady ||
+      !authChecked ||
+      !producto?.id ||
+      typeof window === "undefined"
+    ) {
       return;
     }
 
-    const storageKey = `faralaes:viewed:${producto.id}`;
+    const identityKey = userId ? `user:${userId}` : "anonymous";
+    const storageKey = `faralaes:viewed:${producto.id}:${identityKey}`;
     const lastViewedAt = Number(window.localStorage.getItem(storageKey) || "0");
 
     if (
       Number.isFinite(lastViewedAt) &&
-      Date.now() - lastViewedAt < VIEW_THROTTLE_MS
+      Date.now() - lastViewedAt < VIEW_FRONTEND_DEBOUNCE_MS
     ) {
       return;
     }
+
+    window.localStorage.setItem(storageKey, String(Date.now()));
 
     fetch(`/api/productos/${producto.id}/view`, { method: "POST" })
       .then(async (res) => {
@@ -656,8 +666,6 @@ export default function ProductoDetalle({
         return res.json();
       })
       .then((data: { counted?: boolean; views?: number } | null) => {
-        window.localStorage.setItem(storageKey, String(Date.now()));
-
         const nextViews = data?.views;
 
         if (data?.counted && typeof nextViews === "number") {
@@ -669,7 +677,7 @@ export default function ProductoDetalle({
         }
       })
       .catch(() => null);
-  }, [producto?.id, router.isReady]);
+  }, [authChecked, producto?.id, router.isReady, userId]);
 
   const volverAlCatalogo = () => {
     router.push("/catalogo");
