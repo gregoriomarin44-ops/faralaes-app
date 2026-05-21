@@ -54,40 +54,40 @@ const heroChips = [
 
 const popularTopics = [
   {
-    href: "/catalogo?q=segunda%20mano",
-    icon: "2",
-    label: "Segunda mano",
-    text: "Guías para comprar, vender y cuidar prendas con historia.",
+    href: "/catalogo?categoria=traje",
+    icon: "T",
+    label: "Trajes de flamenca",
+    text: "Vestidos, volantes y piezas principales para feria o evento.",
   },
   {
-    href: "/catalogo?q=feria%20de%20abril",
-    icon: "F",
-    label: "Feria de Abril",
-    text: "Ideas para llegar a feria con un look completo y realista.",
-  },
-  {
-    href: buildSeoPath({ categorySlug: "moda-rociera" }),
+    href: "/catalogo?categoria=moda_rociera",
     icon: "R",
     label: "Moda rociera",
     text: "Prendas cómodas, romería y piezas listas para el camino.",
   },
   {
-    href: buildSeoPath({ categorySlug: "complementos-flamencos" }),
+    href: "/catalogo?categoria=complementos",
     icon: "C",
     label: "Complementos",
     text: "Flores, pendientes, bolsos y detalles que cambian el conjunto.",
   },
   {
-    href: "/catalogo?q=diseñadoras",
-    icon: "D",
-    label: "Diseñadoras",
-    text: "Firmas, cortes y señales para reconocer una buena pieza.",
+    href: "/catalogo?categoria=mantoncillos",
+    icon: "M",
+    label: "Mantoncillos",
+    text: "Color, textura y movimiento para rematar el look flamenco.",
   },
   {
-    href: "/catalogo?q=romerias",
-    icon: "M",
-    label: "Romerías",
-    text: "Consejos para elegir moda flamenca práctica y con carácter.",
+    href: "/catalogo?categoria=nina",
+    icon: "N",
+    label: "Niña",
+    text: "Moda flamenca infantil para feria, fiestas y celebraciones.",
+  },
+  {
+    href: "/catalogo?categoria=bolsos",
+    icon: "B",
+    label: "Bolsos",
+    text: "Bolsos flamencos y piezas pequeñas para completar el conjunto.",
   },
 ];
 
