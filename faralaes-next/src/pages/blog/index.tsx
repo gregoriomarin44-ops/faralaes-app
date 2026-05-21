@@ -78,13 +78,13 @@ const popularTopics = [
     text: "Flores, pendientes, bolsos y detalles que cambian el conjunto.",
   },
   {
-    href: "/catalogo?q=dise%C3%B1adora",
+    href: "/catalogo?q=diseñadoras",
     icon: "D",
     label: "Diseñadoras",
     text: "Firmas, cortes y señales para reconocer una buena pieza.",
   },
   {
-    href: "/catalogo?q=romeria",
+    href: "/catalogo?q=romerias",
     icon: "M",
     label: "Romerías",
     text: "Consejos para elegir moda flamenca práctica y con carácter.",
