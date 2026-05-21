@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout, { useAdminSession } from "../../components/admin/AdminLayout";
 
 type BlogPost = {
@@ -78,6 +78,7 @@ const toForm = (post: BlogPost): BlogForm => ({
 
 export default function AdminBlog() {
   const session = useAdminSession();
+  const editorRef = useRef<HTMLElement | null>(null);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [form, setForm] = useState<BlogForm>(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -130,6 +131,22 @@ export default function AdminBlog() {
     setError("");
   };
 
+  const scrollToEditor = () => {
+    window.setTimeout(() => {
+      editorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  };
+
+  const editPost = (post: BlogPost) => {
+    setForm(toForm(post));
+    setNotice("");
+    setError("");
+    scrollToEditor();
+  };
+
   const upsertPost = (post: BlogPost) => {
     setPosts((current) => {
       const exists = current.some((item) => item.id === post.id);
@@ -173,7 +190,13 @@ export default function AdminBlog() {
     }
 
     upsertPost(data as BlogPost);
-    setNotice(status === "published" ? "Articulo publicado." : "Borrador guardado.");
+    setNotice(
+      status === "published"
+        ? "Articulo publicado."
+        : status === "draft"
+          ? "Borrador guardado."
+          : "Cambios guardados."
+    );
   };
 
   const changePublication = async (postId: string, action: "publish" | "unpublish") => {
@@ -295,13 +318,15 @@ export default function AdminBlog() {
             {posts.map((post) => (
               <article
                 key={post.id}
-                className={`p-4 transition ${
-                  form.id === post.id ? "bg-[#f8f3ef]" : "bg-white"
+                className={`border-l-4 p-4 transition ${
+                  form.id === post.id
+                    ? "border-l-green-700 bg-[#f8f3ef]"
+                    : "border-l-transparent bg-white"
                 }`}
               >
                 <button
                   type="button"
-                  onClick={() => setForm(toForm(post))}
+                  onClick={() => editPost(post)}
                   className="block w-full text-left"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -329,6 +354,17 @@ export default function AdminBlog() {
                   </p>
                 </button>
                 <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => editPost(post)}
+                    className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                      form.id === post.id
+                        ? "bg-green-700 text-white hover:bg-green-800"
+                        : "border border-stone-200 text-stone-700 hover:border-green-700 hover:text-green-800"
+                    }`}
+                  >
+                    Editar
+                  </button>
                   {post.status === "published" && (
                     <Link
                       href={`/blog/${post.slug}`}
@@ -364,7 +400,10 @@ export default function AdminBlog() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm md:p-6">
+        <section
+          ref={editorRef}
+          className="scroll-mt-6 rounded-lg border border-stone-200 bg-white p-4 shadow-sm md:p-6"
+        >
           <div className="flex flex-col gap-2 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-red-700">
@@ -498,6 +537,16 @@ export default function AdminBlog() {
             </label>
 
             <div className="flex flex-wrap gap-2 border-t border-stone-100 pt-4">
+              {form.id && (
+                <button
+                  type="button"
+                  onClick={() => savePost()}
+                  disabled={saving || uploading}
+                  className="rounded-lg bg-stone-950 px-4 py-2 text-sm font-black text-white transition hover:bg-stone-800 disabled:opacity-60"
+                >
+                  Guardar cambios
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => savePost("draft")}
