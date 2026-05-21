@@ -30,6 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               images: {
                 orderBy: { sortOrder: "asc" },
               },
+              _count: {
+                select: {
+                  favorites: true,
+                  conversations: true,
+                },
+              },
             },
           },
         },

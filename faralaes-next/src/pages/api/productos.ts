@@ -26,6 +26,7 @@ type PublicListingFallback = {
   condition: string | null;
   attributes: Record<string, string | number | boolean> | null;
   status: string;
+  views: number;
   shippingAvailable: boolean;
   whatsappContactAllowed: boolean;
   createdAt: Date;
@@ -232,6 +233,7 @@ const cargarProductosPublicadosFallback = async (
     mine && userId
       ? Prisma.sql`AND "sellerId"::text = ${userId}`
       : Prisma.empty;
+  const statusFilter = mine && userId ? Prisma.empty : Prisma.sql`AND "status" = 'published'`;
 
   const productos = await prisma.$queryRaw<Omit<PublicListingFallback, "images">[]>`
     SELECT
@@ -251,12 +253,14 @@ const cargarProductosPublicadosFallback = async (
       "condition",
       NULL AS "attributes",
       "status",
+      COALESCE("views", 0) AS "views",
       "shippingAvailable",
       "whatsappContactAllowed",
       "createdAt",
       "updatedAt"
     FROM "Listing"
-    WHERE "status" = 'published'
+    WHERE 1 = 1
+    ${statusFilter}
     ${sellerFilter}
     ORDER BY "createdAt" DESC
   `;
@@ -290,6 +294,10 @@ const cargarProductosPublicadosFallback = async (
     attributes: null,
     seller: null,
     images: imagesByListingId.get(producto.id) || [],
+    _count: {
+      favorites: 0,
+      conversations: 0,
+    },
   }));
 };
 
@@ -370,8 +378,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const productos = await prisma.listing.findMany({
         where: {
-          status: "published",
-          ...(mine === "true" && user ? { sellerId: user.id } : {}),
+          ...(mine === "true" && user
+            ? { sellerId: user.id }
+            : { status: "published" }),
         },
         orderBy: { createdAt: "desc" },
         include: {
@@ -386,6 +395,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               accountType: true,
               verified: true,
               lastSeenAt: true,
+            },
+          },
+          _count: {
+            select: {
+              favorites: true,
+              conversations: true,
             },
           },
         },

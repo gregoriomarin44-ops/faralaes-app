@@ -2,7 +2,7 @@ import type { GetServerSideProps } from "next";
 import { Prisma } from "@prisma/client";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import NavBar from "../../components/NavBar";
 import AccountBadges from "../../components/AccountBadges";
@@ -43,6 +43,7 @@ type Producto = {
   shippingAvailable: boolean;
   whatsappContactAllowed: boolean;
   status: string;
+  views: number;
   createdAt: string;
   images?: {
     url: string;
@@ -61,6 +62,10 @@ type Producto = {
       location?: string | null;
     } | null;
   } | null;
+  _count?: {
+    favorites?: number;
+    conversations?: number;
+  };
 };
 
 type RelatedListing = {
@@ -100,6 +105,59 @@ const logProductError = (
     ...context,
   });
 };
+
+const VIEW_THROTTLE_MS = 6 * 60 * 60 * 1000;
+
+const formatMetricCount = (value: number) =>
+  new Intl.NumberFormat("es-ES").format(value);
+
+const getFavoriteCount = (producto: Producto) =>
+  producto._count?.favorites && Number.isFinite(producto._count.favorites)
+    ? producto._count.favorites
+    : 0;
+
+const getViewCount = (producto: Producto) =>
+  Number.isFinite(producto.views) ? producto.views : 0;
+
+const EyeMetricIcon = () => (
+  <svg
+    aria-hidden="true"
+    className="h-4 w-4"
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+  >
+    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+  </svg>
+);
+
+const HeartMetricIcon = () => (
+  <svg
+    aria-hidden="true"
+    className="h-4 w-4"
+    fill="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path d="M12 21s-7.5-4.7-9.6-9.1C.7 8.4 2.6 4.5 6.3 4.1c2-.2 3.7.8 4.7 2.2 1-1.4 2.7-2.4 4.7-2.2 3.7.4 5.6 4.3 3.9 7.8C19.5 16.3 12 21 12 21Z" />
+  </svg>
+);
+
+const MetricPill = ({
+  icon,
+  label,
+}: {
+  icon: ReactNode;
+  label: string;
+}) => (
+  <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-[#f8f3ef] px-3 py-1.5 text-xs font-bold text-stone-600">
+    {icon}
+    {label}
+  </span>
+);
 
 const getSingleQueryValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -180,6 +238,7 @@ const loadProductFallback = async (
       shippingAvailable: boolean;
       whatsappContactAllowed: boolean;
       status: string;
+      views: number;
       createdAt: Date;
       sellerEmail: string | null;
       sellerProfileDisplayName: string | null;
@@ -205,6 +264,7 @@ const loadProductFallback = async (
       l."shippingAvailable",
       l."whatsappContactAllowed",
       l."status",
+      COALESCE(l."views", 0) AS "views",
       l."createdAt",
       u."email" AS "sellerEmail",
       u."avatarUrl" AS "sellerAvatarUrl",
@@ -251,6 +311,7 @@ const loadProductFallback = async (
     shippingAvailable: row.shippingAvailable,
     whatsappContactAllowed: row.whatsappContactAllowed,
     status: row.status,
+    views: row.views,
     createdAt: row.createdAt,
     images,
     seller: {
@@ -272,6 +333,10 @@ const loadProductFallback = async (
               location: row.sellerLocation,
             }
           : null,
+    },
+    _count: {
+      favorites: 0,
+      conversations: 0,
     },
   };
 };
@@ -393,6 +458,7 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
         shippingAvailable: true,
         whatsappContactAllowed: true,
         status: true,
+        views: true,
         createdAt: true,
         images: {
           orderBy: { sortOrder: "asc" },
@@ -413,6 +479,12 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
                 location: true,
               },
             },
+          },
+        },
+        _count: {
+          select: {
+            favorites: true,
+            conversations: true,
           },
         },
       },
@@ -560,6 +632,45 @@ export default function ProductoDetalle({
       });
   }, [id, initialProducto, router.isReady]);
 
+  useEffect(() => {
+    if (!router.isReady || !producto?.id || typeof window === "undefined") {
+      return;
+    }
+
+    const storageKey = `faralaes:viewed:${producto.id}`;
+    const lastViewedAt = Number(window.localStorage.getItem(storageKey) || "0");
+
+    if (
+      Number.isFinite(lastViewedAt) &&
+      Date.now() - lastViewedAt < VIEW_THROTTLE_MS
+    ) {
+      return;
+    }
+
+    fetch(`/api/productos/${producto.id}/view`, { method: "POST" })
+      .then(async (res) => {
+        if (!res.ok) {
+          return null;
+        }
+
+        return res.json();
+      })
+      .then((data: { counted?: boolean; views?: number } | null) => {
+        window.localStorage.setItem(storageKey, String(Date.now()));
+
+        const nextViews = data?.views;
+
+        if (data?.counted && typeof nextViews === "number") {
+          setProducto((current) =>
+            current && current.id === producto.id
+              ? { ...current, views: nextViews }
+              : current
+          );
+        }
+      })
+      .catch(() => null);
+  }, [producto?.id, router.isReady]);
+
   const volverAlCatalogo = () => {
     router.push("/catalogo");
   };
@@ -675,6 +786,34 @@ export default function ProductoDetalle({
   const images = producto.images || [];
   const isDonation = isDonationListing(producto.operationType);
   const esPropio = userId === producto.sellerId;
+  const viewCount = getViewCount(producto);
+  const favoriteCount = getFavoriteCount(producto);
+  const interestMetrics = [
+    viewCount >= 5
+      ? {
+          key: "views",
+          label: `${formatMetricCount(viewCount)} visitas`,
+          icon: <EyeMetricIcon />,
+        }
+      : {
+          key: "new",
+          label: "Nuevo anuncio",
+          icon: <EyeMetricIcon />,
+        },
+    favoriteCount > 0
+      ? {
+          key: "favorites",
+          label:
+            favoriteCount === 1
+              ? "1 persona lo guardó"
+              : `${formatMetricCount(favoriteCount)} personas lo guardaron`,
+          icon: <HeartMetricIcon />,
+        }
+      : null,
+  ].filter(
+    (metric): metric is { key: string; label: string; icon: JSX.Element } =>
+      Boolean(metric)
+  );
   const sellerPhone = producto.seller?.profile?.phone?.replace(/\D/g, "") || "";
   const sellerUsername = producto.seller?.username || "";
   const sellerProfileSlug = sellerUsername || producto.seller?.id || "";
@@ -954,6 +1093,15 @@ export default function ProductoDetalle({
               <p className="mt-3 text-sm font-semibold text-gray-400">
                 Publicado el {publishedDate}
               </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {interestMetrics.map((metric) => (
+                  <MetricPill
+                    key={metric.key}
+                    icon={metric.icon}
+                    label={metric.label}
+                  />
+                ))}
+              </div>
             </div>
 
             {producto.description && (

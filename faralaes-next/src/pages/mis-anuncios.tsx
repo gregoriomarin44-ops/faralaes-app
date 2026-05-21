@@ -16,10 +16,33 @@ type Producto = {
   color: string | null;
   location: string | null;
   condition: string | null;
+  status?: string | null;
+  views?: number | null;
   shippingAvailable: boolean;
   images?: {
     url: string;
   }[];
+  _count?: {
+    favorites?: number;
+    conversations?: number;
+  };
+};
+
+const formatMetricCount = (value: number) =>
+  new Intl.NumberFormat("es-ES").format(value);
+
+const getStatusLabel = (status?: string | null) => {
+  if (status === "sold") return "Vendido";
+  if (status === "reserved") return "Reservado";
+  if (status === "hidden") return "Oculto";
+  return "Publicado";
+};
+
+const getStatusClasses = (status?: string | null) => {
+  if (status === "sold") return "border-stone-200 bg-stone-100 text-stone-700";
+  if (status === "reserved") return "border-amber-100 bg-amber-50 text-amber-800";
+  if (status === "hidden") return "border-gray-200 bg-gray-50 text-gray-600";
+  return "border-green-100 bg-green-50 text-green-800";
 };
 
 export default function MisAnuncios() {
@@ -190,9 +213,16 @@ export default function MisAnuncios() {
                 </div>
 
                 <div className="p-5">
-                  <h2 className="mb-2 font-serif text-xl">
-                    {producto.title}
-                  </h2>
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <h2 className="font-serif text-xl">{producto.title}</h2>
+                    <span
+                      className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${getStatusClasses(
+                        producto.status
+                      )}`}
+                    >
+                      {getStatusLabel(producto.status)}
+                    </span>
+                  </div>
 
                   {producto.description && (
                     <p className="mb-3 text-sm text-gray-600">
@@ -215,7 +245,36 @@ export default function MisAnuncios() {
                     {producto.shippingAvailable && <p>Envío disponible</p>}
                   </div>
 
-                  <div className="mt-5 grid grid-cols-2 gap-2 border-t border-gray-100 pt-4">
+                  <div className="mt-5 grid grid-cols-3 gap-2 border-t border-gray-100 pt-4">
+                    <div className="rounded-xl bg-[#f8f3ef] p-3">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-stone-400">
+                        Visitas
+                      </p>
+                      <p className="mt-1 text-lg font-black text-stone-950">
+                        {producto.views && producto.views > 0
+                          ? formatMetricCount(producto.views)
+                          : "Nuevo"}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-[#f8f3ef] p-3">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-stone-400">
+                        Favoritos
+                      </p>
+                      <p className="mt-1 text-lg font-black text-stone-950">
+                        {formatMetricCount(producto._count?.favorites || 0)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-[#f8f3ef] p-3">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-stone-400">
+                        Mensajes
+                      </p>
+                      <p className="mt-1 text-lg font-black text-stone-950">
+                        {formatMetricCount(producto._count?.conversations || 0)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={(e) => editarProducto(e, producto.id)}

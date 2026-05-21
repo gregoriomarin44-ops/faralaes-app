@@ -32,6 +32,8 @@ type PublicUserPageProps = {
     createdAt: string;
     reviewAverage: number | null;
     reviewCount: number;
+    totalListingViews: number;
+    totalListingFavorites: number;
     reviews: {
       id: string;
       rating: number;
@@ -174,11 +176,18 @@ export const getServerSideProps: GetServerSideProps<
           color: true,
           brand: true,
           condition: true,
+          views: true,
           shippingAvailable: true,
           whatsappContactAllowed: true,
           images: {
             orderBy: { sortOrder: "asc" },
             select: { url: true },
+          },
+          _count: {
+            select: {
+              favorites: true,
+              conversations: true,
+            },
           },
         },
       },
@@ -282,6 +291,14 @@ export const getServerSideProps: GetServerSideProps<
     lastSeenAt: user.lastSeenAt ? user.lastSeenAt.toISOString() : null,
     respondsQuickly,
   };
+  const totalListingViews = user.listings.reduce(
+    (total, listing) => total + Math.max(0, listing.views || 0),
+    0
+  );
+  const totalListingFavorites = user.listings.reduce(
+    (total, listing) => total + (listing._count.favorites || 0),
+    0
+  );
 
   return {
     props: {
@@ -299,6 +316,8 @@ export const getServerSideProps: GetServerSideProps<
         createdAt: user.createdAt.toISOString(),
         reviewAverage,
         reviewCount,
+        totalListingViews,
+        totalListingFavorites,
         reviews,
         listings: user.listings.map((listing) => ({
           ...listing,
@@ -341,6 +360,14 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
   const seoTitle = `${user.displayName}${seoLocation} | moda flamenca en Faralaes`;
   const seoDescription = `${user.displayName} vende moda flamenca en Faralaes${seoLocation}. Consulta reseñas, anuncios activos y perfil de confianza.`;
   const memberSince = formatRelativeDate(user.createdAt);
+  const profileInterest =
+    user.totalListingViews >= 5 || user.totalListingFavorites > 0
+      ? `${new Intl.NumberFormat("es-ES").format(
+          user.totalListingViews
+        )} visitas · ${new Intl.NumberFormat("es-ES").format(
+          user.totalListingFavorites
+        )} favoritos`
+      : "Nuevos anuncios";
   const firstListing = user.listings[0];
   const sellerJsonLd = {
     "@context": "https://schema.org",
@@ -584,6 +611,7 @@ export default function PublicUserPage({ user }: PublicUserPageProps) {
                         label="Anuncios activos"
                         value={`${user.listings.length} publicados`}
                       />
+                      <TrustBadge label="Interés" value={profileInterest} />
                       <TrustBadge label="Respuestas" value="Rápidas" />
                       <TrustBadge label="Verificación" value="Preparado" />
                       <TrustBadge label="Tipo" value="Diseñador / tienda" />

@@ -136,6 +136,7 @@ model Listing {
   condition              String?
   attributes             Json?
   status                 String         @default("published")
+  views                  Int            @default(0)
   shippingAvailable      Boolean        @default(false)
   whatsappContactAllowed Boolean        @default(false)
   createdAt              DateTime       @default(now())

@@ -40,6 +40,11 @@ export type ListingCardItem = {
   sellerRatingAverage?: number | null;
   sellerReviewCount?: number;
   sellerRespondsQuickly?: boolean;
+  views?: number | null;
+  _count?: {
+    favorites?: number;
+    conversations?: number;
+  };
   seller?: {
     username?: string | null;
     displayName?: string | null;
@@ -136,6 +141,36 @@ const EyeIcon = () => (
     <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
   </svg>
 );
+
+const HeartIcon = () => (
+  <svg
+    aria-hidden="true"
+    className="h-3.5 w-3.5"
+    fill="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path d="M12 21s-7.5-4.7-9.6-9.1C.7 8.4 2.6 4.5 6.3 4.1c2-.2 3.7.8 4.7 2.2 1-1.4 2.7-2.4 4.7-2.2 3.7.4 5.6 4.3 3.9 7.8C19.5 16.3 12 21 12 21Z" />
+  </svg>
+);
+
+const MetricEyeIcon = () => (
+  <svg
+    aria-hidden="true"
+    className="h-3.5 w-3.5"
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+  >
+    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+  </svg>
+);
+
+const formatMetricCount = (value: number) =>
+  new Intl.NumberFormat("es-ES").format(value);
 
 const getRelativeDate = (value: ListingCardItem["createdAt"]) => {
   if (!value) {
@@ -247,6 +282,37 @@ export default function ListingCard({
     listing.brand || "",
     listing.condition ? getConditionLabel(listing.condition) : "",
   ].filter(Boolean).slice(0, 2);
+  const viewCount =
+    typeof listing.views === "number" && Number.isFinite(listing.views)
+      ? listing.views
+      : 0;
+  const favoriteCount =
+    typeof listing._count?.favorites === "number" &&
+    Number.isFinite(listing._count.favorites)
+      ? listing._count.favorites
+      : 0;
+  const cardMetrics = [
+    viewCount >= 10
+      ? {
+          key: "views",
+          label: `${formatMetricCount(viewCount)} visitas`,
+          icon: <MetricEyeIcon />,
+        }
+      : null,
+    favoriteCount > 0
+      ? {
+          key: "favorites",
+          label:
+            favoriteCount === 1
+              ? "1 favorito"
+              : `${formatMetricCount(favoriteCount)} favoritos`,
+          icon: <HeartIcon />,
+        }
+      : null,
+  ].filter(
+    (metric): metric is { key: string; label: string; icon: JSX.Element } =>
+      Boolean(metric)
+  );
   const [shareMessage, setShareMessage] = useState("");
 
   const handleCopyLink = async (event: MouseEvent<HTMLButtonElement>) => {
@@ -451,6 +517,20 @@ export default function ListingCard({
               compact
             />
             <UserActivityBadge user={listing.seller} compact />
+          </div>
+        )}
+
+        {cardMetrics.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold text-stone-500">
+            {cardMetrics.map((metric) => (
+              <span
+                key={metric.key}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#f8f3ef] px-2.5 py-1"
+              >
+                {metric.icon}
+                {metric.label}
+              </span>
+            ))}
           </div>
         )}
 

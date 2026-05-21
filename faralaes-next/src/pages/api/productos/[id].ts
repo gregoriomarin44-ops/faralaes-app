@@ -92,6 +92,7 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
       shippingAvailable: boolean;
       whatsappContactAllowed: boolean;
       status: string;
+      views: number;
       createdAt: Date;
       sellerEmail: string | null;
       sellerProfileDisplayName: string | null;
@@ -117,6 +118,7 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
       l."shippingAvailable",
       l."whatsappContactAllowed",
       l."status",
+      COALESCE(l."views", 0) AS "views",
       l."createdAt",
       u."email" AS "sellerEmail",
       u."avatarUrl" AS "sellerAvatarUrl",
@@ -163,6 +165,7 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
     shippingAvailable: row.shippingAvailable,
     whatsappContactAllowed: row.whatsappContactAllowed,
     status: row.status,
+    views: row.views,
     createdAt: row.createdAt,
     images,
     seller: {
@@ -183,6 +186,10 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
               location: row.sellerLocation,
             }
           : null,
+    },
+    _count: {
+      favorites: 0,
+      conversations: 0,
     },
   };
 };
@@ -228,6 +235,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           shippingAvailable: true,
           whatsappContactAllowed: true,
           status: true,
+          views: true,
           createdAt: true,
           images: {
             orderBy: { sortOrder: "asc" },
@@ -248,6 +256,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   location: true,
                 },
               },
+            },
+          },
+          _count: {
+            select: {
+              favorites: true,
+              conversations: true,
             },
           },
         },
