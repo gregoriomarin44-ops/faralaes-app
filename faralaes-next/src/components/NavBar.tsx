@@ -14,6 +14,7 @@ const categoryLinks = categoryOptions.map((category) => ({
 const menuLinks = [
   { href: "/", label: "Inicio" },
   { href: "/catalogo", label: "Catálogo" },
+  { href: "/blog", label: "Blog" },
   { href: "/mis-anuncios", label: "Mis anuncios" },
   { href: "/como-funciona", label: "Cómo funciona" },
   { href: "/contacto", label: "Contacto" },

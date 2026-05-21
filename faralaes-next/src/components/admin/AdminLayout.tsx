@@ -16,6 +16,7 @@ type AdminSession =
 const links = [
   { href: "/admin", label: "Resumen" },
   { href: "/admin/anuncios", label: "Anuncios" },
+  { href: "/admin/blog", label: "Blog" },
   { href: "/admin/reportes", label: "Reportes" },
   { href: "/admin/usuarios", label: "Usuarios" },
   { href: "/admin/facturacion", label: "Facturacion" },

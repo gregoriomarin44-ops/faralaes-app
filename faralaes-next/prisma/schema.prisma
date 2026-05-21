@@ -12,6 +12,11 @@ enum Role {
   ADMIN
 }
 
+enum BlogPostStatus {
+  draft
+  published
+}
+
 model User {
   id            String         @id @default(uuid()) @db.Uuid
   email         String         @unique
@@ -40,6 +45,27 @@ model User {
   reports       Report[]       @relation("ReporterReports")
   reviewsGiven  Review[]       @relation("ReviewerReviews")
   reviewsReceived Review[]     @relation("ReviewedUserReviews")
+  blogPosts     BlogPost[]     @relation("AuthorBlogPosts")
+}
+
+model BlogPost {
+  id             String         @id @default(uuid()) @db.Uuid
+  title          String
+  slug           String         @unique
+  excerpt        String
+  content        String
+  coverImageUrl  String?
+  status         BlogPostStatus @default(draft)
+  publishedAt    DateTime?
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  authorId       String?        @db.Uuid
+  author         User?          @relation("AuthorBlogPosts", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([status, publishedAt])
+  @@index([authorId])
 }
 
 model Report {

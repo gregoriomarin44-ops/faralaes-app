@@ -16,6 +16,7 @@ const staticPaths = [
   "/",
   "/catalogo",
   "/como-funciona",
+  "/blog",
   "/contacto",
   "/aviso-legal",
   "/privacidad",
@@ -40,6 +41,17 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
+      updatedAt: true,
+    },
+  });
+  const blogPosts = await prisma.blogPost.findMany({
+    where: {
+      status: "published",
+      publishedAt: { not: null },
+    },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      slug: true,
       updatedAt: true,
     },
   });
@@ -137,6 +149,9 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     ...Array.from(new Set(sizePaths)).map((path) => renderUrl(path)),
     ...listings.map((listing) =>
       renderUrl(`/producto/${listing.id}`, listing.updatedAt.toISOString())
+    ),
+    ...blogPosts.map((post) =>
+      renderUrl(`/blog/${post.slug}`, post.updatedAt.toISOString())
     ),
   ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
