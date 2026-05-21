@@ -31,6 +31,18 @@ const getReadingMinutes = (content: string) => {
   return Math.max(1, Math.ceil(words / 220));
 };
 
+const getPostsGridClass = (postCount: number) => {
+  if (postCount === 1) {
+    return "mx-auto grid w-full max-w-[520px] grid-cols-1 gap-6";
+  }
+
+  if (postCount === 2) {
+    return "mx-auto grid w-full max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2";
+  }
+
+  return "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3";
+};
+
 const heroChips = [
   { href: buildSeoPath({ categorySlug: "trajes-flamenca" }), label: "Trajes de flamenca" },
   { href: "/catalogo?q=segunda%20mano", label: "Segunda mano" },
@@ -235,27 +247,23 @@ export default function BlogIndex({ posts }: BlogIndexProps) {
               </div>
             </div>
           ) : (
-            <div
-              className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ${
-                posts.length === 1 ? "mx-auto max-w-xl sm:grid-cols-1 lg:grid-cols-1" : ""
-              }`}
-            >
+            <div className={getPostsGridClass(posts.length)}>
               {posts.map((post) => (
                 <Link
                   key={post.id}
                   href={`/blog/${post.slug}`}
-                  className="group overflow-hidden rounded-lg border border-stone-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-stone-300 hover:shadow-[0_18px_45px_rgba(34,24,20,0.13)]"
+                  className="group w-full overflow-hidden rounded-lg border border-stone-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-stone-300 hover:shadow-[0_18px_45px_rgba(34,24,20,0.13)]"
                 >
                   <div className="overflow-hidden bg-stone-200">
                     {post.coverImageUrl ? (
                       <img
                         src={post.coverImageUrl}
                         alt=""
-                        className="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.05]"
+                        className="aspect-[16/10] w-full object-cover transition duration-500 group-hover:scale-[1.05]"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="flex aspect-[4/3] w-full items-center justify-center bg-gradient-to-br from-stone-950 via-red-950 to-green-900 font-serif text-6xl text-white">
+                      <div className="flex aspect-[16/10] w-full items-center justify-center bg-gradient-to-br from-stone-950 via-red-950 to-green-900 font-serif text-6xl text-white">
                         F
                       </div>
                     )}
