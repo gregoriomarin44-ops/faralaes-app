@@ -9,6 +9,7 @@ type BlogPost = {
   excerpt: string;
   content: string;
   coverImageUrl: string | null;
+  coverImageAlt: string | null;
   status: "draft" | "published";
   publishedAt: string | null;
   seoTitle: string | null;
@@ -29,6 +30,7 @@ type BlogForm = {
   excerpt: string;
   content: string;
   coverImageUrl: string;
+  coverImageAlt: string;
   status: "draft" | "published";
   seoTitle: string;
   seoDescription: string;
@@ -41,6 +43,7 @@ const emptyForm: BlogForm = {
   excerpt: "",
   content: "",
   coverImageUrl: "",
+  coverImageAlt: "",
   status: "draft",
   seoTitle: "",
   seoDescription: "",
@@ -71,6 +74,7 @@ const toForm = (post: BlogPost): BlogForm => ({
   excerpt: post.excerpt,
   content: post.content,
   coverImageUrl: post.coverImageUrl || "",
+  coverImageAlt: post.coverImageAlt || "",
   status: post.status,
   seoTitle: post.seoTitle || "",
   seoDescription: post.seoDescription || "",
@@ -482,6 +486,15 @@ export default function AdminBlog() {
                   placeholder="/uploads/blog/imagen.webp"
                 />
               </label>
+              <label className="grid gap-2 text-sm font-bold text-stone-700">
+                ALT de portada
+                <input
+                  value={form.coverImageAlt}
+                  onChange={(event) => setField("coverImageAlt", event.target.value)}
+                  className="rounded-lg border border-stone-200 bg-white px-4 py-3 font-normal text-stone-900 outline-none transition focus:border-green-700"
+                  placeholder="Ej: Trajes de flamenca durante la Romería del Rocío"
+                />
+              </label>
               <label className="w-fit cursor-pointer rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:border-green-700 hover:text-green-800">
                 {uploading ? "Subiendo..." : "Subir portada"}
                 <input
@@ -495,7 +508,7 @@ export default function AdminBlog() {
               {form.coverImageUrl && (
                 <img
                   src={form.coverImageUrl}
-                  alt=""
+                  alt={form.coverImageAlt || form.title}
                   className="aspect-[16/9] w-full rounded-lg object-cover"
                 />
               )}

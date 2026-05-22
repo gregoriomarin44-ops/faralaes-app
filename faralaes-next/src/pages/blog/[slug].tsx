@@ -15,6 +15,7 @@ type BlogPostPage = {
   excerpt: string;
   content: string;
   coverImageUrl: string | null;
+  coverImageAlt: string | null;
   publishedAt: string;
   updatedAt: string;
   seoTitle: string | null;
@@ -63,6 +64,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostProps> = async ({
       excerpt: true,
       content: true,
       coverImageUrl: true,
+      coverImageAlt: true,
       publishedAt: true,
       updatedAt: true,
       seoTitle: true,
@@ -181,7 +183,7 @@ export default function BlogPost({ post }: BlogPostProps) {
             <div className="mx-auto max-w-5xl px-4 pt-8 sm:px-6">
               <img
                 src={post.coverImageUrl}
-                alt=""
+                alt={post.coverImageAlt || post.title}
                 className="aspect-[16/8] w-full rounded-lg object-cover shadow-sm"
               />
             </div>

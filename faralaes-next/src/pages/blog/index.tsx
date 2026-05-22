@@ -12,6 +12,7 @@ type BlogListPost = {
   excerpt: string;
   content: string;
   coverImageUrl: string | null;
+  coverImageAlt: string | null;
   publishedAt: string;
 };
 
@@ -105,6 +106,7 @@ export const getServerSideProps: GetServerSideProps<BlogIndexProps> = async () =
       excerpt: true,
       content: true,
       coverImageUrl: true,
+      coverImageAlt: true,
       publishedAt: true,
     },
   });
@@ -258,7 +260,7 @@ export default function BlogIndex({ posts }: BlogIndexProps) {
                     {post.coverImageUrl ? (
                       <img
                         src={post.coverImageUrl}
-                        alt=""
+                        alt={post.coverImageAlt || post.title}
                         className="aspect-[16/10] w-full object-cover transition duration-500 group-hover:scale-[1.05]"
                         loading="lazy"
                       />

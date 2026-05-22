@@ -56,6 +56,7 @@ model BlogPost {
   excerpt        String
   content        String
   coverImageUrl  String?
+  coverImageAlt  String?
   status         BlogPostStatus @default(draft)
   publishedAt    DateTime?
   seoTitle       String?

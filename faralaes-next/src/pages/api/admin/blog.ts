@@ -14,6 +14,7 @@ const blogPostSelect = {
   excerpt: true,
   content: true,
   coverImageUrl: true,
+  coverImageAlt: true,
   status: true,
   publishedAt: true,
   seoTitle: true,
@@ -44,6 +45,7 @@ const getBlogPostInput = (body: Record<string, unknown>) => {
   const excerpt = getString(body.excerpt);
   const content = getString(body.content);
   const coverImageUrl = getNullableString(body.coverImageUrl);
+  const coverImageAlt = getNullableString(body.coverImageAlt);
   const seoTitle = getNullableString(body.seoTitle);
   const seoDescription = getNullableString(body.seoDescription);
   const requestedStatus = getString(body.status);
@@ -52,6 +54,7 @@ const getBlogPostInput = (body: Record<string, unknown>) => {
     : "draft";
 
   return {
+    coverImageAlt,
     coverImageUrl,
     content,
     excerpt,
