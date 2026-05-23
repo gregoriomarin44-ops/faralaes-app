@@ -14,9 +14,13 @@ import ListingShareActions from "../../components/ListingShareActions";
 import { formatPrice } from "../../lib/formatPrice";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
-import { getAbsoluteImageUrl, getCanonical, getSeoProductLinks } from "../../lib/seo";
+import {
+  buildListingSocialMetadata,
+  getAbsoluteImageUrl,
+  getCanonical,
+  getSeoProductLinks,
+} from "../../lib/seo";
 import { getOperationLabel, isDonationListing } from "../../lib/listingOperation";
-import { getListingShareTitle } from "../../lib/listingShare";
 import { getDiscountPercent, hasDiscount } from "../../lib/pricing";
 import { userActivityStatus } from "../../lib/userActivity";
 import {
@@ -872,12 +876,10 @@ export default function ProductoDetalle({
       !link.label.includes(" talla ")
   );
   const productUrl = getCanonical(`/producto/${producto.id}`);
-  const ogTitle = getListingShareTitle(producto);
-  const ogImage = getAbsoluteImageUrl(images[0]?.url);
-  const seoLocation = producto.location || "España";
-  const seoCategory = getCategoryLabel(producto.category);
-  const metaDescription =
-    `${seoCategory}. Moda flamenca de segunda mano en ${seoLocation}. Contacta directamente en Faralaes.`;
+  const socialMeta = buildListingSocialMetadata(producto);
+  const ogTitle = socialMeta.title;
+  const ogImage = socialMeta.image;
+  const metaDescription = socialMeta.description;
   const breadcrumbItems = [
     { href: "/", label: "Inicio" },
     { href: categoryPath, label: categoryInfo.label },
@@ -1014,7 +1016,7 @@ export default function ProductoDetalle({
         <meta property="og:description" content={metaDescription} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:url" content={productUrl} />
-        <meta property="og:type" content="product" />
+        <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Faralaes" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={ogTitle} />

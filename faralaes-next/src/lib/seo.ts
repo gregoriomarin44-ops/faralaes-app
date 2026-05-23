@@ -1,3 +1,5 @@
+import { isDonationListing } from "./listingOperation";
+
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://faralaes.com";
 
@@ -19,6 +21,65 @@ export const getAbsoluteImageUrl = (imageUrl?: string | null) => {
   }
 
   return getAbsoluteUrl(value);
+};
+
+const cleanSeoText = (value?: string | null) =>
+  (value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const truncateSeoText = (value: string, maxLength = 160) => {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  const trimmed = value.slice(0, maxLength + 1);
+  const lastSpace = trimmed.lastIndexOf(" ");
+  const excerpt = trimmed.slice(0, lastSpace > 120 ? lastSpace : maxLength).trim();
+
+  return `${excerpt.replace(/[.,;:!?]+$/, "")}...`;
+};
+
+const formatSeoPrice = (priceCents: number) => {
+  const hasCents = Math.abs(priceCents) % 100 !== 0;
+  const amount = new Intl.NumberFormat("es-ES", {
+    maximumFractionDigits: hasCents ? 2 : 0,
+    minimumFractionDigits: hasCents ? 2 : 0,
+  }).format(priceCents / 100);
+
+  return `${amount} €`;
+};
+
+export type ListingSocialMetadataInput = {
+  description?: string | null;
+  id: string;
+  images?: { url?: string | null }[] | null;
+  operationType?: string | null;
+  priceCents?: number | null;
+  title: string;
+};
+
+export const buildListingSocialMetadata = (listing: ListingSocialMetadataInput) => {
+  const title = isDonationListing(listing.operationType)
+    ? `${listing.title} gratis / donación | Faralaes`
+    : `${listing.title} por ${formatSeoPrice(listing.priceCents || 0)} | Faralaes`;
+  const cleanedDescription = cleanSeoText(listing.description);
+  const description = truncateSeoText(
+    cleanedDescription ||
+      `Anuncio de moda flamenca de segunda mano en Faralaes: ${listing.title}.`
+  );
+  const imageUrl = listing.images?.find((image) => cleanSeoText(image.url))?.url || null;
+  const image = getAbsoluteImageUrl(imageUrl);
+  const url = getCanonical(`/producto/${listing.id}`);
+
+  return {
+    description,
+    image,
+    title,
+    url,
+  };
 };
 
 export const categorySeo = {
