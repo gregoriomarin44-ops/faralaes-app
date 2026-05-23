@@ -13,6 +13,9 @@ import {
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 
+const getFileSignature = (file: File) =>
+  `${file.name}-${file.size}-${file.lastModified}`;
+
 const precioAcentimos = (valor: string) => {
   const normalizado = valor.trim().replace(",", ".");
   const numero = Number(normalizado);
@@ -250,7 +253,17 @@ export default function EditarProducto() {
   const seleccionarImagenes = async (files: FileList | null) => {
     if (!files?.length) return;
 
-    const seleccionadas = Array.from(files);
+    const firmasNuevas = new Set<string>();
+    const seleccionadas = Array.from(files).filter((file) => {
+      const signature = getFileSignature(file);
+
+      if (firmasNuevas.has(signature)) {
+        return false;
+      }
+
+      firmasNuevas.add(signature);
+      return true;
+    });
     const totalImagenes = imagenes.length + seleccionadas.length;
 
     if (totalImagenes > MAX_IMAGES) {
@@ -273,7 +286,13 @@ export default function EditarProducto() {
       const nuevasImagenes = await Promise.all(
         seleccionadas.map((file) => convertirImagenABase64(file))
       );
-      setImagenes((prev) => [...prev, ...nuevasImagenes]);
+      setImagenes((prev) => {
+        const actuales = new Set(prev);
+        return [
+          ...prev,
+          ...nuevasImagenes.filter((imagen) => !actuales.has(imagen)),
+        ];
+      });
       setImagenesCambiadas(true);
     } catch (error) {
       setError(

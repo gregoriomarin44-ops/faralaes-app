@@ -17,6 +17,10 @@ import {
 } from "../lib/listingOptions";
 
 const MAX_IMAGES = 5;
+
+const getFileSignature = (file: File) =>
+  `${file.name}-${file.size}-${file.lastModified}`;
+
 const precioAcentimos = (valor: string) => {
   const normalizado = valor.trim().replace(",", ".");
   const numero = Number(normalizado);
@@ -90,26 +94,44 @@ export default function Publicar() {
     if (!files?.length) return;
 
     const seleccionadas = Array.from(files);
+    const firmasActuales = new Set(
+      imagenes.map((imagen) => getFileSignature(imagen.file))
+    );
+    const firmasNuevas = new Set<string>();
+    const nuevasSeleccionadas = seleccionadas.filter((file) => {
+      const signature = getFileSignature(file);
 
-    if (seleccionadas.length > MAX_IMAGES) {
+      if (firmasActuales.has(signature) || firmasNuevas.has(signature)) {
+        return false;
+      }
+
+      firmasNuevas.add(signature);
+      return true;
+    });
+
+    const huecosDisponibles = MAX_IMAGES - imagenes.length;
+
+    if (nuevasSeleccionadas.length > huecosDisponibles) {
       setMensaje(
-        `Puedes subir un máximo de ${MAX_IMAGES} imágenes. Has seleccionado ${seleccionadas.length}.`
+        `Puedes subir un máximo de ${MAX_IMAGES} imágenes. Ahora tienes ${imagenes.length} y has seleccionado ${nuevasSeleccionadas.length}.`
       );
-      setImagenes([]);
       return;
     }
+
+    if (nuevasSeleccionadas.length === 0) return;
 
     setMensaje("");
     setPublishedListing(null);
 
     try {
-      await Promise.all(seleccionadas.map((file) => validateListingImageFile(file)));
-      const nuevasImagenes = seleccionadas.map((file) => ({
+      await Promise.all(
+        nuevasSeleccionadas.map((file) => validateListingImageFile(file))
+      );
+      const nuevasImagenes = nuevasSeleccionadas.map((file) => ({
         file,
         previewUrl: URL.createObjectURL(file),
       }));
-      imagenes.forEach((imagen) => URL.revokeObjectURL(imagen.previewUrl));
-      setImagenes(nuevasImagenes);
+      setImagenes((prev) => [...prev, ...nuevasImagenes]);
     } catch (error) {
       setMensaje(
         error instanceof Error
