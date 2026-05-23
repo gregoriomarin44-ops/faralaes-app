@@ -113,6 +113,10 @@ const logProductError = (
   });
 };
 
+const logProductInfo = (event: string, context: Record<string, unknown>) => {
+  console.info(`[${event}]`, context);
+};
+
 const VIEW_FRONTEND_DEBOUNCE_MS = 60 * 1000;
 
 const formatMetricCount = (value: number) =>
@@ -576,6 +580,16 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
     relatedListings = await loadRelatedFallback(producto, isAdmin);
   }
 
+  const socialMetadata = buildListingSocialMetadata(producto);
+
+  logProductInfo("/producto/[id] og:image debug", {
+    listingId: id,
+    rawImages: producto.images,
+    normalizedImages: socialMetadata.imageDebug.normalizedImages,
+    finalOgImage: socialMetadata.image,
+    fallbackReason: socialMetadata.imageDebug.fallbackReason,
+  });
+
   return {
     props: {
       initialProducto: JSON.parse(JSON.stringify(producto)),
@@ -880,6 +894,15 @@ export default function ProductoDetalle({
   const ogTitle = socialMeta.title;
   const ogImage = socialMeta.image;
   const metaDescription = socialMeta.description;
+  if (typeof window === "undefined") {
+    logProductInfo("/producto/[id] og:image render", {
+      listingId: producto.id,
+      rawImages: producto.images,
+      normalizedImages: socialMeta.imageDebug.normalizedImages,
+      finalOgImage: ogImage,
+      fallbackReason: socialMeta.imageDebug.fallbackReason,
+    });
+  }
   const breadcrumbItems = [
     { href: "/", label: "Inicio" },
     { href: categoryPath, label: categoryInfo.label },
@@ -894,7 +917,10 @@ export default function ProductoDetalle({
     "@type": "Product",
     name: producto.title,
     description: metaDescription,
-    image: images.length > 0 ? images.map((image) => getAbsoluteImageUrl(image.url)) : [ogImage],
+    image:
+      socialMeta.imageDebug.normalizedImages.length > 0
+        ? socialMeta.imageDebug.normalizedImages.map((image) => getAbsoluteImageUrl(image))
+        : [ogImage],
     category: categoryInfo.label,
     brand: producto.brand ? { "@type": "Brand", name: producto.brand } : undefined,
     additionalProperty: [

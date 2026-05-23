@@ -23,6 +23,24 @@ export const getAbsoluteImageUrl = (imageUrl?: string | null) => {
   return getAbsoluteUrl(value);
 };
 
+const getPublicAbsoluteImageUrl = (imageUrl?: string | null) => {
+  const value = imageUrl?.trim();
+
+  if (!value || /^data:image\//i.test(value) || /^blob:/i.test(value)) {
+    return null;
+  }
+
+  if (/^\/\//.test(value)) {
+    return `https:${value}`;
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  return getAbsoluteUrl(value.startsWith("/") ? value : `/${value}`);
+};
+
 const cleanSeoText = (value?: string | null) =>
   (value || "")
     .replace(/<[^>]*>/g, " ")
@@ -52,10 +70,89 @@ const formatSeoPrice = (priceCents: number) => {
   return `${amount} €`;
 };
 
+const extractImageUrlCandidates = (images: unknown, depth = 0): string[] => {
+  if (depth > 4 || images === undefined || images === null) {
+    return [];
+  }
+
+  if (typeof images === "string") {
+    const value = images.trim();
+
+    if (!value) {
+      return [];
+    }
+
+    if (
+      (value.startsWith("[") && value.endsWith("]")) ||
+      (value.startsWith("{") && value.endsWith("}"))
+    ) {
+      try {
+        return extractImageUrlCandidates(JSON.parse(value), depth + 1);
+      } catch {
+        return [value];
+      }
+    }
+
+    return [value];
+  }
+
+  if (Array.isArray(images)) {
+    return images.flatMap((image) => extractImageUrlCandidates(image, depth + 1));
+  }
+
+  if (typeof images === "object") {
+    const record = images as Record<string, unknown>;
+    const nestedImages = extractImageUrlCandidates(record.images, depth + 1);
+
+    if (nestedImages.length > 0) {
+      return nestedImages;
+    }
+
+    return ["url", "src", "path", "imageUrl", "publicUrl", "secure_url"].flatMap(
+      (key) => extractImageUrlCandidates(record[key], depth + 1)
+    );
+  }
+
+  return [];
+};
+
+export const normalizeListingImageUrls = (images: unknown) =>
+  extractImageUrlCandidates(images).map((url) => url.trim()).filter(Boolean);
+
+export const resolveListingOgImage = (images: unknown) => {
+  const candidates = normalizeListingImageUrls(images);
+  const publicImage = candidates
+    .map((url) => ({ rawUrl: url, absoluteUrl: getPublicAbsoluteImageUrl(url) }))
+    .find((image): image is { rawUrl: string; absoluteUrl: string } =>
+      Boolean(image.absoluteUrl)
+    );
+
+  if (publicImage) {
+    return {
+      fallbackReason: null,
+      image: publicImage.absoluteUrl,
+      normalizedImages: candidates,
+      rawImageCount: candidates.length,
+      usedFallback: false,
+    };
+  }
+
+  return {
+    fallbackReason:
+      candidates.length > 0
+        ? "No hay URLs de imagen públicas válidas tras normalizar."
+        : "El anuncio no trae imágenes en SSR.",
+    image: FARALAES_OG_FALLBACK_IMAGE,
+    normalizedImages: candidates,
+    rawImageCount: candidates.length,
+    usedFallback: true,
+  };
+};
+
 export type ListingSocialMetadataInput = {
   description?: string | null;
   id: string;
-  images?: { url?: string | null }[] | null;
+  images?: unknown;
   operationType?: string | null;
   priceCents?: number | null;
   title: string;
@@ -70,13 +167,13 @@ export const buildListingSocialMetadata = (listing: ListingSocialMetadataInput) 
     cleanedDescription ||
       `Anuncio de moda flamenca de segunda mano en Faralaes: ${listing.title}.`
   );
-  const imageUrl = listing.images?.find((image) => cleanSeoText(image.url))?.url || null;
-  const image = getAbsoluteImageUrl(imageUrl);
+  const ogImage = resolveListingOgImage(listing.images);
   const url = getCanonical(`/producto/${listing.id}`);
 
   return {
     description,
-    image,
+    image: ogImage.image,
+    imageDebug: ogImage,
     title,
     url,
   };

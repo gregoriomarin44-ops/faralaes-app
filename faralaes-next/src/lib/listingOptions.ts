@@ -30,7 +30,7 @@ export const conditionOptions = [
   { value: "usado", label: "Usado" },
 ] as const;
 
-const sizeOptions = [
+export const sizeOptions = [
   "34",
   "36",
   "38",
@@ -44,9 +44,9 @@ const sizeOptions = [
   "Otra",
 ] as const;
 
-const shoeSizeOptions = ["35", "36", "37", "38", "39", "40", "41", "42", "Otro"] as const;
+export const shoeSizeOptions = ["35", "36", "37", "38", "39", "40", "41", "42", "Otro"] as const;
 
-const colorOptions = [
+export const colorOptions = [
   "Rojo",
   "Negro",
   "Blanco",
@@ -60,6 +60,36 @@ const colorOptions = [
   "Multicolor",
   "Otro",
 ] as const;
+
+export const isOtherColorValue = (value: string | null | undefined) =>
+  value?.trim().toLowerCase() === "otro";
+
+export const isStandardColorValue = (value: string | null | undefined) => {
+  const normalized = value?.trim().toLowerCase();
+
+  return Boolean(
+    normalized &&
+      colorOptions.some((option) => option.trim().toLowerCase() === normalized)
+  );
+};
+
+export const isOtherSizeValue = (value: string | null | undefined) => {
+  const normalized = value?.trim().toLowerCase();
+
+  return normalized === "otra" || normalized === "otro";
+};
+
+export const isStandardSizeValue = (
+  value: string | null | undefined,
+  options: readonly string[] = sizeOptions
+) => {
+  const normalized = value?.trim().toLowerCase();
+
+  return Boolean(
+    normalized &&
+      options.some((option) => option.trim().toLowerCase() === normalized)
+  );
+};
 
 const detailedConditionOptions = [
   "Nuevo con etiqueta",

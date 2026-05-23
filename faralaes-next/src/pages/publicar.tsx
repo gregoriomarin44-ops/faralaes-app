@@ -12,7 +12,11 @@ import {
 import {
   categoryOptions,
   conditionOptions,
+  colorOptions,
   getCategoryAttributeSchema,
+  isOtherColorValue,
+  isOtherSizeValue,
+  sizeOptions,
   usageOptions,
 } from "../lib/listingOptions";
 
@@ -58,7 +62,9 @@ export default function Publicar() {
   const [categoria, setCategoria] = useState("");
   const [attributes, setAttributes] = useState<Record<string, string | boolean>>({});
   const [talla, setTalla] = useState("");
+  const [manualSize, setManualSize] = useState("");
   const [color, setColor] = useState("");
+  const [manualColor, setManualColor] = useState("");
   const [marca, setMarca] = useState("");
   const [uso, setUso] = useState("");
   const [ubicacion, setUbicacion] = useState("");
@@ -77,6 +83,9 @@ export default function Publicar() {
 
   const schema = getCategoryAttributeSchema(categoria);
   const hasDynamicSizeField = schema.some((field) =>
+    ["talla", "talla_edad", "numero"].includes(field.key)
+  );
+  const dynamicSizeField = schema.find((field) =>
     ["talla", "talla_edad", "numero"].includes(field.key)
   );
   const hasDynamicColorField = schema.some((field) => field.key === "color");
@@ -186,12 +195,40 @@ export default function Publicar() {
       return;
     }
 
+    const selectedColor = getStringAttribute(attributes, ["color"]) || color;
+    const trimmedManualColor = manualColor.trim();
+    const selectedSize =
+      getStringAttribute(attributes, ["talla", "talla_edad", "numero"]) || talla;
+    const trimmedManualSize = manualSize.trim();
+
+    if (isOtherSizeValue(selectedSize) && !trimmedManualSize) {
+      setMensaje('Escribe la talla o elige una opción distinta de "Otra".');
+      return;
+    }
+
+    if (isOtherColorValue(selectedColor) && !trimmedManualColor) {
+      setMensaje('Escribe el color o elige una opción distinta de "Otro".');
+      return;
+    }
+
+    const finalSize = isOtherSizeValue(selectedSize)
+      ? trimmedManualSize
+      : selectedSize.trim();
+    const finalColor = isOtherColorValue(selectedColor)
+      ? trimmedManualColor
+      : selectedColor.trim();
+    const submissionAttributes: Record<string, string | boolean> = {
+      ...attributes,
+      ...(dynamicSizeField && finalSize ? { [dynamicSizeField.key]: finalSize } : {}),
+      ...(hasDynamicColorField && finalColor ? { color: finalColor } : {}),
+    };
+
     const missingAttribute = getCategoryAttributeSchema(categoria).find(
       (field) =>
         field.required &&
-        (attributes[field.key] === undefined ||
-          attributes[field.key] === "" ||
-          attributes[field.key] === false)
+        (submissionAttributes[field.key] === undefined ||
+          submissionAttributes[field.key] === "" ||
+          submissionAttributes[field.key] === false)
     );
 
     if (missingAttribute) {
@@ -216,16 +253,13 @@ export default function Publicar() {
           previousPriceCents,
           operationType,
           category: categoria,
-          size:
-            getStringAttribute(attributes, ["talla", "talla_edad", "numero"]) ||
-            talla ||
-            null,
-          color: getStringAttribute(attributes, ["color"]) || color || null,
+          size: finalSize || null,
+          color: finalColor || null,
           brand: marca || null,
           usage: uso || null,
           location: ubicacion || null,
           condition: estado,
-          attributes,
+          attributes: submissionAttributes,
           shippingAvailable,
           whatsappContactAllowed: contactoWhatsapp,
           images: uploadedImages,
@@ -257,7 +291,9 @@ export default function Publicar() {
       setCategoria("");
       setAttributes({});
       setTalla("");
+      setManualSize("");
       setColor("");
+      setManualColor("");
       setMarca("");
       setUso("");
       setUbicacion("");
@@ -280,6 +316,18 @@ export default function Publicar() {
       ...current,
       [key]: value,
     }));
+
+    if (key === "color" && typeof value === "string" && !isOtherColorValue(value)) {
+      setManualColor("");
+    }
+
+    if (
+      ["talla", "talla_edad", "numero"].includes(key) &&
+      typeof value === "string" &&
+      !isOtherSizeValue(value)
+    ) {
+      setManualSize("");
+    }
   };
 
   const selectedCategoryLabel =
@@ -288,9 +336,41 @@ export default function Publicar() {
   const selectCategory = (value: string) => {
     setCategoria(value);
     setAttributes({});
+    setColor("");
+    setManualColor("");
+    setTalla("");
+    setManualSize("");
     setMensaje("");
     setPublishedListing(null);
   };
+
+  const renderManualSizeInput = () => (
+    <div className="mt-2 text-sm font-semibold text-gray-700">
+      <span className="mb-1 block">Escribe la talla</span>
+      <input
+        className="w-full rounded border border-gray-300 bg-white p-3"
+        value={manualSize}
+        onChange={(e) => setManualSize(e.target.value)}
+        placeholder="Ej: 58, XL, talla única, 3 años..."
+        maxLength={40}
+        required
+      />
+    </div>
+  );
+
+  const renderManualColorInput = () => (
+    <div className="mt-2 text-sm font-semibold text-gray-700">
+      <span className="mb-1 block">Escribe el color</span>
+      <input
+        className="w-full rounded border border-gray-300 bg-white p-3"
+        value={manualColor}
+        onChange={(e) => setManualColor(e.target.value)}
+        placeholder="Ej: buganvilla, coral, verde agua..."
+        maxLength={40}
+        required
+      />
+    </div>
+  );
 
   const renderAttributeFields = () => {
     if (!categoria || schema.length === 0) {
@@ -323,6 +403,11 @@ export default function Publicar() {
             }
 
             if (field.type === "select") {
+              const isColorField = field.key === "color";
+              const isSizeField = ["talla", "talla_edad", "numero"].includes(
+                field.key
+              );
+
               return (
                 <label key={field.key} className="block text-sm font-semibold text-gray-700">
                   <span className="mb-1 block">{field.label}</span>
@@ -339,6 +424,14 @@ export default function Publicar() {
                       </option>
                     ))}
                   </select>
+                  {isColorField &&
+                    typeof value === "string" &&
+                    isOtherColorValue(value) &&
+                    renderManualColorInput()}
+                  {isSizeField &&
+                    typeof value === "string" &&
+                    isOtherSizeValue(value) &&
+                    renderManualSizeInput()}
                 </label>
               );
             }
@@ -472,10 +565,50 @@ export default function Publicar() {
             {(!hasDynamicSizeField || !hasDynamicColorField) && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {!hasDynamicSizeField && (
-                  <input className="w-full border p-3 rounded" value={talla} onChange={(e) => setTalla(e.target.value)} placeholder="Talla, ej. 38, M" maxLength={20} />
+                  <label className="block text-sm font-semibold text-gray-700">
+                    <span className="mb-1 block">Talla</span>
+                    <select
+                      className="w-full rounded border border-gray-300 bg-white p-3"
+                      value={talla}
+                      onChange={(e) => {
+                        setTalla(e.target.value);
+                        if (!isOtherSizeValue(e.target.value)) {
+                          setManualSize("");
+                        }
+                      }}
+                    >
+                      <option value="">No indicado</option>
+                      {sizeOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    {isOtherSizeValue(talla) && renderManualSizeInput()}
+                  </label>
                 )}
                 {!hasDynamicColorField && (
-                  <input className="w-full border p-3 rounded" value={color} onChange={(e) => setColor(e.target.value)} placeholder="Color" maxLength={40} />
+                  <label className="block text-sm font-semibold text-gray-700">
+                    <span className="mb-1 block">Color</span>
+                    <select
+                      className="w-full rounded border border-gray-300 bg-white p-3"
+                      value={color}
+                      onChange={(e) => {
+                        setColor(e.target.value);
+                        if (!isOtherColorValue(e.target.value)) {
+                          setManualColor("");
+                        }
+                      }}
+                    >
+                      <option value="">No indicado</option>
+                      {colorOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    {isOtherColorValue(color) && renderManualColorInput()}
+                  </label>
                 )}
               </div>
             )}

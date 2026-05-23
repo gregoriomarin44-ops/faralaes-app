@@ -5,8 +5,14 @@ import { useAuth } from "../../lib/authContext";
 import {
   categoryOptions,
   conditionOptions,
+  colorOptions,
   getCategoryAttributeSchema,
+  isOtherColorValue,
+  isOtherSizeValue,
+  isStandardColorValue,
+  isStandardSizeValue,
   normalizeAttributesForCategory,
+  sizeOptions,
   usageOptions,
 } from "../../lib/listingOptions";
 
@@ -107,7 +113,9 @@ export default function EditarProducto() {
   const [categoria, setCategoria] = useState("traje");
   const [attributes, setAttributes] = useState<Record<string, string | boolean>>({});
   const [talla, setTalla] = useState("");
+  const [manualSize, setManualSize] = useState("");
   const [color, setColor] = useState("");
+  const [manualColor, setManualColor] = useState("");
   const [marca, setMarca] = useState("");
   const [uso, setUso] = useState("");
   const [ubicacion, setUbicacion] = useState("");
@@ -123,6 +131,9 @@ export default function EditarProducto() {
 
   const schema = getCategoryAttributeSchema(categoria);
   const hasDynamicSizeField = schema.some((field) =>
+    ["talla", "talla_edad", "numero"].includes(field.key)
+  );
+  const dynamicSizeField = schema.find((field) =>
     ["talla", "talla_edad", "numero"].includes(field.key)
   );
   const hasDynamicColorField = schema.some((field) => field.key === "color");
@@ -221,15 +232,61 @@ export default function EditarProducto() {
         setPrecioInicialCents(producto.priceCents);
         setTeniaPrecioAnterior(Boolean(producto.previousPriceCents));
         setDescripcion(producto.description || "");
-        setCategoria(producto.category);
-        setAttributes(
-          normalizeAttributesForCategory(producto.category, producto.attributes) as Record<
+        const normalizedAttributes = normalizeAttributesForCategory(
+          producto.category,
+          producto.attributes
+        ) as Record<
             string,
             string | boolean
-          >
+          >;
+        const productHasDynamicColorField = getCategoryAttributeSchema(
+          producto.category
+        ).some((field) => field.key === "color");
+        const productDynamicSizeField = getCategoryAttributeSchema(
+          producto.category
+        ).find((field) => ["talla", "talla_edad", "numero"].includes(field.key));
+        const savedSize =
+          producto.size ||
+          getStringAttribute(normalizedAttributes, ["talla", "talla_edad", "numero"]);
+        const savedSizeIsOther = isOtherSizeValue(savedSize);
+        const savedSizeIsCustom =
+          Boolean(savedSize) &&
+          !savedSizeIsOther &&
+          !isStandardSizeValue(savedSize, productDynamicSizeField?.options || sizeOptions);
+        const savedColor =
+          producto.color || getStringAttribute(normalizedAttributes, ["color"]);
+        const savedColorIsOther = isOtherColorValue(savedColor);
+        const savedColorIsCustom =
+          Boolean(savedColor) && !savedColorIsOther && !isStandardColorValue(savedColor);
+
+        if (productHasDynamicColorField && savedColor) {
+          normalizedAttributes.color =
+            savedColorIsCustom || savedColorIsOther ? "Otro" : savedColor;
+        }
+
+        if (productDynamicSizeField && savedSize) {
+          normalizedAttributes[productDynamicSizeField.key] =
+            savedSizeIsCustom || savedSizeIsOther
+              ? productDynamicSizeField.options?.find(isOtherSizeValue) || "Otra"
+              : savedSize;
+        }
+
+        setCategoria(producto.category);
+        setAttributes(
+          normalizedAttributes
         );
-        setTalla(producto.size || "");
-        setColor(producto.color || "");
+        setTalla(
+          !productDynamicSizeField && (savedSizeIsCustom || savedSizeIsOther)
+            ? "Otra"
+            : producto.size || ""
+        );
+        setManualSize(savedSizeIsCustom ? savedSize || "" : "");
+        setColor(
+          !productHasDynamicColorField && (savedColorIsCustom || savedColorIsOther)
+            ? "Otro"
+            : producto.color || ""
+        );
+        setManualColor(savedColorIsCustom ? savedColor || "" : "");
         setMarca(producto.brand || "");
         setUso(producto.usage || "");
         setUbicacion(producto.location || "");
@@ -316,12 +373,42 @@ export default function EditarProducto() {
       return;
     }
 
+    const selectedColor = getStringAttribute(attributes, ["color"]) || color;
+    const trimmedManualColor = manualColor.trim();
+    const selectedSize =
+      getStringAttribute(attributes, ["talla", "talla_edad", "numero"]) || talla;
+    const trimmedManualSize = manualSize.trim();
+
+    if (isOtherSizeValue(selectedSize) && !trimmedManualSize) {
+      setError('Escribe la talla o elige una opción distinta de "Otra".');
+      setSaving(false);
+      return;
+    }
+
+    if (isOtherColorValue(selectedColor) && !trimmedManualColor) {
+      setError('Escribe el color o elige una opción distinta de "Otro".');
+      setSaving(false);
+      return;
+    }
+
+    const finalSize = isOtherSizeValue(selectedSize)
+      ? trimmedManualSize
+      : selectedSize.trim();
+    const finalColor = isOtherColorValue(selectedColor)
+      ? trimmedManualColor
+      : selectedColor.trim();
+    const submissionAttributes: Record<string, string | boolean> = {
+      ...attributes,
+      ...(dynamicSizeField && finalSize ? { [dynamicSizeField.key]: finalSize } : {}),
+      ...(hasDynamicColorField && finalColor ? { color: finalColor } : {}),
+    };
+
     const missingAttribute = getCategoryAttributeSchema(categoria).find(
       (field) =>
         field.required &&
-        (attributes[field.key] === undefined ||
-          attributes[field.key] === "" ||
-          attributes[field.key] === false)
+        (submissionAttributes[field.key] === undefined ||
+          submissionAttributes[field.key] === "" ||
+          submissionAttributes[field.key] === false)
     );
 
     if (missingAttribute) {
@@ -341,16 +428,13 @@ export default function EditarProducto() {
         previousPriceCents,
         operationType,
         category: categoria,
-        size:
-          getStringAttribute(attributes, ["talla", "talla_edad", "numero"]) ||
-          talla ||
-          null,
-        color: getStringAttribute(attributes, ["color"]) || color || null,
+        size: finalSize || null,
+        color: finalColor || null,
         brand: marca || null,
         usage: uso || null,
         location: ubicacion || null,
         condition: estado,
-        attributes,
+        attributes: submissionAttributes,
         shippingAvailable: envioDisponible,
         whatsappContactAllowed: contactoWhatsapp,
         ...(imagenesCambiadas ? { images: imagenes } : {}),
@@ -448,7 +532,47 @@ export default function EditarProducto() {
       ...current,
       [key]: value,
     }));
+
+    if (key === "color" && typeof value === "string" && !isOtherColorValue(value)) {
+      setManualColor("");
+    }
+
+    if (
+      ["talla", "talla_edad", "numero"].includes(key) &&
+      typeof value === "string" &&
+      !isOtherSizeValue(value)
+    ) {
+      setManualSize("");
+    }
   };
+
+  const renderManualSizeInput = () => (
+    <div className="mt-2 text-sm font-semibold text-gray-700">
+      <span className="mb-1 block">Escribe la talla</span>
+      <input
+        className="w-full rounded border border-gray-300 bg-white p-3"
+        value={manualSize}
+        onChange={(e) => setManualSize(e.target.value)}
+        placeholder="Ej: 58, XL, talla única, 3 años..."
+        maxLength={40}
+        required
+      />
+    </div>
+  );
+
+  const renderManualColorInput = () => (
+    <div className="mt-2 text-sm font-semibold text-gray-700">
+      <span className="mb-1 block">Escribe el color</span>
+      <input
+        className="w-full rounded border border-gray-300 bg-white p-3"
+        value={manualColor}
+        onChange={(e) => setManualColor(e.target.value)}
+        placeholder="Ej: buganvilla, coral, verde agua..."
+        maxLength={40}
+        required
+      />
+    </div>
+  );
 
   const renderAttributeFields = () => {
     if (!categoria || schema.length === 0) {
@@ -481,6 +605,11 @@ export default function EditarProducto() {
             }
 
             if (field.type === "select") {
+              const isColorField = field.key === "color";
+              const isSizeField = ["talla", "talla_edad", "numero"].includes(
+                field.key
+              );
+
               return (
                 <label key={field.key} className="block text-sm font-semibold text-gray-700">
                   <span className="mb-1 block">{field.label}</span>
@@ -497,6 +626,14 @@ export default function EditarProducto() {
                       </option>
                     ))}
                   </select>
+                  {isColorField &&
+                    typeof value === "string" &&
+                    isOtherColorValue(value) &&
+                    renderManualColorInput()}
+                  {isSizeField &&
+                    typeof value === "string" &&
+                    isOtherSizeValue(value) &&
+                    renderManualSizeInput()}
                 </label>
               );
             }
@@ -613,22 +750,50 @@ export default function EditarProducto() {
               {(!hasDynamicSizeField || !hasDynamicColorField) && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {!hasDynamicSizeField && (
-                    <input
-                      className="w-full rounded border p-3"
-                      value={talla}
-                      onChange={(e) => setTalla(e.target.value)}
-                      placeholder="Talla, ej. 38, M"
-                      maxLength={20}
-                    />
+                    <label className="block text-sm font-semibold text-gray-700">
+                      <span className="mb-1 block">Talla</span>
+                      <select
+                        className="w-full rounded border border-gray-300 bg-white p-3"
+                        value={talla}
+                        onChange={(e) => {
+                          setTalla(e.target.value);
+                          if (!isOtherSizeValue(e.target.value)) {
+                            setManualSize("");
+                          }
+                        }}
+                      >
+                        <option value="">No indicado</option>
+                        {sizeOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      {isOtherSizeValue(talla) && renderManualSizeInput()}
+                    </label>
                   )}
                   {!hasDynamicColorField && (
-                    <input
-                      className="w-full rounded border p-3"
-                      value={color}
-                      onChange={(e) => setColor(e.target.value)}
-                      placeholder="Color"
-                      maxLength={40}
-                    />
+                    <label className="block text-sm font-semibold text-gray-700">
+                      <span className="mb-1 block">Color</span>
+                      <select
+                        className="w-full rounded border border-gray-300 bg-white p-3"
+                        value={color}
+                        onChange={(e) => {
+                          setColor(e.target.value);
+                          if (!isOtherColorValue(e.target.value)) {
+                            setManualColor("");
+                          }
+                        }}
+                      >
+                        <option value="">No indicado</option>
+                        {colorOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      {isOtherColorValue(color) && renderManualColorInput()}
+                    </label>
                   )}
                 </div>
               )}
