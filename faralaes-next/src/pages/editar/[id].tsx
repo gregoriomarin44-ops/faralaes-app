@@ -75,6 +75,7 @@ type Producto = {
   title: string;
   description: string | null;
   priceCents: number;
+  previousPriceCents?: number | null;
   operationType?: string | null;
   category: string;
   size: string | null;
@@ -99,6 +100,9 @@ export default function EditarProducto() {
   const [titulo, setTitulo] = useState("");
   const [operationType, setOperationType] = useState<"sale" | "donation">("sale");
   const [precio, setPrecio] = useState("");
+  const [precioAnterior, setPrecioAnterior] = useState("");
+  const [precioInicialCents, setPrecioInicialCents] = useState<number | null>(null);
+  const [teniaPrecioAnterior, setTeniaPrecioAnterior] = useState(false);
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState("traje");
   const [attributes, setAttributes] = useState<Record<string, string | boolean>>({});
@@ -209,6 +213,13 @@ export default function EditarProducto() {
             ? ""
             : centimosAPrecio(producto.priceCents)
         );
+        setPrecioAnterior(
+          normalizedOperationType === "donation" || !producto.previousPriceCents
+            ? ""
+            : centimosAPrecio(producto.previousPriceCents)
+        );
+        setPrecioInicialCents(producto.priceCents);
+        setTeniaPrecioAnterior(Boolean(producto.previousPriceCents));
         setDescripcion(producto.description || "");
         setCategoria(producto.category);
         setAttributes(
@@ -273,9 +284,34 @@ export default function EditarProducto() {
     setError("");
 
     const priceCents = operationType === "donation" ? 0 : precioAcentimos(precio);
+    let previousPriceCents =
+      operationType === "donation" || !precioAnterior.trim()
+        ? null
+        : precioAcentimos(precioAnterior);
+
+    if (
+      operationType === "sale" &&
+      previousPriceCents === null &&
+      !teniaPrecioAnterior &&
+      precioInicialCents !== null &&
+      priceCents !== null &&
+      precioInicialCents > priceCents
+    ) {
+      previousPriceCents = precioInicialCents;
+    }
 
     if (operationType === "sale" && (priceCents === null || priceCents <= 0)) {
       setError("Introduce un precio válido. Ejemplo: 90,50");
+      setSaving(false);
+      return;
+    }
+
+    if (
+      operationType === "sale" &&
+      previousPriceCents !== null &&
+      previousPriceCents <= 0
+    ) {
+      setError("El precio antes debe ser mayor que cero.");
       setSaving(false);
       return;
     }
@@ -302,6 +338,7 @@ export default function EditarProducto() {
         title: titulo,
         description: descripcion,
         priceCents,
+        previousPriceCents,
         operationType,
         category: categoria,
         size:
@@ -519,6 +556,7 @@ export default function EditarProducto() {
                     setOperationType(nextType);
                     if (nextType === "donation") {
                       setPrecio("");
+                      setPrecioAnterior("");
                     }
                   }}
                 >
@@ -527,15 +565,25 @@ export default function EditarProducto() {
                 </select>
               </label>
               {operationType === "sale" ? (
-                <input
-                  className="w-full rounded border p-3"
-                  value={precio}
-                  onChange={(e) => setPrecio(e.target.value)}
-                  placeholder="Precio"
-                  type="text"
-                  inputMode="decimal"
-                  required
-                />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    className="w-full rounded border p-3"
+                    value={precio}
+                    onChange={(e) => setPrecio(e.target.value)}
+                    placeholder="Precio"
+                    type="text"
+                    inputMode="decimal"
+                    required
+                  />
+                  <input
+                    className="w-full rounded border p-3"
+                    value={precioAnterior}
+                    onChange={(e) => setPrecioAnterior(e.target.value)}
+                    placeholder="Precio antes (opcional)"
+                    type="text"
+                    inputMode="decimal"
+                  />
+                </div>
               ) : (
                 <p className="rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-semibold leading-6 text-green-900">
                   Indica en la descripción cómo prefieres entregarlo.

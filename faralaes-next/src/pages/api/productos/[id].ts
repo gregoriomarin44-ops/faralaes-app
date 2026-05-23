@@ -90,6 +90,7 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
       title: string;
       description: string | null;
       priceCents: number;
+      previousPriceCents: number | null;
       category: string;
       size: string | null;
       color: string | null;
@@ -116,6 +117,7 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
       l."title",
       l."description",
       l."priceCents",
+      NULL::integer AS "previousPriceCents",
       l."category",
       l."size",
       l."color",
@@ -169,6 +171,7 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
     title: row.title,
     description: row.description,
     priceCents: row.priceCents,
+    previousPriceCents: row.previousPriceCents,
     operationType: "sale",
     category: row.category,
     size: row.size,
@@ -247,6 +250,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           title: true,
           description: true,
           priceCents: true,
+          previousPriceCents: true,
           operationType: true,
           category: true,
           size: true,

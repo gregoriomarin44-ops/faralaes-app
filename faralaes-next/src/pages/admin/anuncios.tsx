@@ -2,11 +2,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import AdminLayout, { useAdminSession } from "../../components/admin/AdminLayout";
 import { formatPrice } from "../../lib/formatPrice";
+import { getDiscountPercent } from "../../lib/pricing";
 
 type AdminListing = {
   id: string;
   title: string;
   priceCents: number;
+  previousPriceCents: number | null;
   status: string;
   createdAt: string;
   seller: {
@@ -106,7 +108,30 @@ export default function AdminListings() {
                     {listing.title}
                   </td>
                   <td className="px-4 py-4 text-red-700">
-                    {formatPrice(listing.priceCents)}
+                    <div className="flex flex-wrap items-center gap-2 font-semibold">
+                      {formatPrice(listing.priceCents)}
+                      {getDiscountPercent(
+                        listing.priceCents,
+                        listing.previousPriceCents
+                      ) !== null && (
+                        <span className="rounded-full bg-red-700 px-2 py-0.5 text-[11px] font-black text-white">
+                          -
+                          {getDiscountPercent(
+                            listing.priceCents,
+                            listing.previousPriceCents
+                          )}
+                          %
+                        </span>
+                      )}
+                    </div>
+                    {getDiscountPercent(
+                      listing.priceCents,
+                      listing.previousPriceCents
+                    ) !== null && (
+                      <p className="mt-1 text-xs font-bold text-stone-400 line-through">
+                        {formatPrice(listing.previousPriceCents || 0)}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-4">
                     <span className="rounded-full bg-[#f8f3ef] px-3 py-1 text-xs font-bold text-stone-700">

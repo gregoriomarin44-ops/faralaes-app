@@ -53,6 +53,7 @@ export default function Publicar() {
   const [titulo, setTitulo] = useState("");
   const [operationType, setOperationType] = useState<"sale" | "donation">("sale");
   const [precio, setPrecio] = useState("");
+  const [precioAnterior, setPrecioAnterior] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState("");
   const [attributes, setAttributes] = useState<Record<string, string | boolean>>({});
@@ -161,9 +162,22 @@ export default function Publicar() {
     }
 
     const priceCents = operationType === "donation" ? 0 : precioAcentimos(precio);
+    const previousPriceCents =
+      operationType === "donation" || !precioAnterior.trim()
+        ? null
+        : precioAcentimos(precioAnterior);
 
     if (operationType === "sale" && (priceCents === null || priceCents <= 0)) {
       setMensaje("Introduce un precio válido. Ejemplo: 90,50");
+      return;
+    }
+
+    if (
+      operationType === "sale" &&
+      previousPriceCents !== null &&
+      (previousPriceCents <= 0 || previousPriceCents <= (priceCents || 0))
+    ) {
+      setMensaje("El precio antes debe ser mayor que el precio actual.");
       return;
     }
 
@@ -199,6 +213,7 @@ export default function Publicar() {
           title: titulo,
           description: descripcion,
           priceCents,
+          previousPriceCents,
           operationType,
           category: categoria,
           size:
@@ -237,6 +252,7 @@ export default function Publicar() {
       setTitulo("");
       setOperationType("sale");
       setPrecio("");
+      setPrecioAnterior("");
       setDescripcion("");
       setCategoria("");
       setAttributes({});
@@ -429,6 +445,7 @@ export default function Publicar() {
                   setOperationType(nextType);
                   if (nextType === "donation") {
                     setPrecio("");
+                    setPrecioAnterior("");
                   }
                 }}
               >
@@ -439,7 +456,10 @@ export default function Publicar() {
 
             <input className="w-full border p-3 rounded" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título" required />
             {operationType === "sale" ? (
-              <input className="w-full border p-3 rounded" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" type="text" inputMode="decimal" required />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <input className="w-full border p-3 rounded" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" type="text" inputMode="decimal" required />
+                <input className="w-full border p-3 rounded" value={precioAnterior} onChange={(e) => setPrecioAnterior(e.target.value)} placeholder="Precio antes (opcional)" type="text" inputMode="decimal" />
+              </div>
             ) : (
               <p className="rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-semibold leading-6 text-green-900">
                 Indica en la descripción cómo prefieres entregarlo.

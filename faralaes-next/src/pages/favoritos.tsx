@@ -4,12 +4,14 @@ import NavBar from "../components/NavBar";
 import { useAuth } from "../lib/authContext";
 import { formatPrice } from "../lib/formatPrice";
 import { getOperationLabel, isDonationListing } from "../lib/listingOperation";
+import { getDiscountPercent } from "../lib/pricing";
 
 type Producto = {
   id: string;
   title: string;
   description: string | null;
   priceCents: number;
+  previousPriceCents?: number | null;
   operationType?: string | null;
   category: string;
   size: string | null;
@@ -169,11 +171,36 @@ export default function Favoritos() {
                     </p>
                   )}
 
-                  <p className="mb-3 text-2xl font-semibold text-red-700">
-                    {isDonationListing(p.operationType)
-                      ? getOperationLabel(p.operationType)
-                      : formatPrice(p.priceCents)}
-                  </p>
+                  {isDonationListing(p.operationType) ? (
+                    <p className="mb-3 text-2xl font-semibold text-red-700">
+                      {getOperationLabel(p.operationType)}
+                    </p>
+                  ) : (
+                    <div className="mb-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-2xl font-semibold text-red-700">
+                          {formatPrice(p.priceCents)}
+                        </p>
+                        {getDiscountPercent(p.priceCents, p.previousPriceCents) !==
+                          null && (
+                          <span className="rounded-full bg-red-700 px-2 py-0.5 text-xs font-black text-white">
+                            -
+                            {getDiscountPercent(
+                              p.priceCents,
+                              p.previousPriceCents
+                            )}
+                            %
+                          </span>
+                        )}
+                      </div>
+                      {getDiscountPercent(p.priceCents, p.previousPriceCents) !==
+                        null && (
+                        <p className="text-sm font-bold text-gray-400 line-through">
+                          {formatPrice(p.previousPriceCents || 0)}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-1 text-sm text-gray-500">
                     <p>Categoría: {p.category}</p>

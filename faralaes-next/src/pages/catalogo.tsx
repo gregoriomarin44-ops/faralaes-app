@@ -22,6 +22,7 @@ type Producto = {
   title: string;
   description: string | null;
   priceCents: number;
+  previousPriceCents?: number | null;
   operationType?: string | null;
   status?: string | null;
   createdAt?: string | null;

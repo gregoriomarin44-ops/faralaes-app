@@ -127,6 +127,7 @@ model Listing {
   title                  String
   description            String?
   priceCents             Int
+  previousPriceCents     Int?
   currency               String         @default("EUR")
   operationType          String         @default("sale")
   category               String

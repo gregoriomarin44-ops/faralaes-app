@@ -170,6 +170,7 @@ export const getServerSideProps: GetServerSideProps<
           title: true,
           description: true,
           priceCents: true,
+          previousPriceCents: true,
           operationType: true,
           location: true,
           size: true,

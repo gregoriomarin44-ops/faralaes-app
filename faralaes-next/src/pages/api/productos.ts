@@ -15,6 +15,7 @@ type PublicListingFallback = {
   title: string;
   description: string | null;
   priceCents: number;
+  previousPriceCents: number | null;
   currency: string;
   operationType: string | null;
   category: string;
@@ -103,7 +104,21 @@ const prepararImagenes = (images: unknown): { images: string[]; error: string | 
   return { images: imagenes, error: null };
 };
 
-const prepararOperacion = (operationType: unknown, priceCents: unknown) => {
+const parseCents = (value: unknown) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const parsed = typeof value === "number" ? value : Number(value);
+
+  return Number.isFinite(parsed) ? Math.round(parsed) : null;
+};
+
+const prepararOperacion = (
+  operationType: unknown,
+  priceCents: unknown,
+  previousPriceCents: unknown
+) => {
   if (
     operationType !== undefined &&
     operationType !== "sale" &&
@@ -113,33 +128,41 @@ const prepararOperacion = (operationType: unknown, priceCents: unknown) => {
       error: "Tipo de operación no válido.",
       operationType: "sale" as const,
       priceCents: 0,
+      previousPriceCents: null,
     };
   }
 
   const normalizedOperationType = normalizeOperationType(operationType);
-  const normalizedPrice =
-    typeof priceCents === "number" ? priceCents : Number(priceCents);
+  const normalizedPrice = parseCents(priceCents);
 
   if (normalizedOperationType === "donation") {
     return {
       error: null,
       operationType: normalizedOperationType,
       priceCents: 0,
+      previousPriceCents: null,
     };
   }
 
-  if (!Number.isFinite(normalizedPrice) || normalizedPrice <= 0) {
+  if (normalizedPrice === null || normalizedPrice <= 0) {
     return {
       error: "El precio es obligatorio para anuncios de venta.",
       operationType: normalizedOperationType,
       priceCents: 0,
+      previousPriceCents: null,
     };
   }
+
+  const normalizedPreviousPrice = parseCents(previousPriceCents);
 
   return {
     error: null,
     operationType: normalizedOperationType,
-    priceCents: Math.round(normalizedPrice),
+    priceCents: normalizedPrice,
+    previousPriceCents:
+      normalizedPreviousPrice !== null && normalizedPreviousPrice > normalizedPrice
+        ? normalizedPreviousPrice
+        : null,
   };
 };
 
@@ -242,6 +265,7 @@ const cargarProductosPublicadosFallback = async (
       "title",
       "description",
       "priceCents",
+      NULL::integer AS "previousPriceCents",
       "currency",
       'sale' AS "operationType",
       "category",
@@ -414,6 +438,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         title,
         description,
         priceCents,
+        previousPriceCents,
         category,
         size,
         color,
@@ -428,7 +453,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         images,
       } = req.body;
 
-      const operation = prepararOperacion(operationType, priceCents);
+      const operation = prepararOperacion(
+        operationType,
+        priceCents,
+        previousPriceCents
+      );
 
       if (operation.error) {
         return res.status(400).json({ error: operation.error });
@@ -458,6 +487,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           title,
           description: description || null,
           priceCents: operation.priceCents,
+          previousPriceCents: operation.previousPriceCents,
           operationType: operation.operationType,
           sellerId: user.id,
           category,
@@ -507,6 +537,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         title,
         description,
         priceCents,
+        previousPriceCents,
         category,
         size,
         color,
@@ -534,7 +565,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         () => null
       );
 
-      const operation = prepararOperacion(operationType, priceCents);
+      const operation = prepararOperacion(
+        operationType,
+        priceCents,
+        previousPriceCents
+      );
 
       if (operation.error) {
         return res.status(400).json({ error: operation.error });
@@ -577,6 +612,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           title,
           description: description || null,
           priceCents: operation.priceCents,
+          previousPriceCents: operation.previousPriceCents,
           operationType: operation.operationType,
           category,
           size: size || null,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import NavBar from "../components/NavBar";
 import { formatPrice } from "../lib/formatPrice";
 import { getOperationLabel, isDonationListing } from "../lib/listingOperation";
+import { getDiscountPercent } from "../lib/pricing";
 import { prisma } from "../lib/prisma";
 import {
   categorySeo,
@@ -20,6 +21,7 @@ type SeoListing = {
   title: string;
   description: string | null;
   priceCents: number;
+  previousPriceCents?: number | null;
   operationType?: string | null;
   location: string | null;
   size: string | null;
@@ -84,6 +86,7 @@ export const getServerSideProps: GetServerSideProps<SeoPageProps> = async ({
         title: true,
         description: true,
         priceCents: true,
+        previousPriceCents: true,
         operationType: true,
         location: true,
         size: true,
@@ -304,11 +307,40 @@ export default function SeoLanding({
                     <h2 className="font-serif text-xl text-gray-950">
                       {listing.title}
                     </h2>
-                    <p className="mt-3 text-2xl font-semibold text-red-700">
-                      {isDonationListing(listing.operationType)
-                        ? getOperationLabel(listing.operationType)
-                        : formatPrice(listing.priceCents)}
-                    </p>
+                    {isDonationListing(listing.operationType) ? (
+                      <p className="mt-3 text-2xl font-semibold text-red-700">
+                        {getOperationLabel(listing.operationType)}
+                      </p>
+                    ) : (
+                      <div className="mt-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-2xl font-semibold text-red-700">
+                            {formatPrice(listing.priceCents)}
+                          </p>
+                          {getDiscountPercent(
+                            listing.priceCents,
+                            listing.previousPriceCents
+                          ) !== null && (
+                            <span className="rounded-full bg-red-700 px-2 py-0.5 text-xs font-black text-white">
+                              -
+                              {getDiscountPercent(
+                                listing.priceCents,
+                                listing.previousPriceCents
+                              )}
+                              %
+                            </span>
+                          )}
+                        </div>
+                        {getDiscountPercent(
+                          listing.priceCents,
+                          listing.previousPriceCents
+                        ) !== null && (
+                          <p className="text-sm font-bold text-gray-400 line-through">
+                            {formatPrice(listing.previousPriceCents || 0)}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <p className="mt-2 text-sm text-gray-500">
                       {listing.location || "Sin ubicacion"}
                       {listing.size ? ` · Talla ${listing.size}` : ""}

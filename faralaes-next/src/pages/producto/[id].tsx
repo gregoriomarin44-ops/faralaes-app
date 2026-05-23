@@ -17,6 +17,7 @@ import { prisma } from "../../lib/prisma";
 import { getAbsoluteImageUrl, getCanonical, getSeoProductLinks } from "../../lib/seo";
 import { getOperationLabel, isDonationListing } from "../../lib/listingOperation";
 import { getListingShareTitle } from "../../lib/listingShare";
+import { getDiscountPercent, hasDiscount } from "../../lib/pricing";
 import { userActivityStatus } from "../../lib/userActivity";
 import {
   getCategoryLabel,
@@ -31,6 +32,7 @@ type Producto = {
   title: string;
   description: string | null;
   priceCents: number;
+  previousPriceCents?: number | null;
   operationType?: string | null;
   category: string;
   size: string | null;
@@ -72,6 +74,7 @@ type RelatedListing = {
   id: string;
   title: string;
   priceCents: number;
+  previousPriceCents?: number | null;
   operationType?: string | null;
   location: string | null;
   images?: {
@@ -230,6 +233,7 @@ const loadProductFallback = async (
       title: string;
       description: string | null;
       priceCents: number;
+      previousPriceCents: number | null;
       category: string;
       size: string | null;
       color: string | null;
@@ -256,6 +260,7 @@ const loadProductFallback = async (
       l."title",
       l."description",
       l."priceCents",
+      NULL::integer AS "previousPriceCents",
       l."category",
       l."size",
       l."color",
@@ -299,6 +304,7 @@ const loadProductFallback = async (
     title: row.title,
     description: row.description,
     priceCents: row.priceCents,
+    previousPriceCents: row.previousPriceCents,
     operationType: "sale",
     category: row.category,
     size: row.size,
@@ -351,6 +357,7 @@ const loadRelatedFallback = async (
         id: string;
         title: string;
         priceCents: number;
+        previousPriceCents: number | null;
         location: string | null;
       }[]
     >`
@@ -358,6 +365,7 @@ const loadRelatedFallback = async (
         "id"::text AS "id",
         "title",
         "priceCents",
+        NULL::integer AS "previousPriceCents",
         "location"
       FROM "Listing"
       WHERE "id"::text <> ${producto.id}
@@ -385,6 +393,7 @@ const loadRelatedFallback = async (
       id: row.id,
       title: row.title,
       priceCents: row.priceCents,
+      previousPriceCents: row.previousPriceCents,
       operationType: "sale",
       location: row.location,
       images: imagesByListingId.get(row.id) || [],
@@ -446,6 +455,7 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
         title: true,
         description: true,
         priceCents: true,
+        previousPriceCents: true,
         operationType: true,
         category: true,
         size: true,
@@ -543,6 +553,7 @@ export const getServerSideProps: GetServerSideProps<ProductoDetalleProps> = asyn
         id: true,
         title: true,
         priceCents: true,
+        previousPriceCents: true,
         operationType: true,
         location: true,
         images: {
@@ -793,6 +804,10 @@ export default function ProductoDetalle({
     : "Fecha no disponible";
   const images = producto.images || [];
   const isDonation = isDonationListing(producto.operationType);
+  const discountPercent = isDonation
+    ? null
+    : getDiscountPercent(producto.priceCents, producto.previousPriceCents);
+  const productHasDiscount = discountPercent !== null;
   const esPropio = userId === producto.sellerId;
   const viewCount = getViewCount(producto);
   const favoriteCount = getFavoriteCount(producto);
@@ -1097,9 +1112,21 @@ export default function ProductoDetalle({
                   </p>
                 </div>
               ) : (
-                <p className="text-5xl font-extrabold tracking-tight text-red-700 sm:text-6xl">
-                  {formatPrice(producto.priceCents)}
-                </p>
+                <div className="flex flex-wrap items-end gap-3">
+                  <p className="text-5xl font-extrabold tracking-tight text-red-700 sm:text-6xl">
+                    {formatPrice(producto.priceCents)}
+                  </p>
+                  {productHasDiscount && (
+                    <>
+                      <p className="pb-1 text-2xl font-bold text-gray-400 line-through">
+                        {formatPrice(producto.previousPriceCents || 0)}
+                      </p>
+                      <span className="mb-1 rounded-full bg-red-700 px-3 py-1 text-sm font-black text-white">
+                        -{discountPercent}%
+                      </span>
+                    </>
+                  )}
+                </div>
               )}
               <p className="mt-3 text-sm font-semibold text-gray-400">
                 Publicado el {publishedDate}
@@ -1321,6 +1348,21 @@ export default function ProductoDetalle({
                         ? getOperationLabel(related.operationType)
                         : formatPrice(related.priceCents)}
                     </p>
+                    {!isDonationListing(related.operationType) &&
+                      hasDiscount(related.priceCents, related.previousPriceCents) && (
+                        <p className="mt-1 text-xs font-bold text-gray-400">
+                          <span className="line-through">
+                            {formatPrice(related.previousPriceCents || 0)}
+                          </span>{" "}
+                          <span className="text-red-700">
+                            -{getDiscountPercent(
+                              related.priceCents,
+                              related.previousPriceCents
+                            )}
+                            %
+                          </span>
+                        </p>
+                      )}
                     <p className="mt-1 text-xs text-gray-500">
                       {related.location || "Sin ubicacion"}
                     </p>

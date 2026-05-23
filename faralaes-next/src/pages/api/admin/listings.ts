@@ -16,6 +16,7 @@ type AdminListingResponse = {
   id: string;
   title: string;
   priceCents: number;
+  previousPriceCents: number | null;
   status: string;
   createdAt: Date;
   seller: {
@@ -30,6 +31,7 @@ const adminListingSelect = {
   id: true,
   title: true,
   priceCents: true,
+  previousPriceCents: true,
   status: true,
   createdAt: true,
   seller: {
@@ -72,6 +74,7 @@ const cargarAdminListingsFallback = async (
       id: string;
       title: string;
       priceCents: number;
+      previousPriceCents: number | null;
       status: string;
       createdAt: Date;
       sellerEmail: string;
@@ -82,6 +85,7 @@ const cargarAdminListingsFallback = async (
       l."id"::text AS "id",
       l."title",
       l."priceCents",
+      NULL::integer AS "previousPriceCents",
       l."status",
       l."createdAt",
       u."email" AS "sellerEmail",
@@ -97,6 +101,7 @@ const cargarAdminListingsFallback = async (
     id: row.id,
     title: row.title,
     priceCents: row.priceCents,
+    previousPriceCents: row.previousPriceCents,
     status: row.status,
     createdAt: row.createdAt,
     seller: {

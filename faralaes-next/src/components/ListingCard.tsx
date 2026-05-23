@@ -6,6 +6,7 @@ import UserActivityBadge from "./UserActivityBadge";
 import { formatPrice } from "../lib/formatPrice";
 import { getConditionLabel } from "../lib/listingOptions";
 import { getOperationLabel, isDonationListing } from "../lib/listingOperation";
+import { getDiscountPercent } from "../lib/pricing";
 import {
   copyListingLink,
   getFacebookShareUrl,
@@ -23,6 +24,7 @@ export type ListingCardItem = {
   title: string;
   description?: string | null;
   priceCents: number;
+  previousPriceCents?: number | null;
   operationType?: string | null;
   status?: string | null;
   createdAt?: string | Date | null;
@@ -260,6 +262,9 @@ export default function ListingCard({
   const imageCount = listing.images?.length || 0;
   const primaryImage = listing.images?.[0]?.url || "";
   const isDonation = isDonationListing(listing.operationType);
+  const discountPercent = isDonation
+    ? null
+    : getDiscountPercent(listing.priceCents, listing.previousPriceCents);
   const relativeDate = getRelativeDate(listing.createdAt);
   const ratingAverage =
     typeof listing.sellerRatingAverage === "number" &&
@@ -441,9 +446,23 @@ export default function ListingCard({
               {getOperationLabel(listing.operationType)}
             </p>
           ) : (
-            <p className="text-[1.55rem] font-black leading-none tracking-normal text-red-800">
-              {formatPrice(listing.priceCents)}
-            </p>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[1.55rem] font-black leading-none tracking-normal text-red-800">
+                  {formatPrice(listing.priceCents)}
+                </p>
+                {discountPercent !== null && (
+                  <span className="rounded-full bg-red-700 px-2 py-0.5 text-[11px] font-black text-white">
+                    -{discountPercent}%
+                  </span>
+                )}
+              </div>
+              {discountPercent !== null && (
+                <p className="mt-1 text-sm font-bold text-stone-400 line-through">
+                  {formatPrice(listing.previousPriceCents || 0)}
+                </p>
+              )}
+            </div>
           )}
           {relativeDate && (
             <p className="shrink-0 pt-1 text-[11px] font-bold uppercase tracking-wide text-stone-400">
