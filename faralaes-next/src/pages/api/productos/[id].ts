@@ -21,6 +21,10 @@ const logApiError = (
   });
 };
 
+const logApiInfo = (event: string, context: Record<string, unknown>) => {
+  console.info(`[${event}]`, context);
+};
+
 const getSingleQueryValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
@@ -74,6 +78,8 @@ const getAdminState = async (req: NextApiRequest) => {
 };
 
 const loadProductFallback = async (id: string, isAdmin: boolean) => {
+  logApiInfo("/api/productos/[id] fallback start", { listingId: id, isAdmin });
+
   const statusFilter = isAdmin
     ? Prisma.empty
     : Prisma.sql`AND l."status" = 'published'`;
@@ -138,6 +144,10 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
   const row = rows[0];
 
   if (!row) {
+    logApiInfo("/api/productos/[id] fallback not found", {
+      listingId: id,
+      isAdmin,
+    });
     return null;
   }
 
@@ -145,6 +155,12 @@ const loadProductFallback = async (id: string, isAdmin: boolean) => {
     where: { listingId: id },
     orderBy: { sortOrder: "asc" },
     select: { url: true },
+  });
+
+  logApiInfo("/api/productos/[id] fallback found", {
+    listingId: id,
+    isAdmin,
+    imageCount: images.length,
   });
 
   return {
@@ -204,10 +220,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { id } = req.query;
 
     if (!id || typeof id !== "string") {
+      logApiInfo("/api/productos/[id] invalid id", { rawId: id });
       return res.status(400).json({ error: "ID no válido" });
     }
 
     const { userId, isAdmin } = await getAdminState(req);
+
+    logApiInfo("/api/productos/[id] request", {
+      listingId: id,
+      userId,
+      isAdmin,
+      method: req.method,
+    });
 
     let producto = null;
 
@@ -266,6 +290,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
         },
       });
+
+      logApiInfo("/api/productos/[id] prisma result", {
+        listingId: id,
+        userId,
+        isAdmin,
+        found: Boolean(producto),
+        imageCount: producto?.images?.length ?? null,
+      });
     } catch (error) {
       logApiError("/api/productos/[id]", error, {
         listingId: id,
@@ -277,8 +309,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (!producto) {
+      logApiInfo("/api/productos/[id] not found response", {
+        listingId: id,
+        userId,
+        isAdmin,
+      });
       return res.status(404).json({ error: "Producto no encontrado" });
     }
+
+    logApiInfo("/api/productos/[id] success", {
+      listingId: id,
+      userId,
+      isAdmin,
+      sellerId: producto.sellerId,
+      imageCount: producto.images?.length ?? 0,
+    });
 
     return res.status(200).json(producto);
   } catch (error) {

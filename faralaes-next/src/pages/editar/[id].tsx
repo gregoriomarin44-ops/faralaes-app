@@ -16,6 +16,30 @@ const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 const getFileSignature = (file: File) =>
   `${file.name}-${file.size}-${file.lastModified}`;
 
+const getLoadErrorMessage = (status: number, apiError?: string) => {
+  if (apiError) {
+    return apiError;
+  }
+
+  if (status === 401) {
+    return "Inicia sesión para editar este anuncio.";
+  }
+
+  if (status === 403) {
+    return "No tienes permiso para editar este anuncio.";
+  }
+
+  if (status === 404) {
+    return "Producto no encontrado.";
+  }
+
+  if (status >= 500) {
+    return "No se ha podido cargar el anuncio por un error del servidor.";
+  }
+
+  return "No se ha podido cargar el anuncio.";
+};
+
 const precioAcentimos = (valor: string) => {
   const normalizado = valor.trim().replace(",", ".");
   const numero = Number(normalizado);
@@ -100,31 +124,81 @@ export default function EditarProducto() {
   const hasDynamicColorField = schema.some((field) => field.key === "color");
 
   useEffect(() => {
+    console.info("[editar] estado inicial carga", {
+      routerReady: router.isReady,
+      authLoading,
+      rawId: id,
+      hasUser: Boolean(user),
+    });
+
     if (!router.isReady || authLoading) return;
 
     if (!user) {
+      console.warn("[editar] usuario no autenticado, redirigiendo a login", {
+        rawId: id,
+        next: router.asPath,
+      });
+      setError("Inicia sesión para editar este anuncio.");
+      setLoading(false);
       router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
       return;
     }
 
     if (!id || typeof id !== "string") {
+      console.warn("[editar] id inválido en URL", { rawId: id });
       setError("Producto no encontrado.");
       setLoading(false);
       return;
     }
 
-    fetch(`/api/productos/${id}`)
-      .then((res) => {
+    let cancelled = false;
+
+    const cargarAnuncio = async () => {
+      const url = `/api/productos/${encodeURIComponent(id)}`;
+
+      setLoading(true);
+      setError("");
+
+      console.info("[editar] cargando anuncio", {
+        id,
+        url,
+        userId: user.id,
+      });
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json().catch(() => null);
+
+        console.info("[editar] respuesta fetch anuncio", {
+          id,
+          status: res.status,
+          ok: res.ok,
+          hasBody: Boolean(data),
+          imageCount: Array.isArray(data?.images) ? data.images.length : null,
+        });
+
         if (!res.ok) {
-          throw new Error("No se ha podido cargar el anuncio.");
+          throw new Error(getLoadErrorMessage(res.status, data?.error));
         }
 
-        return res.json();
-      })
-      .then((producto: Producto) => {
+        const producto = data as Producto;
+
         if (producto.sellerId !== user.id) {
+          console.warn("[editar] usuario sin permiso para editar anuncio", {
+            id,
+            sellerId: producto.sellerId,
+            userId: user.id,
+          });
           throw new Error("No puedes editar un anuncio de otro usuario.");
         }
+
+        const imagenesExistentes = Array.isArray(producto.images)
+          ? producto.images
+              .map((image) => image?.url)
+              .filter((url): url is string => typeof url === "string" && url.length > 0)
+          : [];
+
+        if (cancelled) return;
 
         setTitulo(producto.title);
         const normalizedOperationType =
@@ -151,15 +225,39 @@ export default function EditarProducto() {
         setEstado(producto.condition || "muy_bueno");
         setEnvioDisponible(producto.shippingAvailable);
         setContactoWhatsapp(producto.whatsappContactAllowed);
-        setImagenes(producto.images?.map((image) => image.url) || []);
+        setImagenes(imagenesExistentes);
         setImagenesCambiadas(false);
         setError("");
-        return null;
-      })
-      .catch((err: Error) => {
-        setError(err.message || "No se ha podido cargar el anuncio.");
-      })
-      .finally(() => setLoading(false));
+
+        console.info("[editar] anuncio cargado en formulario", {
+          id,
+          imageCount: imagenesExistentes.length,
+        });
+      } catch (err) {
+        console.error("[editar] error cargando anuncio", {
+          id,
+          message: err instanceof Error ? err.message : String(err),
+        });
+
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "No se ha podido cargar el anuncio."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    cargarAnuncio();
+
+    return () => {
+      cancelled = true;
+    };
   }, [authLoading, id, router, router.asPath, router.isReady, user]);
 
   const guardar = async (e: React.FormEvent<HTMLFormElement>) => {
